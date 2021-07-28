@@ -1,0 +1,16 @@
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/CMakeFiles/ALL_BUILD.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/CMakeFiles/ZERO_CHECK.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/Lib/TLibCommon/CMakeFiles/TLibCommon.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/Lib/TLibCommonAnalyser/CMakeFiles/TLibCommonAnalyser.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/Lib/TLibDecoder/CMakeFiles/TLibDecoder.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/Lib/TLibDecoderAnalyser/CMakeFiles/TLibDecoderAnalyser.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/Lib/TLibEncoder/CMakeFiles/TLibEncoder.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/Lib/Utilities/CMakeFiles/Utilities.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/Lib/TLibSysuAnalyzer/CMakeFiles/TLibSysuAnalyzer.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/Lib/TMDCCommon/CMakeFiles/TMDCCommon.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/App/TAppDecoder/CMakeFiles/TAppDecoder.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/App/TAppDecoderAnalyser/CMakeFiles/TAppDecoderAnalyser.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/App/TAppEncoder/CMakeFiles/TAppEncoder.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/App/TAppMCTSExtractor/CMakeFiles/MCTSExtractor.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/App/Parcat/CMakeFiles/parcat.dir
+C:/Users/LE Trung Hieu/Desktop/HM MDC Encoder/cmake/source/App/SEIRemovalApp/CMakeFiles/SEIRemovalApp.dir
