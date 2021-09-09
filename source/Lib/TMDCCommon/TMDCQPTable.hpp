@@ -10,13 +10,13 @@
 class TMDCQPTable{
     public:
         TMDCQPTable(Int nbElementReadLine,const char* QPFileName,const char* QtreeFileName);
-        UInt* readALineQp();
+        Int readALineQp();
         UInt* getQPArray(){return qpArray;}
-        UInt* readALineQtree();
+        Int readALineQtree();
         UInt* getQtreeArray(){return qtreeArray;}
         void setIndexQpCU(Int index) { indexQpCU = index; }
-        void convertStringToIntArrayQP(UInt *bufferDest, char *str,int nbElement);
-        void convertStringtoIntArrayQtree(UInt *bufferDest, char *str,int nbElement);
+        Int convertStringToIntArrayQP(UInt *bufferDest, char *str,int nbElement);
+        Int convertStringtoIntArrayQtree(UInt *bufferDest, char *str,int nbElement);
         void appendQPArray(Int QP);
         ~TMDCQPTable();
         static TMDCQPTable* getInstance() {return m_instance;}

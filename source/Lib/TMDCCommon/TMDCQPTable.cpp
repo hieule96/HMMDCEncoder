@@ -30,7 +30,7 @@ void TMDCQPTable::appendQPArray(Int QP) {
 }
 
 
-void TMDCQPTable::convertStringToIntArrayQP(UInt *bufferDest, char *str,int nbElement){
+Int TMDCQPTable::convertStringToIntArrayQP(UInt *bufferDest, char *str,int nbElement){
     int j = 0;
     for (int i = 0; i < nbElement; i++) {
         bufferDest[i] = 0;
@@ -45,10 +45,11 @@ void TMDCQPTable::convertStringToIntArrayQP(UInt *bufferDest, char *str,int nbEl
             bufferDest[j] = bufferDest[j]*10 + (str[i] - 48);
         }
     }
+    return j;
 }
 
 // TODO: See if there's a better way to organize this file
-void TMDCQPTable::convertStringtoIntArrayQtree(UInt *bufferDest, char *str,int nbElement){
+Int TMDCQPTable::convertStringtoIntArrayQtree(UInt *bufferDest, char *str,int nbElement){
     int j = -1;
     bool skip = false;
     for (int i = 0; i < nbElement; i++) {
@@ -76,10 +77,12 @@ void TMDCQPTable::convertStringtoIntArrayQtree(UInt *bufferDest, char *str,int n
             bufferDest[j] = bufferDest[j]*10 + (str[i] - 48);
         }
     }
+    return j;
 }
 
 // read a buffer of 1024 of a line
-UInt* TMDCQPTable::readALineQtree(){
+Int TMDCQPTable::readALineQtree(){
+    Int count = 0;
     char* buffer = new char[BUFFER_READ_SIZE];
     if (fpQtreeFile.is_open()){
         fpQtreeFile.getline(buffer, BUFFER_READ_SIZE);
@@ -90,12 +93,13 @@ UInt* TMDCQPTable::readALineQtree(){
         exit(EXIT_FAILURE);
     }
     // parse String Int
-    convertStringtoIntArrayQtree(qtreeArray,buffer, BUFFER_READ_SIZE);
+    count = convertStringtoIntArrayQtree(qtreeArray,buffer, BUFFER_READ_SIZE);
     delete[] buffer;
-    return qtreeArray;
+    return count;
 }
 
-UInt* TMDCQPTable::readALineQp(){
+Int TMDCQPTable::readALineQp(){
+    Int count = 0;
     char* buffer = new char[BUFFER_READ_SIZE];
     // get the buffer from the file
     if(fpQPFile.is_open()){
@@ -107,9 +111,9 @@ UInt* TMDCQPTable::readALineQp(){
         exit(EXIT_FAILURE);
     }
     //parsing this buffer
-    convertStringToIntArrayQP(qpArray,buffer,BUFFER_READ_SIZE);
+    count = convertStringToIntArrayQP(qpArray,buffer,BUFFER_READ_SIZE);
     delete[] buffer;
-    return qpArray;
+    return count;
 }
 TMDCQPTable::~TMDCQPTable(){
     delete [] qpArray;

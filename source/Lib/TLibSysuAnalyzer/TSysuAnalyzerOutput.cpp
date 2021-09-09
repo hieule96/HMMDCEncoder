@@ -8,6 +8,7 @@ TSysuAnalyzerOutput::TSysuAnalyzerOutput()
   //m_cSpsOut.open     ("decoder_sps.txt",  ios::out);
   //m_cPredOutput.open ("decoder_pred.txt", ios::out);
   m_cCUPUOutput.open ("decoder_cupu.txt", ios::out);
+  m_CbfOutput.open("cbfFile.txt",ios::out);
   //m_cMVOutput.open   ("decoder_mv.txt",   ios::out);
   //m_cMergeOutput.open("decoder_merge.txt",ios::out);
   //m_cIntraOutput.open("decoder_intra.txt",ios::out);
@@ -15,7 +16,6 @@ TSysuAnalyzerOutput::TSysuAnalyzerOutput()
   //m_cMEOutput.open   ("encoder_me.txt",   ios::out);
   //m_cBitOutputLCU.open  ("decoder_bit_lcu.txt",  ios::out);
   //m_cBitOutputSCU.open  ("decoder_bit_scu.txt",  ios::out);
-  //m_cCUOutputResi.open ("residual.yuv", ios::out);
 #if ( HM_VERSION > 40)
   m_cTileOutPut.open("decoder_tile.txt", ios::out);
 #endif
@@ -38,6 +38,7 @@ TSysuAnalyzerOutput::TSysuAnalyzerOutput(const char* cupu_name)
     //m_cSpsOut.open("decoder_sps.txt", ios::out);
     //m_cPredOutput.open("decoder_pred.txt", ios::out);
     m_cCUPUOutput.open(cupu_name, ios::out);
+    m_CbfOutput.open("cbfFile.txt",ios::out);
     //m_cMVOutput.open("decoder_mv.txt", ios::out);
     //m_cMergeOutput.open("decoder_merge.txt", ios::out);
     //m_cIntraOutput.open("decoder_intra.txt", ios::out);
@@ -113,7 +114,7 @@ void TSysuAnalyzerOutput::writeOutCUInfo   ( TComDataCU* pcCU )
   //m_cBitOutputLCU << "<" << iPoc << "," << iAddr << ">" << " ";  ///< Write out bit info
   //m_cBitOutputSCU << "<" << iPoc << "," << iAddr << ">" << " ";  ///< Write out bit info
   //m_cMEOutput   << "<" << iPoc << "," << iAddr << ">" << " ";  ///< Write out ME info  
-
+  m_CbfOutput << "<" << iPoc << "," << iAddr << ">" << " "; // write out cbf flag
   xWriteOutCUInfo  ( pcCU, iTotalNumPart, 0, 0 );   ///< Recursive write Prediction, CU, PU, Merge, Intra, ME
   //m_cBitOutputLCU << pcCU->getTotalBits(); ///< Bit info
   //for(int i = 0; i < aiCUBits.size(); i++)
@@ -121,6 +122,7 @@ void TSysuAnalyzerOutput::writeOutCUInfo   ( TComDataCU* pcCU )
 
   //m_cPredOutput << endl;
   m_cCUPUOutput << endl;
+  m_CbfOutput << endl;
   //m_cMVOutput   << endl;
   //m_cMergeOutput<< endl;
   //m_cIntraOutput<< endl;
@@ -199,15 +201,8 @@ void TSysuAnalyzerOutput::xWriteOutCUInfo  ( TComDataCU* pcCU, Int iLength, Int 
       }
 
       ///// Write prediction info (for historical reason, MODE_SKIP = 0, MODE_INTER = 1 ....) (SKIP mode removed after HM-8.0)
-      //PredMode ePred = pcCU->getPredictionMode(iOffset+iPartAddOffset);
-      //Int iPred = ePred; 
-      //if(ePred == MODE_INTER )
-      //  iPred = 0;
-      //else if(ePred == MODE_INTRA)
-      //  iPred = 1;
-      //else if(ePred == NUMBER_OF_PREDICTION_MODES)
-      //  iPred = 2;
-      //m_cPredOutput << iPred << " ";
+      UInt cbf = pcCU->getCbf(iOffset+iPartAddOffset,COMPONENT_Y);
+      m_CbfOutput << cbf << " ";
 
       /// Write merge info
       //Bool bMergeFlag = pcCU->getMergeFlag(iOffset+iPartAddOffset);      
@@ -314,6 +309,7 @@ void TSysuAnalyzerOutput::xWriteOutCUInfo  ( TComDataCU* pcCU, Int iLength, Int 
 TSysuAnalyzerOutput::~TSysuAnalyzerOutput()
 {
   m_cCUPUOutput.close();
+  m_CbfOutput.close();
   //m_cMVOutput.close();
   //m_cPredOutput.close();
   //m_cSpsOut.close();

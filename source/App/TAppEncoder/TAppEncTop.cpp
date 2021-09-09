@@ -47,6 +47,8 @@
 #include "TLibEncoder/TEncTemporalFilter.h"
 #include "TLibEncoder/AnnexBwrite.h"
 #include "TLibSysuAnalyzer/TSysuAnalyzerOutput.h"
+#include "TLibSysuAnalyzer/TComSysuCuMDTools.h"
+
 #include "TMDCCommon/TMDCQPTable.hpp"
 #if EXTENSION_360_VIDEO
 #include "TAppEncHelper360/TExt360AppEncTop.h"
@@ -539,12 +541,13 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setQPFile                                            (m_QPFile);
   m_cTEncTop.setEncodingMode                                      (m_encodingMode);
   if (m_cTEncTop.getEncodingMode() == 0) {
-      TSysuAnalyzerOutput::initInstanceEncoder();
+      TSysuAnalyzerOutput::initInstanceEncoder(m_quadtreeFile.c_str());
   }
   else
   {
       TSysuAnalyzerOutput::initInstanceEncoder((m_debugQtreeFile + m_QPFile + ".txt").c_str());
   }
+  // Test new function
 }
 
 Void TAppEncTop::xCreateLib()

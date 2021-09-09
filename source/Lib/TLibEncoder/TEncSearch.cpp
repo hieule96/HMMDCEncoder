@@ -1421,96 +1421,96 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 
   //===== update distortion =====
   ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );
-  //// 20170612 added
-  //static Int iAddr, iPOC;
-  //static Int iPOCFinished = -1;
-  //static unsigned char* pphInfo[MAX_NUM_COMPONENT];
-  //// Point to the file of residual
-  //static FILE* fpYuvResi;
-  //static TComPicYuv* pcPicYuvOrg;
-  //static UInt iWidth, iHeight;
-  //static UInt iWidthInCTU, iHeightInCTU;
-  //static UInt iLeftCurrCTU, iTopCurrCTU;
-  //static UInt iWidthCTUList[MAX_NUM_COMPONENT];
-  //static UInt iHeightCTUList[MAX_NUM_COMPONENT];
-  //static UInt iWidthCurrCTUValid, iHeightCurrCTUValid;
-  //static bool isValidProcess = false;
-  //static bool oneTime = true;
-  //static Pel sInfoCurrPixel;
-  //static Int prev_iAdrr = 0;
-  //iAddr = pcCU->getCtuRsAddr();
-  //iPOC = pcCU->getPic()->getPOC();
-  //isValidProcess = true;
-  //if (isValidProcess)
-  //{
-  //    for (int iCpnt = 0; iCpnt < MAX_NUM_COMPONENT; iCpnt++)
-  //    {
-  //        pcPicYuvOrg = pcCU->getPic()->getPicYuvOrg();
-  //        iWidth = pcPicYuvOrg->getWidth((ComponentID)iCpnt);
-  //        iHeight = pcPicYuvOrg->getHeight((ComponentID)iCpnt);
-  //        if (iPOC == 0 && iAddr == 0&& oneTime)
-  //        {
-  //            pphInfo[iCpnt] = new unsigned char[iWidth * iHeight];
-  //        }
-  //        // Processing just one time to prevent from having erronous dimension
-  //        if (oneTime)
-  //        {
-  //            iWidthCTUList[iCpnt] = pcResiYuv->getWidth((ComponentID)iCpnt);
-  //            iHeightCTUList[iCpnt] = pcResiYuv->getHeight((ComponentID)iCpnt);
-  //            if (iCpnt == MAX_NUM_COMPONENT-1) {
-  //                oneTime = false;
-  //            }
-  //        }
-  //        iLeftCurrCTU = pcCU->getCUPelX();
-  //        iTopCurrCTU = pcCU->getCUPelY();
-  //        if (iCpnt >= 1)
-  //        {
-  //            iLeftCurrCTU /= 2;
-  //            iTopCurrCTU /= 2;
-  //        }
+  // // 20170612 added
+  static Int iAddr, iPOC;
+  static Int iPOCFinished = -1;
+  static unsigned char* pphInfo[MAX_NUM_COMPONENT];
+  // Point to the file of residual
+  static FILE* fpYuvResi;
+  static TComPicYuv* pcPicYuvOrg;
+  static UInt iWidth, iHeight;
+  static UInt iWidthInCTU, iHeightInCTU;
+  static UInt iLeftCurrCTU, iTopCurrCTU;
+  static UInt iWidthCTUList[MAX_NUM_COMPONENT];
+  static UInt iHeightCTUList[MAX_NUM_COMPONENT];
+  static UInt iWidthCurrCTUValid, iHeightCurrCTUValid;
+  static bool isValidProcess = false;
+  static bool oneTime = true;
+  static Pel sInfoCurrPixel;
+  static Int prev_iAdrr = 0;
+  iAddr = pcCU->getCtuRsAddr();
+  iPOC = pcCU->getPic()->getPOC();
+  isValidProcess = true;
+  if (isValidProcess)
+  {
+     for (int iCpnt = 0; iCpnt < MAX_NUM_COMPONENT; iCpnt++)
+     {
+         pcPicYuvOrg = pcCU->getPic()->getPicYuvOrg();
+         iWidth = pcPicYuvOrg->getWidth((ComponentID)iCpnt);
+         iHeight = pcPicYuvOrg->getHeight((ComponentID)iCpnt);
+         if (iPOC == 0 && iAddr == 0&& oneTime)
+         {
+             pphInfo[iCpnt] = new unsigned char[iWidth * iHeight];
+         }
+         // Processing just one time to prevent from having erronous dimension
+         if (oneTime)
+         {
+             iWidthCTUList[iCpnt] = pcResiYuv->getWidth((ComponentID)iCpnt);
+             iHeightCTUList[iCpnt] = pcResiYuv->getHeight((ComponentID)iCpnt);
+             if (iCpnt == MAX_NUM_COMPONENT-1) {
+                 oneTime = false;
+             }
+         }
+         iLeftCurrCTU = pcCU->getCUPelX();
+         iTopCurrCTU = pcCU->getCUPelY();
+         if (iCpnt >= 1)
+         {
+             iLeftCurrCTU /= 2;
+             iTopCurrCTU /= 2;
+         }
 
-  //        iWidthInCTU = iWidth % iWidthCTUList[iCpnt] == 0 ? iWidth / iWidthCTUList[iCpnt] : iWidth / iWidthCTUList[iCpnt] + 1;
-  //        iHeightInCTU = iHeight % iHeightCTUList[iCpnt] == 0 ? iHeight / iHeightCTUList[iCpnt] : iHeight / iHeightCTUList[iCpnt] + 1;
+         iWidthInCTU = iWidth % iWidthCTUList[iCpnt] == 0 ? iWidth / iWidthCTUList[iCpnt] : iWidth / iWidthCTUList[iCpnt] + 1;
+         iHeightInCTU = iHeight % iHeightCTUList[iCpnt] == 0 ? iHeight / iHeightCTUList[iCpnt] : iHeight / iHeightCTUList[iCpnt] + 1;
 
-  //        iWidthCurrCTUValid = iLeftCurrCTU + iWidthCTUList[iCpnt] <= iWidth ? iWidthCTUList[iCpnt] : iWidth - iLeftCurrCTU;
-  //        iHeightCurrCTUValid = iTopCurrCTU + iHeightCTUList[iCpnt] <= iHeight ? iHeightCTUList[iCpnt] : iHeight - iTopCurrCTU;
+         iWidthCurrCTUValid = iLeftCurrCTU + iWidthCTUList[iCpnt] <= iWidth ? iWidthCTUList[iCpnt] : iWidth - iLeftCurrCTU;
+         iHeightCurrCTUValid = iTopCurrCTU + iHeightCTUList[iCpnt] <= iHeight ? iHeightCTUList[iCpnt] : iHeight - iTopCurrCTU;
 
-  //        for (int y = 0; y < iHeightCurrCTUValid; y++)
-  //            for (int x = 0; x < iWidthCurrCTUValid; x++)
-  //            {
-  //                sInfoCurrPixel = *(pcResiYuv->getAddrPix((ComponentID)iCpnt, x, y)) + 128;
-  //                if (sInfoCurrPixel > 255)
-  //                    sInfoCurrPixel = 255;
-  //                if (sInfoCurrPixel < 0)
-  //                    sInfoCurrPixel = 0;
-  //                pphInfo[iCpnt][(y + iTopCurrCTU) * iWidth + (x + iLeftCurrCTU)] = (unsigned char)sInfoCurrPixel;
-  //            }
+         for (int y = 0; y < iHeightCurrCTUValid; y++)
+             for (int x = 0; x < iWidthCurrCTUValid; x++)
+             {
+                 sInfoCurrPixel = *(pcResiYuv->getAddrPix((ComponentID)iCpnt, x, y)) + 128;
+                 if (sInfoCurrPixel > 255)
+                     sInfoCurrPixel = 255;
+                 if (sInfoCurrPixel < 0)
+                     sInfoCurrPixel = 0;
+                 pphInfo[iCpnt][(y + iTopCurrCTU) * iWidth + (x + iLeftCurrCTU)] = (unsigned char)sInfoCurrPixel;
+             }
 
-  //        if (iPOCFinished < iPOC && iAddr == iWidthInCTU * iHeightInCTU - 1 && pcCU->getCUPelX() + (UInt)pcCU->getWidth(0) == pcPicYuvOrg->getWidth(COMPONENT_Y) && pcCU->getCUPelY() + (UInt)pcCU->getHeight(0) == pcPicYuvOrg->getHeight(COMPONENT_Y))
-  //        {
-  //            if (iCpnt == 0)
-  //            {
-  //                fpYuvResi = fopen("resi.yuv", "wb+");
-  //            }
-  //            else
-  //            {
-  //                fpYuvResi = fopen("resi.yuv", "ab+");
-  //            }
-  //            fwrite(pphInfo[iCpnt], sizeof(unsigned char), iWidth * iHeight, fpYuvResi);
-  //            fclose(fpYuvResi);
+         if (iPOCFinished < iPOC && iAddr == iWidthInCTU * iHeightInCTU - 1 && pcCU->getCUPelX() + (UInt)pcCU->getWidth(0) == pcPicYuvOrg->getWidth(COMPONENT_Y) && pcCU->getCUPelY() + (UInt)pcCU->getHeight(0) == pcPicYuvOrg->getHeight(COMPONENT_Y))
+         {
+             if (iCpnt == 0)
+             {
+                 fpYuvResi = fopen("resi_slow.yuv", "wb+");
+             }
+             else
+             {
+                 fpYuvResi = fopen("resi_slow.yuv", "ab+");
+             }
+             fwrite(pphInfo[iCpnt], sizeof(unsigned char), iWidth * iHeight, fpYuvResi);
+             fclose(fpYuvResi);
 
-  //            if (iCpnt == MAX_NUM_COMPONENT - 1) // if the residue of last conponent is already saved
-  //                iPOCFinished = iPOC;
-  //        }
-  //        if (prev_iAdrr != iAddr) {
-  //            std::cout << iAddr << std::endl;
-  //            printf("%d %d\n", iWidthCTUList[0], iHeightCTUList[0]);
-  //            printf("QP = %d X = %d Y = %d\n", cQP.Qp, pcCU->getCUPelX(), pcCU->getCUPelY());
-  //            std::cout << iWidthInCTU<< " " << iHeightInCTU << "" << std::endl;
-  //            prev_iAdrr = iAddr;
-  //        }
-  //    }
-  //}
+             if (iCpnt == MAX_NUM_COMPONENT - 1) // if the residue of last conponent is already saved
+                 iPOCFinished = iPOC;
+         }
+         if (prev_iAdrr != iAddr) {
+            //  std::cout << iAddr << std::endl;
+            //  printf("%d %d\n", iWidthCTUList[0], iHeightCTUList[0]);
+            //  printf("QP = %d X = %d Y = %d\n", cQP.Qp, pcCU->getCUPelX(), pcCU->getCUPelY());
+            //  std::cout << iWidthInCTU<< " " << iHeightInCTU << "" << std::endl;
+             prev_iAdrr = iAddr;
+         }
+     }
+  }
 }
 
 
@@ -2831,97 +2831,97 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 
   Int iRunMode;
   iRunMode = pcPic->getRunMode();
-  //if (iRunMode==0){
-  //// 20170612 
-  //    static Int iAddr, iPOC;
-  //    static Int iPOCFinished = -1;
-  //    static unsigned char* pphInfo[MAX_NUM_COMPONENT];
-  //    // Point to the file of residual
-  //    static FILE* fpYuvResi;
-  //    static TComPicYuv* pcPicYuvOrg;
-  //    static UInt iWidth, iHeight;
-  //    static UInt iWidthInCTU, iHeightInCTU;
-  //    static UInt iLeftCurrCTU, iTopCurrCTU;
-  //    static UInt iWidthCTUList[MAX_NUM_COMPONENT];
-  //    static UInt iHeightCTUList[MAX_NUM_COMPONENT];
-  //    static UInt iWidthCurrCTUValid, iHeightCurrCTUValid;
-  //    static bool isValidProcess = false;
-  //    static bool oneTime = true;
-  //    static Pel sInfoCurrPixel;
-  //    static Int prev_iAdrr = 0;
-  //    iAddr = pcCU->getCtuRsAddr();
-  //    iPOC = pcCU->getPic()->getPOC();
-  //    isValidProcess = true;
-  //    if (isValidProcess)
-  //    {
-  //        for (int iCpnt = 0; iCpnt < MAX_NUM_COMPONENT; iCpnt++)
-  //        {
-  //            pcPicYuvOrg = pcCU->getPic()->getPicYuvOrg();
-  //            iWidth = pcPicYuvOrg->getWidth((ComponentID)iCpnt);
-  //            iHeight = pcPicYuvOrg->getHeight((ComponentID)iCpnt);
-  //            if (iPOC == 0 && iAddr == 0 && oneTime)
-  //            {
-  //                pphInfo[iCpnt] = new unsigned char[iWidth * iHeight];
-  //            }
-  //            // Processing just one time to prevent from having erronous dimension
-  //            if (oneTime)
-  //            {
-  //                iWidthCTUList[iCpnt] = pcResiYuv->getWidth((ComponentID)iCpnt);
-  //                iHeightCTUList[iCpnt] = pcResiYuv->getHeight((ComponentID)iCpnt);
-  //                if (iCpnt == MAX_NUM_COMPONENT - 1) {
-  //                    oneTime = false;
-  //                }
-  //            }
-  //            iLeftCurrCTU = pcCU->getCUPelX();
-  //            iTopCurrCTU = pcCU->getCUPelY();
-  //            if (iCpnt >= 1)
-  //            {
-  //                iLeftCurrCTU /= 2;
-  //                iTopCurrCTU /= 2;
-  //            }
+  if (iRunMode==0){
+  // 20170612 
+     static Int iAddr, iPOC;
+     static Int iPOCFinished = -1;
+     static unsigned char* pphInfo[MAX_NUM_COMPONENT];
+     // Point to the file of residual
+     static FILE* fpYuvResi;
+     static TComPicYuv* pcPicYuvOrg;
+     static UInt iWidth, iHeight;
+     static UInt iWidthInCTU, iHeightInCTU;
+     static UInt iLeftCurrCTU, iTopCurrCTU;
+     static UInt iWidthCTUList[MAX_NUM_COMPONENT];
+     static UInt iHeightCTUList[MAX_NUM_COMPONENT];
+     static UInt iWidthCurrCTUValid, iHeightCurrCTUValid;
+     static bool isValidProcess = false;
+     static bool oneTime = true;
+     static Pel sInfoCurrPixel;
+     static Int prev_iAdrr = 0;
+     iAddr = pcCU->getCtuRsAddr();
+     iPOC = pcCU->getPic()->getPOC();
+     isValidProcess = true;
+     if (isValidProcess)
+     {
+         for (int iCpnt = 0; iCpnt < MAX_NUM_COMPONENT; iCpnt++)
+         {
+             pcPicYuvOrg = pcCU->getPic()->getPicYuvOrg();
+             iWidth = pcPicYuvOrg->getWidth((ComponentID)iCpnt);
+             iHeight = pcPicYuvOrg->getHeight((ComponentID)iCpnt);
+             if (iPOC == 0 && iAddr == 0 && oneTime)
+             {
+                 pphInfo[iCpnt] = new unsigned char[iWidth * iHeight];
+             }
+             // Processing just one time to prevent from having erronous dimension
+             if (oneTime)
+             {
+                 iWidthCTUList[iCpnt] = pcResiYuv->getWidth((ComponentID)iCpnt);
+                 iHeightCTUList[iCpnt] = pcResiYuv->getHeight((ComponentID)iCpnt);
+                 if (iCpnt == MAX_NUM_COMPONENT - 1) {
+                     oneTime = false;
+                 }
+             }
+             iLeftCurrCTU = pcCU->getCUPelX();
+             iTopCurrCTU = pcCU->getCUPelY();
+             if (iCpnt >= 1)
+             {
+                 iLeftCurrCTU /= 2;
+                 iTopCurrCTU /= 2;
+             }
 
-  //            iWidthInCTU = iWidth % iWidthCTUList[iCpnt] == 0 ? iWidth / iWidthCTUList[iCpnt] : iWidth / iWidthCTUList[iCpnt] + 1;
-  //            iHeightInCTU = iHeight % iHeightCTUList[iCpnt] == 0 ? iHeight / iHeightCTUList[iCpnt] : iHeight / iHeightCTUList[iCpnt] + 1;
+             iWidthInCTU = iWidth % iWidthCTUList[iCpnt] == 0 ? iWidth / iWidthCTUList[iCpnt] : iWidth / iWidthCTUList[iCpnt] + 1;
+             iHeightInCTU = iHeight % iHeightCTUList[iCpnt] == 0 ? iHeight / iHeightCTUList[iCpnt] : iHeight / iHeightCTUList[iCpnt] + 1;
 
-  //            iWidthCurrCTUValid = iLeftCurrCTU + iWidthCTUList[iCpnt] <= iWidth ? iWidthCTUList[iCpnt] : iWidth - iLeftCurrCTU;
-  //            iHeightCurrCTUValid = iTopCurrCTU + iHeightCTUList[iCpnt] <= iHeight ? iHeightCTUList[iCpnt] : iHeight - iTopCurrCTU;
+             iWidthCurrCTUValid = iLeftCurrCTU + iWidthCTUList[iCpnt] <= iWidth ? iWidthCTUList[iCpnt] : iWidth - iLeftCurrCTU;
+             iHeightCurrCTUValid = iTopCurrCTU + iHeightCTUList[iCpnt] <= iHeight ? iHeightCTUList[iCpnt] : iHeight - iTopCurrCTU;
 
-  //            for (int y = 0; y < iHeightCurrCTUValid; y++)
-  //                for (int x = 0; x < iWidthCurrCTUValid; x++)
-  //                {
-  //                    sInfoCurrPixel = *(pcResiYuv->getAddrPix((ComponentID)iCpnt, x, y)) + 128;
-  //                    if (sInfoCurrPixel > 255)
-  //                        sInfoCurrPixel = 255;
-  //                    if (sInfoCurrPixel < 0)
-  //                        sInfoCurrPixel = 0;
-  //                    pphInfo[iCpnt][(y + iTopCurrCTU) * iWidth + (x + iLeftCurrCTU)] = (unsigned char)sInfoCurrPixel;
-  //                }
+             for (int y = 0; y < iHeightCurrCTUValid; y++)
+                 for (int x = 0; x < iWidthCurrCTUValid; x++)
+                 {
+                     sInfoCurrPixel = *(pcResiYuv->getAddrPix((ComponentID)iCpnt, x, y)) + 128;
+                     if (sInfoCurrPixel > 255)
+                         sInfoCurrPixel = 255;
+                     if (sInfoCurrPixel < 0)
+                         sInfoCurrPixel = 0;
+                     pphInfo[iCpnt][(y + iTopCurrCTU) * iWidth + (x + iLeftCurrCTU)] = (unsigned char)sInfoCurrPixel;
+                 }
 
-  //            if (iPOCFinished < iPOC && iAddr == iWidthInCTU * iHeightInCTU - 1 && pcCU->getCUPelX() + (UInt)pcCU->getWidth(0) == pcPicYuvOrg->getWidth(COMPONENT_Y) && pcCU->getCUPelY() + (UInt)pcCU->getHeight(0) == pcPicYuvOrg->getHeight(COMPONENT_Y))
-  //            {
-  //                if (iCpnt == 0)
-  //                {
-  //                    fpYuvResi = fopen("resi.yuv", "wb+");
-  //                }
-  //                else
-  //                {
-  //                    fpYuvResi = fopen("resi.yuv", "ab+");
-  //                }
-  //                fwrite(pphInfo[iCpnt], sizeof(unsigned char), iWidth * iHeight, fpYuvResi);
-  //                fclose(fpYuvResi);
+             if (iPOCFinished < iPOC && iAddr == iWidthInCTU * iHeightInCTU - 1 && pcCU->getCUPelX() + (UInt)pcCU->getWidth(0) == pcPicYuvOrg->getWidth(COMPONENT_Y) && pcCU->getCUPelY() + (UInt)pcCU->getHeight(0) == pcPicYuvOrg->getHeight(COMPONENT_Y))
+             {
+                 if (iCpnt == 0)
+                 {
+                     fpYuvResi = fopen("resi_rapide.yuv", "wb+");
+                 }
+                 else
+                 {
+                     fpYuvResi = fopen("resi_rapide.yuv", "ab+");
+                 }
+                 fwrite(pphInfo[iCpnt], sizeof(unsigned char), iWidth * iHeight, fpYuvResi);
+                 fclose(fpYuvResi);
 
-  //                if (iCpnt == MAX_NUM_COMPONENT - 1) // if the residue of last conponent is already saved
-  //                    iPOCFinished = iPOC;
-  //            }
-  //            if (prev_iAdrr != iAddr) {
-  //                //std::cout << iAddr << std::endl;
-  //                //printf("%d %d\n", iWidthCTUList[0], iHeightCTUList[0]);
-  //                //std::cout << iWidthInCTU << " " << iHeightInCTU << "" << std::endl;
-  //                prev_iAdrr = iAddr;
-  //            }
-  //        }
-  //    }
-  //}
+                 if (iCpnt == MAX_NUM_COMPONENT - 1) // if the residue of last conponent is already saved
+                     iPOCFinished = iPOC;
+             }
+             if (prev_iAdrr != iAddr) {
+                 //std::cout << iAddr << std::endl;
+                 //printf("%d %d\n", iWidthCTUList[0], iHeightCTUList[0]);
+                 //std::cout << iWidthInCTU << " " << iHeightInCTU << "" << std::endl;
+                 prev_iAdrr = iAddr;
+             }
+         }
+     }
+  }
 }
 
 

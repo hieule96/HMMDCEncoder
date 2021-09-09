@@ -65,6 +65,7 @@ private:
   //std::ofstream m_cPredOutput;      ///< Prediction mode info output
   std::ofstream m_cCUPUOutput;      ///< CU info output
   std::ofstream m_QPFile;
+  std::ofstream m_CbfOutput;
   //std::ofstream m_cMVOutput;        ///< MV info output
   //std::ofstream m_cMergeOutput;     ///< Merge info output
   //std::ofstream m_cIntraOutput;     ///< Intra info output

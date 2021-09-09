@@ -368,7 +368,10 @@ TComInputBitstream *TComInputBitstream::extractSubstream( UInt uiNumBits )
     std::size_t currentOutputBufferSize=buf.size();
     const UInt uiNumBytesToReadFromFifo = std::min<UInt>(uiNumBytes, (UInt)m_fifo.size() - m_fifo_idx);
     buf.resize(currentOutputBufferSize+uiNumBytes);
-    memcpy(&(buf[currentOutputBufferSize]), &(m_fifo[m_fifo_idx]), uiNumBytesToReadFromFifo); m_fifo_idx+=uiNumBytesToReadFromFifo;
+    std::cout << currentOutputBufferSize << endl;
+    std::cout << uiNumBytes << endl;
+    memcpy(&(buf[currentOutputBufferSize]), &(m_fifo[m_fifo_idx]), uiNumBytesToReadFromFifo);
+    m_fifo_idx+=uiNumBytesToReadFromFifo;
     if (uiNumBytesToReadFromFifo != uiNumBytes)
     {
       memset(&(buf[currentOutputBufferSize+uiNumBytesToReadFromFifo]), 0, uiNumBytes - uiNumBytesToReadFromFifo);

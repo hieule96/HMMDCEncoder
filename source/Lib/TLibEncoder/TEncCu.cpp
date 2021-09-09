@@ -40,6 +40,7 @@
 #include "TEncCu.h"
 #include "TEncAnalyze.h"
 #include "TLibCommon/Debug.h"
+#include "TLibSysuAnalyzer/TComSysuCuMDTools.h"
 #include "TLibSysuAnalyzer/TSysuAnalyzerOutput.h"
 #include "TMDCCommon/TMDCQPTable.hpp"
 #include <cmath>
@@ -238,18 +239,19 @@ Void TEncCu::init( TEncTop* pcEncTop )
 Void TEncCu::compressCtu( TComDataCU* pCtu )
 {
   TComPic* pcPic = pCtu->getPic();
-  Int iRunMode;
-  iRunMode = pcPic->getRunMode();
+  Int iRunMode = pcPic->getRunMode();
   // initialize CU data
   m_ppcBestCU[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
   m_ppcTempCU[0]->initCtu( pCtu->getPic(), pCtu->getCtuRsAddr() );
-  m_bEncodeDQP         = false;
+
+  Int countQpElem = 0;
+  Int countQtreeElem = 0;
   // analysis of CU
   DEBUG_STRING_NEW(sDebug)
   if (iRunMode == 1) {
-      TMDCQPTable::getInstance()->readALineQtree();
-      TMDCQPTable::getInstance()->readALineQp();
-      //std::cout << "CTU " << CTU_index << std::endl;
+      countQtreeElem = TMDCQPTable::getInstance()->readALineQtree();
+      countQpElem = TMDCQPTable::getInstance()->readALineQp();
+      std::cout << "CTU " << CTU_index << std::endl;
   }
   xCompressCU( m_ppcBestCU[0], m_ppcTempCU[0], 0 DEBUG_STRING_PASS_INTO(sDebug) );
   DEBUG_STRING_OUTPUT(std::cout, sDebug)
@@ -274,7 +276,7 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
 
 /** \param  pCtu  pointer of CU data class
  */
-Void TEncCu::encodeCtu(TComDataCU* pCtu)
+Void TEncCu::encodeCtu(TComDataCU* pCtu, bool writeQtreeOption)
 {
     if (pCtu->getSlice()->getPPS()->getUseDQP())
     {
@@ -285,10 +287,19 @@ Void TEncCu::encodeCtu(TComDataCU* pCtu)
     {
         setCodeChromaQpAdjFlag(true);
     }
+    Int debug_array [1024];
+    Int count = 0;
     // Encode CU data
-    xEncodeCU(pCtu, 0, 0);
+    xEncodeCU( pCtu, 0, 0,debug_array,&count);
+    // printf("QP array[%d]:",count);
+    // for (int i =0;i<count;i++){
+    //   printf("%d ",debug_array[i]);
+    // }
+    // printf("\n");
     // If preencoding export quadtree structure
-    TSysuAnalyzerOutput::getInstance()->writeOutCUInfo(pCtu);
+    if (writeQtreeOption) {
+        TSysuAnalyzerOutput::getInstance()->writeOutCUInfo(pCtu);
+    }
 }
 
 // ====================================================================================================================
@@ -508,35 +519,9 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   // Added tle
   // If in case without optimization, select QP value
   // TODO read from an recursive function read all section and affect QP value
-  if (iRunMode == 1) {
-      iMaxQP = QP_array[index_QP_CU];
-      iMinQP = QP_array[index_QP_CU];
-      iBaseQP = QP_array[index_QP_CU];
-  }
   // Added tle
   // control the subdivision in function of Array of Qtree
 
-  if (iRunMode == 1) {
-      if (QtreeTable[CU_index] == 8)
-      {
-          bCheckSub = false;
-          bCheckCurrent = false;
-          CU_index++;
-      }
-      if (QtreeTable[CU_index] == 99) {
-          bCheckCurrent = true;
-          bCheckSub = true;
-          //printf("Divide Quadtree\n");
-      }
-      else {
-          bCheckSub = false;
-          bCheckCurrent = true;
-          index_QP_CU++;
-      }
-      //printf("CU_index: %d value: %d QP_pos: %d QP_value: %d\n", CU_index, QtreeTable[CTU_index][CU_index], index_QP_CU, iBaseQP);
-      CU_index++;
-
-  }
 
   if (uiDepth <= pps.getMaxCuDQPDepth())
   {
@@ -584,9 +569,27 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
   TComSlice * pcSlice = rpcTempCU->getPic()->getSlice(rpcTempCU->getPic()->getCurrSliceIdx());
 
   const Bool bBoundary = !( uiRPelX < sps.getPicWidthInLumaSamples() && uiBPelY < sps.getPicHeightInLumaSamples() );
-
-
-
+if (iRunMode==1){
+  if (QtreeTable[CU_index] == 8)
+  {
+      CU_index++;
+      bCheckSub = false;
+  }
+  if (QtreeTable[CU_index] == 99) {
+      bCheckCurrent = true;
+      bCheckSub = true;
+      //printf("Divide Quadtree\n");
+  }
+  else {
+      bCheckSub = false;
+      bCheckCurrent = true;
+      iMaxQP = QP_array[index_QP_CU];
+      iMinQP = QP_array[index_QP_CU];
+      printf("CU_index: %d value: %d QP_pos: %d QP_value: %d\n", CU_index, QtreeTable[CU_index], index_QP_CU, QP_array[index_QP_CU]);
+      index_QP_CU++;
+  }
+  CU_index++;
+}
 
   if ( !bBoundary )
   {
@@ -648,7 +651,6 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
         iQP = iMinQP;
       }
     }
-
     if(!earlyDetectionSkipMode)
     {
       for (Int iQP=iMinQP; iQP<=iMaxQP; iQP++)
@@ -1118,9 +1120,6 @@ Void TEncCu::finishCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 {
   TComPic* pcPic = pcCU->getPic();
   TComSlice * pcSlice = pcCU->getPic()->getSlice(pcCU->getPic()->getCurrSliceIdx());
-
-  //printf("QP#%d DQP:%d : %d %d\n", uiAbsPartIdx, getdQPFlag(), pcCU->getRefQP(uiAbsPartIdx), pcCU->getQP(uiAbsPartIdx));
-
   //Calculate end address
   const Int  currentCTUTsAddr = pcPic->getPicSym()->getCtuRsToTsAddrMap(pcCU->getCtuRsAddr());
   const Bool isLastSubCUOfCtu = pcCU->isLastSubCUOfCtu(uiAbsPartIdx);
@@ -1171,7 +1170,7 @@ Int TEncCu::xComputeQP( TComDataCU* pcCU, UInt uiDepth )
  * \param uiDepth
  * \returns Void
  */
-Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
+Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth,Int *debug_array,Int *count)
 {
         TComPic   *const pcPic   = pcCU->getPic();
         TComSlice *const pcSlice = pcCU->getSlice();
@@ -1214,7 +1213,7 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
       uiTPelY   = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
       if( ( uiLPelX < sps.getPicWidthInLumaSamples() ) && ( uiTPelY < sps.getPicHeightInLumaSamples() ) )
       {
-        xEncodeCU( pcCU, uiAbsPartIdx, uiDepth+1 );
+        xEncodeCU( pcCU, uiAbsPartIdx, uiDepth+1,debug_array, count);
 
       }
     }
@@ -1247,6 +1246,7 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )
     finishCU(pcCU,uiAbsPartIdx);
     return;
   }
+  debug_array[(*count)++] = pcCU->getQP(uiAbsPartIdx);
 
   m_pcEntropyCoder->encodePredMode( pcCU, uiAbsPartIdx );
   m_pcEntropyCoder->encodePartSize( pcCU, uiAbsPartIdx, uiDepth );

@@ -4,7 +4,7 @@ TComSysuCuMDTools* TComSysuCuMDTools::m_instance = NULL;
 
 TComSysuCuMDTools::TComSysuCuMDTools( std::string cInFilename, std::string cOutFilename )
 {
-    m_cOutputFile.open(cOutFilename.c_str(), ios::app);
+    m_cOutputFile.open(cOutFilename.c_str(), ios::out);
     m_cInputFile.open(cInFilename.c_str(), ios::in);
 
     m_uiDepthDiff = 0;
@@ -17,6 +17,9 @@ void TComSysuCuMDTools::writeOutSplitMode   ( TComDataCU* pcCU )
 {
   Int iTotalNumPart = pcCU->getTotalNumPart();
   UChar* puhDepth = pcCU->getDepth();
+  Int iPoc = pcCU->getSlice()->getPOC();
+  Int iAddr = pcCU->getCtuRsAddr();
+  m_cOutputFile << "<" << iPoc << "," << iAddr << ">" << " "; 
   xWriteOutSplitMode  ( puhDepth, iTotalNumPart, 0 );
   m_cOutputFile << endl;
 }

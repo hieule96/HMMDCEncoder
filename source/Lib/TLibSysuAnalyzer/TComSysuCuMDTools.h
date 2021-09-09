@@ -28,7 +28,11 @@ public:
     Void xPrintCUModeForLCU  ( UChar* pcCU, Int iLength, UInt iDepth );
 
     Void printCUStatistic    ();
-   
+    static TComSysuCuMDTools* initInstanceEncoder(std::string cInFilename, std::string cOutFilename) { if (m_instance == NULL) m_instance = new TComSysuCuMDTools(cInFilename,cOutFilename); return m_instance; }
+    static TComSysuCuMDTools* getInstance(){
+        assert(m_instance != NULL);
+        return m_instance;
+    }
 private:
     std::string m_cInputFilename;
     std::string m_cOutputFilename;
