@@ -156,6 +156,8 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
   xDecodeCU( pCtu, 0, 0, isLastCtuOfSliceSegment);
   TSysuAnalyzerOutput::getInstance()->writeOutCUInfo(pCtu);
   TSysuAnalyzerOutput::getInstance()->writeNewLineQP();
+
+  
 }
 
 /** 
@@ -342,7 +344,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   setdQPFlag( bCodeDQP );
   xFinishDecodeCU( pcCU, uiAbsPartIdx, uiDepth, isLastCtuOfSliceSegment );
   //printf("X: [%d,%d) Y: [%d,%d) QP#%d : %d\n", uiLPelX, uiRPelX, uiTPelY, uiBPelY,uiAbsPartIdx, getdQPFlag() ? pcCU->getRefQP(uiAbsPartIdx) : pcCU->getCodedQP());
-  TSysuAnalyzerOutput::getInstance()->writeQP(getdQPFlag() ? 99 : pcCU->getCodedQP(),",");
+  TSysuAnalyzerOutput::getInstance()->writeQP(getdQPFlag(),",");
 }
 
 Void TDecCu::xFinishDecodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool &isLastCtuOfSliceSegment)

@@ -1,6 +1,5 @@
 # minimum required cmake version
 cmake_minimum_required( VERSION 3.5 FATAL_ERROR )
-
 # project name
 if( EXTENSION_360_VIDEO )
   project( HM360 )
@@ -18,7 +17,7 @@ endif()
 
 # set default CMAKE_BUILD_TYPE to Release if not set
 if( NOT CMAKE_BUILD_TYPE )
-  set( CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE )
+  set( CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE )
 endif()
 
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
@@ -28,13 +27,14 @@ if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
 endif()
 
 set( EXTENSION_360_VIDEO OFF CACHE BOOL "If EXTENSION_360_VIDEO is on, 360Lib will be added" )
-set( SET_ENABLE_TRACING OFF CACHE BOOL "Set ENABLE_TRACING as a compiler flag" )
-set( ENABLE_TRACING OFF CACHE BOOL "If SET_ENABLE_TRACING is on, it will be set to this value" )
+set( SET_ENABLE_TRACING ON CACHE BOOL "Set ENABLE_TRACING as a compiler flag" )
+set( ENABLE_TRACING ON CACHE BOOL "If SET_ENABLE_TRACING is on, it will be set to this value" )
 set( HIGH_BITDEPTH OFF CACHE BOOL "Build libraries and applications with high bit depth support" )
 
 if( CMAKE_COMPILER_IS_GNUCC )
   set( BUILD_STATIC OFF CACHE BOOL "Build static executables" )
 endif()
+set( BUILD_STATIC OFF CACHE BOOL "Build static executables" )
 
 # set c++11
 set( CMAKE_CXX_STANDARD 11 )
@@ -68,7 +68,7 @@ endif()
 # bb_enable_warnings( gcc -Wno-unused-variable )
 # bb_enable_warnings( gcc-4.8 warnings-as-errors -Wno-unused-variable )
 # for gcc 8.2:
-bb_enable_warnings( gcc warnings-as-errors -Wno-sign-compare -Wno-class-memaccess)
+#bb_enable_warnings( gcc -Wno-sign-compare -Wno-class-memaccess)
 
 if( XCODE )
   bb_enable_warnings( clang warnings-as-errors
@@ -108,6 +108,8 @@ if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
     if( USE_ADDRESS_SANITIZER )
       # add compile options
       add_compile_options( "-fsanitize=address" )
+      add_compile_options( "-c" )
+      add_compile_options( "-fPIC" )
       add_link_options( "-fsanitize=address" )
     endif()
   endif()
@@ -124,14 +126,13 @@ if( EXTENSION_360_VIDEO )
   add_subdirectory( "source/Lib/Lib360" )
   add_subdirectory( "source/Lib/AppEncHelper360" )
 endif()
+add_subdirectory( "source/Lib/TLibSysuAnalyzer")
+add_subdirectory( "source/Lib/TMDCCommon")
 add_subdirectory( "source/Lib/TLibDecoder" )
 add_subdirectory( "source/Lib/TLibDecoderAnalyser" )
 add_subdirectory( "source/Lib/TLibEncoder" )
 add_subdirectory( "source/Lib/Utilities" )
-add_subdirectory( "source/Lib/TLibSysuAnalyzer")
-add_subdirectory( "source/Lib/TMDCCommon")
 add_subdirectory( "source/App/TAppDecoder" )
-add_subdirectory( "source/App/TAppDecoderAnalyser" )
 add_subdirectory( "source/App/TAppEncoder" )
 add_subdirectory( "source/App/TAppMCTSExtractor" )
 add_subdirectory( "source/App/Parcat" )

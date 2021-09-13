@@ -15,7 +15,10 @@ class TSysuAnalyzerOutput
 public:
   TSysuAnalyzerOutput(void);
   void writeNewLineQP();
+  void writeNewLineDqp();
   void writeQP(Int QP, const char* delimiter);
+  void writeDqp(Int dQP, const char *delimiter);
+
   TSysuAnalyzerOutput(const char* cupu_name);
   TSysuAnalyzerOutput(const char* cupu_name, const char* qpDecFile);
   ~TSysuAnalyzerOutput(void);
@@ -66,6 +69,7 @@ private:
   std::ofstream m_cCUPUOutput;      ///< CU info output
   std::ofstream m_QPFile;
   std::ofstream m_CbfOutput;
+  std::ofstream m_QPFile2;
   //std::ofstream m_cMVOutput;        ///< MV info output
   //std::ofstream m_cMergeOutput;     ///< Merge info output
   //std::ofstream m_cIntraOutput;     ///< Intra info output

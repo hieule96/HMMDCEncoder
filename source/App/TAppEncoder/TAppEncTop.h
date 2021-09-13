@@ -45,7 +45,6 @@
 #include "Utilities/TVideoIOYuv.h"
 #include "TLibCommon/AccessUnit.h"
 #include "TAppEncCfg.h"
-
 //! \ingroup TAppEncoder
 //! \{
 

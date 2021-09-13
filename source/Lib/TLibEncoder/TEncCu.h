@@ -45,6 +45,8 @@
 #include "TLibCommon/TComTrQuant.h"
 #include "TLibCommon/TComBitCounter.h"
 #include "TLibCommon/TComDataCU.h"
+#include "TLibSysuAnalyzer/TSysuAnalyzerOutput.h"
+#include "TMDCCommon/TMDCQPTable.hpp"
 
 #include "TEncEntropy.h"
 #include "TEncSearch.h"
@@ -56,7 +58,7 @@ class TEncTop;
 class TEncSbac;
 class TEncCavlc;
 class TEncSlice;
-
+class TSysuAnalyzerOutput;
 // ====================================================================================================================
 // Class definition
 // ====================================================================================================================
@@ -187,5 +189,7 @@ protected:
 };
 
 //! \}
+
+
 
 #endif // __TENCMB__

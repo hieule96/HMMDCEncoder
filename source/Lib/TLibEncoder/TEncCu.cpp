@@ -40,9 +40,6 @@
 #include "TEncCu.h"
 #include "TEncAnalyze.h"
 #include "TLibCommon/Debug.h"
-#include "TLibSysuAnalyzer/TComSysuCuMDTools.h"
-#include "TLibSysuAnalyzer/TSysuAnalyzerOutput.h"
-#include "TMDCCommon/TMDCQPTable.hpp"
 #include <cmath>
 #include <algorithm>
 #include <random>

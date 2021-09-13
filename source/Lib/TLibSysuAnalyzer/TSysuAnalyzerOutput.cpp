@@ -32,13 +32,22 @@ void TSysuAnalyzerOutput::writeQP(Int QP, const char *delimiter) {
     m_QPFile << QP << delimiter;
 }
 
+
+void TSysuAnalyzerOutput::writeDqp(Int dQP, const char *delimiter){
+    m_CbfOutput<<dQP<<delimiter;
+}
+
+void TSysuAnalyzerOutput::writeNewLineDqp() {
+    m_CbfOutput << std::endl;
+}
+
 TSysuAnalyzerOutput::TSysuAnalyzerOutput(const char* cupu_name)
 {
 
     //m_cSpsOut.open("decoder_sps.txt", ios::out);
     //m_cPredOutput.open("decoder_pred.txt", ios::out);
     m_cCUPUOutput.open(cupu_name, ios::out);
-    m_CbfOutput.open("cbfFile.txt",ios::out);
+    m_CbfOutput.open("cbfFileEncoder.txt",ios::out);
     //m_cMVOutput.open("decoder_mv.txt", ios::out);
     //m_cMergeOutput.open("decoder_merge.txt", ios::out);
     //m_cIntraOutput.open("decoder_intra.txt", ios::out);
@@ -56,9 +65,15 @@ TSysuAnalyzerOutput::TSysuAnalyzerOutput(const char* cupu_name)
 
 TSysuAnalyzerOutput::TSysuAnalyzerOutput(const char* cupu_name, const char* qpDecFile)
 {
+    char buffer[20];
+    memset(buffer,0,20*sizeof(char));
     m_cCUPUOutput.open(cupu_name, ios::out);
-    m_QPFile.open(qpDecFile, ios::out);
-
+    sprintf(buffer,"%s_Cbf.txt",qpDecFile);
+    m_CbfOutput.open(buffer,ios::out);
+    memset(buffer,0,20*sizeof(char));
+    sprintf(buffer,"%s_2.txt",qpDecFile);
+    m_QPFile2.open(qpDecFile,ios::out);
+    m_QPFile.open(buffer, ios::out);
 }
 
 #if ( HM_VERSION > 40)
@@ -123,6 +138,7 @@ void TSysuAnalyzerOutput::writeOutCUInfo   ( TComDataCU* pcCU )
   //m_cPredOutput << endl;
   m_cCUPUOutput << endl;
   m_CbfOutput << endl;
+  m_QPFile2 << endl;
   //m_cMVOutput   << endl;
   //m_cMergeOutput<< endl;
   //m_cIntraOutput<< endl;
@@ -137,8 +153,9 @@ void TSysuAnalyzerOutput::xWriteOutCUInfo  ( TComDataCU* pcCU, Int iLength, Int 
 {
   
   UChar* puhDepth    = pcCU->getDepth();
-  SChar *  puhPartSize = pcCU->getPartitionSize();
-
+  SChar * puhPartSize = pcCU->getPartitionSize();
+  UChar * puhCbf = pcCU->getCbf(COMPONENT_Y);
+  SChar* puhQP = pcCU->getQP();
   TComMv rcMV;
 
   if( puhDepth[iOffset] <= iDepth )
@@ -201,9 +218,8 @@ void TSysuAnalyzerOutput::xWriteOutCUInfo  ( TComDataCU* pcCU, Int iLength, Int 
       }
 
       ///// Write prediction info (for historical reason, MODE_SKIP = 0, MODE_INTER = 1 ....) (SKIP mode removed after HM-8.0)
-      UInt cbf = pcCU->getCbf(iOffset+iPartAddOffset,COMPONENT_Y);
-      m_CbfOutput << cbf << " ";
-
+      m_CbfOutput << (Int) puhCbf[iOffset] << " ";
+      m_QPFile2 << (Int) puhQP[iOffset] <<",";
       /// Write merge info
       //Bool bMergeFlag = pcCU->getMergeFlag(iOffset+iPartAddOffset);      
       //Int iMergeIndex = pcCU->getMergeIndex(iOffset+iPartAddOffset);
