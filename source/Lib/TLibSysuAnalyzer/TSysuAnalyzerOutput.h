@@ -18,7 +18,6 @@ public:
   void writeNewLineDqp();
   void writeQP(Int QP, const char* delimiter);
   void writeDqp(Int dQP, const char *delimiter);
-
   TSysuAnalyzerOutput(const char* cupu_name);
   TSysuAnalyzerOutput(const char* cupu_name, const char* qpDecFile);
   ~TSysuAnalyzerOutput(void);
@@ -34,6 +33,7 @@ public:
   //void writeOutResidual(TComDataCU* pcCU);
   Void xWriteOutCUInfo  ( TComDataCU* pcCU, Int iLength, Int iOffset, UInt iDepth);
   //Void xWriteOutTUInfo  ( TComDataCU* pcCU, Int iLength, Int iOffset, UInt iDepth);
+  Void writeResidual   (TComDataCU* pcCU);
   
   /// Sequence parameter set output
   //Void writeOutSps         ( TComSPS* pcSPS );

@@ -165,7 +165,8 @@ public:
 
   //  Dump picture
   Void          dump              (const std::string &fileName, const BitDepths &bitDepths, const Bool bAppend=false, const Bool bForceTo8Bit=false) const ;
-
+  Void          dumpResiTo8bit              (const std::string &fileName, const Bool bAppend) const ;
+  Void          dumpResiTo16bit (const std::string &fileName, const Bool bAppend) const;
   // Set border extension flag
   Void          setBorderExtension(Bool b) { m_bIsBorderExtended = b; }
 };// END CLASS DEFINITION TComPicYuv

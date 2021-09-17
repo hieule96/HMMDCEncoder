@@ -275,7 +275,68 @@ Void TComPicYuv::extendPicBorder ()
   m_bIsBorderExtended = true;
 }
 
+// Void TComPicYuv::x16to8BitClip(uchar* puh8BitYUV, const uchar* puh16BitYUV,const long lSizeInUnitCount)
+// {
+//     qint16* pi16BitPelValue = NULL;
+//     for(int i = 0; i < lSizeInUnitCount; i++)
+//     {
+//         pi16BitPelValue = (qint16*)(puh16BitYUV+2*i);
+//         puh8BitYUV[i] = VALUE_CLIP(0,255,(*pi16BitPelValue)+128);
+//     }
+// }
 
+
+Void TComPicYuv::dumpResiTo8bit (const std::string &fileName, const Bool bAppend) const
+{
+  FILE *pFile = fopen (fileName.c_str(), bAppend?"ab":"wb");
+  const Pel* p_px16 = NULL; 
+  UChar p_px8 = 0;
+  for(Int comp = 0; comp < getNumberValidComponents(); comp++)
+  {
+    const ComponentID  compId = ComponentID(comp);
+    const Pel          *pi     = getAddr(compId);
+    const Int          stride = getStride(compId);
+    const Int          height = getHeight(compId);
+    const Int          width  = getWidth(compId);
+    for (Int y = 0; y < height; y++ )
+    {
+      for (Int x = 0; x < width; x++ )
+      {
+        p_px16 = &pi[x];
+        p_px8 = ((UChar)Clip3<Pel>(0,255,(*p_px16)+128));
+        fwrite(&p_px8, sizeof(UChar), 1, pFile );
+      }
+      pi += stride;
+    }
+  }
+  fclose(pFile);
+}
+
+Void TComPicYuv::dumpResiTo16bit (const std::string &fileName, const Bool bAppend) const
+{
+  FILE *pFile = fopen (fileName.c_str(), bAppend?"ab":"wb");
+  for(Int comp = 0; comp < getNumberValidComponents(); comp++)
+  {
+    const ComponentID  compId = ComponentID(comp);
+    const Pel          *pi     = getAddr(compId);
+    const Int          stride = getStride(compId);
+    const Int          height = getHeight(compId);
+    const Int          width  = getWidth(compId);
+    for (Int y = 0; y < height; y++ )
+    {
+      for (Int x = 0; x < width; x++ )
+      {
+          Pel pixel_16 = pi[x]+128;
+          UChar uc = (UChar)((pixel_16>>8) & 0xff);
+          fwrite( &uc, sizeof(UChar), 1, pFile );
+          uc = (UChar)((pixel_16>>0) & 0xff);
+          fwrite( &uc, sizeof(UChar), 1, pFile );
+      }
+      pi += stride;
+    }
+  }
+  fclose(pFile);
+}
 
 // NOTE: This function is never called, but may be useful for developers.
 Void TComPicYuv::dump (const std::string &fileName, const BitDepths &bitDepths, const Bool bAppend, const Bool bForceTo8Bit) const

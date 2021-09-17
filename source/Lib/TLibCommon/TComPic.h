@@ -78,8 +78,7 @@ private:
   Bool                  m_isField;
   // tle: add information from the file
   Int                   m_iRunMode;
-  Int                   *m_QuadTree_Array;
-
+  Double*                   m_lamdaForcing;
   std::vector<std::vector<TComDataCU*> > m_vSliceCUDataLink;
 
   SEIMessages  m_SEIs; ///< Any SEI messages that have been received.  If !NULL we own the object.
@@ -125,8 +124,8 @@ public:
   /// <param name="iRunMode"></param>
   Void setRunMode(Int iRunMode) { m_iRunMode = iRunMode; }
   Int getRunMode() { return m_iRunMode; }
-  Int* getQtreeArray() { return m_QuadTree_Array; }
-
+  Void setLamdaForcing(Double* lambda) { m_lamdaForcing = lambda; }
+  Double getLamdaForcing() { return *m_lamdaForcing; }
   TComPicYuv*   getPicYuvOrg()        { return  m_apcPicYuv[PIC_YUV_ORG]; }
   TComPicYuv*   getPicYuvRec()        { return  m_apcPicYuv[PIC_YUV_REC]; }
 

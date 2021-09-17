@@ -1,10 +1,10 @@
 #include "TSysuAnalyzerOutput.h"
-
+#include "Utilities/TVideoIOYuv.h"
 TSysuAnalyzerOutput* TSysuAnalyzerOutput::m_instance = NULL;
 
 TSysuAnalyzerOutput::TSysuAnalyzerOutput()
 {
-
+  const Int bitdepth[3] = {8,8,8};
   //m_cSpsOut.open     ("decoder_sps.txt",  ios::out);
   //m_cPredOutput.open ("decoder_pred.txt", ios::out);
   m_cCUPUOutput.open ("decoder_cupu.txt", ios::out);
@@ -61,6 +61,9 @@ TSysuAnalyzerOutput::TSysuAnalyzerOutput(const char* cupu_name)
 #endif
 
 
+}
+Void TSysuAnalyzerOutput::writeResidual   (TComDataCU* pcCU){
+  
 }
 
 TSysuAnalyzerOutput::TSysuAnalyzerOutput(const char* cupu_name, const char* qpDecFile)

@@ -51,6 +51,7 @@
 #include "TEncEntropy.h"
 #include "TEncSearch.h"
 #include "TEncRateCtrl.h"
+#include "TLibIPC/TEncIPC.h"
 //! \ingroup TLibEncoder
 //! \{
 
@@ -79,7 +80,7 @@ private:
   TComYuv**               m_ppcResiYuvTemp; ///< Temporary Residual Yuv for each depth
   TComYuv**               m_ppcRecoYuvTemp; ///< Temporary Reconstruction Yuv for each depth
   TComYuv**               m_ppcOrigYuv;     ///< Original Yuv for each depth
-
+  TEncIPC*                m_encoderIPC;
   //  Data : encoder control
   Bool                    m_bEncodeDQP;
   Bool                    m_bFastDeltaQP;
@@ -103,6 +104,10 @@ private:
   TEncSbac*               m_pcRDGoOnSbacCoder;
   TEncRateCtrl*           m_pcRateCtrl;
 
+  
+  TComYuv**               m_ppcResiYuvBest_VIS; ///< special tmp structure to preserve residual
+  TComYuv**               m_ppcResiYuvTemp_VIS; ///< special tmp structure to preserve residual
+  Void writeResidual(TComDataCU* pCtu);
 public:
   /// copy parameters from encoder class
   Void  init                ( TEncTop* pcEncTop );

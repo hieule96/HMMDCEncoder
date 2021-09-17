@@ -22,6 +22,15 @@ TMDCQPTable::TMDCQPTable(Int nbElementReadLine,const char * QPFileName,const cha
         }
 }
 
+Int TMDCQPTable::readStdIn(){
+    int len = 0;
+    std::cout << "Qtree Length" << std::endl;
+    std::cin >> len;
+    for (int i=0;i<len;i++){
+        std::cin >> qtreeArray[i];
+    }
+    return len;
+}
 
 void TMDCQPTable::appendQPArray(Int QP) {
     if (indexQpCU < m_QPArraySize) {
@@ -37,7 +46,7 @@ Int TMDCQPTable::convertStringToIntArrayQP(UInt *bufferDest, char *str,int nbEle
     }
     for (int i = 0; i < nbElement&&str[i]!='\n'&&str[i]!='\0';i++){
 
-        if (str[i] == ' '){
+        if (str[i] == ','){
             j++;
         }
         else

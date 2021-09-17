@@ -1130,6 +1130,7 @@ UInt TEncSearch::xGetIntraBitsQTChroma(TComTU &rTu,
 Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
                                             TComYuv*    pcPredYuv,
                                             TComYuv*    pcResiYuv,
+                                            TComYuv*    pcResiYUV_nonQuantized,
                                             Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
                                       const Bool        checkCrossCPrediction,
                                             Distortion& ruiDist,
@@ -1163,6 +1164,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
         Pel           *piPred           = pcPredYuv->getAddr( compID, uiAbsPartIdx );
         Pel           *piResi           = pcResiYuv->getAddr( compID, uiAbsPartIdx );
         Pel           *piReco           = pcPredYuv->getAddr( compID, uiAbsPartIdx );
+        Pel           *piResiYUV_nonQuantized = pcResiYUV_nonQuantized->getAddr( compID, uiAbsPartIdx );
   const UInt           uiQTLayer        = sps.getQuadtreeTULog2MaxSize() - uiLog2TrSize;
         Pel           *piRecQt          = m_pcQTTempTComYuv[ uiQTLayer ].getAddr( compID, uiAbsPartIdx );
   const UInt           uiRecQtStride    = m_pcQTTempTComYuv[ uiQTLayer ].getStride(compID);
@@ -1248,17 +1250,19 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     Pel*  pOrg    = piOrg;
     Pel*  pPred   = piPred;
     Pel*  pResi   = piResi;
-
+    Pel*  pResiYUV_nonQuantized = piResiYUV_nonQuantized;
     for( UInt uiY = 0; uiY < uiHeight; uiY++ )
     {
       for( UInt uiX = 0; uiX < uiWidth; uiX++ )
       {
         pResi[ uiX ] = pOrg[ uiX ] - pPred[ uiX ];
+        pResiYUV_nonQuantized[uiX] = pResi[ uiX ];
       }
 
       pOrg  += uiStride;
       pResi += uiStride;
       pPred += uiStride;
+      pResiYUV_nonQuantized+=uiStride;
     }
   }
 
@@ -1420,97 +1424,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   }
 
   //===== update distortion =====
-  ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );
-  // // 20170612 added
-  static Int iAddr, iPOC;
-  static Int iPOCFinished = -1;
-  static unsigned char* pphInfo[MAX_NUM_COMPONENT];
-  // Point to the file of residual
-  static FILE* fpYuvResi;
-  static TComPicYuv* pcPicYuvOrg;
-  static UInt iWidth, iHeight;
-  static UInt iWidthInCTU, iHeightInCTU;
-  static UInt iLeftCurrCTU, iTopCurrCTU;
-  static UInt iWidthCTUList[MAX_NUM_COMPONENT];
-  static UInt iHeightCTUList[MAX_NUM_COMPONENT];
-  static UInt iWidthCurrCTUValid, iHeightCurrCTUValid;
-  static bool isValidProcess = false;
-  static bool oneTime = true;
-  static Pel sInfoCurrPixel;
-  static Int prev_iAdrr = 0;
-  iAddr = pcCU->getCtuRsAddr();
-  iPOC = pcCU->getPic()->getPOC();
-  isValidProcess = true;
-  if (isValidProcess)
-  {
-     for (int iCpnt = 0; iCpnt < MAX_NUM_COMPONENT; iCpnt++)
-     {
-         pcPicYuvOrg = pcCU->getPic()->getPicYuvOrg();
-         iWidth = pcPicYuvOrg->getWidth((ComponentID)iCpnt);
-         iHeight = pcPicYuvOrg->getHeight((ComponentID)iCpnt);
-         if (iPOC == 0 && iAddr == 0&& oneTime)
-         {
-             pphInfo[iCpnt] = new unsigned char[iWidth * iHeight];
-         }
-         // Processing just one time to prevent from having erronous dimension
-         if (oneTime)
-         {
-             iWidthCTUList[iCpnt] = pcResiYuv->getWidth((ComponentID)iCpnt);
-             iHeightCTUList[iCpnt] = pcResiYuv->getHeight((ComponentID)iCpnt);
-             if (iCpnt == MAX_NUM_COMPONENT-1) {
-                 oneTime = false;
-             }
-         }
-         iLeftCurrCTU = pcCU->getCUPelX();
-         iTopCurrCTU = pcCU->getCUPelY();
-         if (iCpnt >= 1)
-         {
-             iLeftCurrCTU /= 2;
-             iTopCurrCTU /= 2;
-         }
-
-         iWidthInCTU = iWidth % iWidthCTUList[iCpnt] == 0 ? iWidth / iWidthCTUList[iCpnt] : iWidth / iWidthCTUList[iCpnt] + 1;
-         iHeightInCTU = iHeight % iHeightCTUList[iCpnt] == 0 ? iHeight / iHeightCTUList[iCpnt] : iHeight / iHeightCTUList[iCpnt] + 1;
-
-         iWidthCurrCTUValid = iLeftCurrCTU + iWidthCTUList[iCpnt] <= iWidth ? iWidthCTUList[iCpnt] : iWidth - iLeftCurrCTU;
-         iHeightCurrCTUValid = iTopCurrCTU + iHeightCTUList[iCpnt] <= iHeight ? iHeightCTUList[iCpnt] : iHeight - iTopCurrCTU;
-
-         for (int y = 0; y < iHeightCurrCTUValid; y++)
-             for (int x = 0; x < iWidthCurrCTUValid; x++)
-             {
-                 sInfoCurrPixel = *(pcResiYuv->getAddrPix((ComponentID)iCpnt, x, y)) + 128;
-                 if (sInfoCurrPixel > 255)
-                     sInfoCurrPixel = 255;
-                 if (sInfoCurrPixel < 0)
-                     sInfoCurrPixel = 0;
-                 pphInfo[iCpnt][(y + iTopCurrCTU) * iWidth + (x + iLeftCurrCTU)] = (unsigned char)sInfoCurrPixel;
-             }
-
-         if (iPOCFinished < iPOC && iAddr == iWidthInCTU * iHeightInCTU - 1 && pcCU->getCUPelX() + (UInt)pcCU->getWidth(0) == pcPicYuvOrg->getWidth(COMPONENT_Y) && pcCU->getCUPelY() + (UInt)pcCU->getHeight(0) == pcPicYuvOrg->getHeight(COMPONENT_Y))
-         {
-             if (iCpnt == 0)
-             {
-                 fpYuvResi = fopen("resi_slow.yuv", "wb+");
-             }
-             else
-             {
-                 fpYuvResi = fopen("resi_slow.yuv", "ab+");
-             }
-             fwrite(pphInfo[iCpnt], sizeof(unsigned char), iWidth * iHeight, fpYuvResi);
-             fclose(fpYuvResi);
-
-             if (iCpnt == MAX_NUM_COMPONENT - 1) // if the residue of last conponent is already saved
-                 iPOCFinished = iPOC;
-         }
-         if (prev_iAdrr != iAddr) {
-            //  std::cout << iAddr << std::endl;
-            //  printf("%d %d\n", iWidthCTUList[0], iHeightCTUList[0]);
-            //  printf("QP = %d X = %d Y = %d\n", cQP.Qp, pcCU->getCUPelX(), pcCU->getCUPelY());
-            //  std::cout << iWidthInCTU<< " " << iHeightInCTU << "" << std::endl;
-             prev_iAdrr = iAddr;
-         }
-     }
-  }
+  ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );  
 }
 
 
@@ -1520,6 +1434,7 @@ Void
 TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
                                     TComYuv*    pcPredYuv,
                                     TComYuv*    pcResiYuv,
+                                    TComYuv*    pcResiYUV_nonQuantized,
                                     Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
                                     Distortion& ruiDistY,
 #if HHI_RQT_INTRA_SPEEDUP
@@ -1622,7 +1537,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
 
         pcCU->setTransformSkipSubParts ( modeId, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2 );
+        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv,pcResiYUV_nonQuantized,resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2 );
 
         singleCbfTmpLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
 
@@ -1691,7 +1606,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       dSingleCost   = 0.0;
 
       pcCU ->setTransformSkipSubParts ( 0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-      xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug));
+      xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv,pcResiYUV_nonQuantized,resiLumaSingle, false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug));
 
       if( bCheckSplit )
       {
@@ -1745,7 +1660,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     {
       DEBUG_STRING_NEW(sChild)
 #if HHI_RQT_INTRA_SPEEDUP
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSplit, uiSplitDistLuma, bCheckFirst, dSplitCost, tuRecurseChild DEBUG_STRING_PASS_INTO(sChild) );
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv,pcResiYUV_nonQuantized,resiLumaSplit, uiSplitDistLuma, bCheckFirst, dSplitCost, tuRecurseChild DEBUG_STRING_PASS_INTO(sChild) );
 #else
       xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSplit, uiSplitDistLuma, dSplitCost, tuRecurseChild DEBUG_STRING_PASS_INTO(sChild) );
 #endif
@@ -1815,7 +1730,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     Pel*  piDes       = pcCU->getPic()->getPicYuvRec()->getAddr( COMPONENT_Y, pcCU->getCtuRsAddr(), uiZOrder );
     UInt  uiDesStride = pcCU->getPic()->getPicYuvRec()->getStride  ( COMPONENT_Y );
 
-    for( UInt uiY = 0; uiY < uiHeight; uiY++, piSrc += uiSrcStride, piDes += uiDesStride )
+ for( UInt uiY = 0; uiY < uiHeight; uiY++, piSrc += uiSrcStride, piDes += uiDesStride )
     {
       for( UInt uiX = 0; uiX < uiWidth; uiX++ )
       {
@@ -2031,6 +1946,7 @@ Void
 TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
                                       TComYuv*    pcPredYuv,
                                       TComYuv*    pcResiYuv,
+                                      TComYuv* pcResiYUV_nonQuantized,
                                       Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
                                       Distortion& ruiDist,
                                       TComTU&     rTu
@@ -2137,7 +2053,7 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
 
             singleDistCTmp = 0;
 
-            xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, (crossCPredictionModeId != 0), singleDistCTmp, compID, TUIterator DEBUG_STRING_PASS_INTO(sDebugMode), default0Save1Load2);
+            xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv,pcResiYUV_nonQuantized,resiLuma, (crossCPredictionModeId != 0), singleDistCTmp, compID, TUIterator DEBUG_STRING_PASS_INTO(sDebugMode), default0Save1Load2);
             singleCbfCTmp = pcCU->getCbf( subTUAbsPartIdx, compID, uiTrDepth);
 
             if (  ((crossCPredictionModeId == 1) && (pcCU->getCrossComponentPredictionAlpha(subTUAbsPartIdx, compID) == 0))
@@ -2205,7 +2121,7 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
     {
       DEBUG_STRING_NEW(sChild)
 
-      xRecurIntraChromaCodingQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, ruiDist, tuRecurseChild DEBUG_STRING_PASS_INTO(sChild) );
+      xRecurIntraChromaCodingQT( pcOrgYuv, pcPredYuv, pcResiYuv,pcResiYUV_nonQuantized,resiLuma, ruiDist, tuRecurseChild DEBUG_STRING_PASS_INTO(sChild) );
 
       DEBUG_STRING_APPEND(sDebug, sChild)
       const UInt uiAbsPartIdxSub=tuRecurseChild.GetAbsPartIdxTU();
@@ -2288,16 +2204,13 @@ TEncSearch::xSetIntraResultChromaQT(TComYuv*    pcRecoYuv, TComTU &rTu)
 }
 
 
-/*
-This function estimate the intra-prediction and export YUV value
-*/
-
 Void
 TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
                                TComYuv*    pcOrgYuv,
                                TComYuv*    pcPredYuv,
                                TComYuv*    pcResiYuv,
                                TComYuv*    pcRecoYuv,
+                               TComYuv*    pcResiYUV_nonQuantized,
                                Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
                                DEBUG_STRING_FN_DECLARE(sDebug))
 {
@@ -2479,7 +2392,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       Distortion uiPUDistY = 0;
       Double     dPUCost   = 0.0;
 #if HHI_RQT_INTRA_SPEEDUP
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv,pcResiYUV_nonQuantized,resiLumaPU, uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
 #else
       xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
 #endif
@@ -2566,7 +2479,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       Distortion uiPUDistY = 0;
       Double     dPUCost   = 0.0;
 
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, false, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sModeTree));
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv,pcResiYUV_nonQuantized,resiLumaPU, uiPUDistY, false, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sModeTree));
 
       // check r-d cost
       if( dPUCost < dBestPUCost )
@@ -2682,6 +2595,7 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
                                  TComYuv*    pcPredYuv,
                                  TComYuv*    pcResiYuv,
                                  TComYuv*    pcRecoYuv,
+                                 TComYuv*    pcResiYUV_nonQuantized,
                                  Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
                                  DEBUG_STRING_FN_DECLARE(sDebug))
 {
@@ -2735,7 +2649,7 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
           //----- chroma coding -----
           Distortion uiDist = 0;
           pcCU->setIntraDirSubParts  ( CHANNEL_TYPE_CHROMA, uiModeList[uiMode], uiPartOffset, uiDepthCU+uiInitTrDepth );
-          xRecurIntraChromaCodingQT       ( pcOrgYuv, pcPredYuv, pcResiYuv, resiLuma, uiDist, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+          xRecurIntraChromaCodingQT       ( pcOrgYuv, pcPredYuv, pcResiYuv,pcResiYUV_nonQuantized,resiLuma, uiDist, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
 
           if( pcCU->getSlice()->getPPS()->getUseTransformSkip() )
           {
@@ -2827,101 +2741,95 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
 
   m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[uiDepthCU][CI_CURR_BEST] );
 
-  TComPic* pcPic = pcCU->getPic();
+  // TComPic* pcPic = pcCU->getPic();
 
-  Int iRunMode;
-  iRunMode = pcPic->getRunMode();
-  if (iRunMode==0){
-  // 20170612 
-     static Int iAddr, iPOC;
-     static Int iPOCFinished = -1;
-     static unsigned char* pphInfo[MAX_NUM_COMPONENT];
-     // Point to the file of residual
-     static FILE* fpYuvResi;
-     static TComPicYuv* pcPicYuvOrg;
-     static UInt iWidth, iHeight;
-     static UInt iWidthInCTU, iHeightInCTU;
-     static UInt iLeftCurrCTU, iTopCurrCTU;
-     static UInt iWidthCTUList[MAX_NUM_COMPONENT];
-     static UInt iHeightCTUList[MAX_NUM_COMPONENT];
-     static UInt iWidthCurrCTUValid, iHeightCurrCTUValid;
-     static bool isValidProcess = false;
-     static bool oneTime = true;
-     static Pel sInfoCurrPixel;
-     static Int prev_iAdrr = 0;
-     iAddr = pcCU->getCtuRsAddr();
-     iPOC = pcCU->getPic()->getPOC();
-     isValidProcess = true;
-     if (isValidProcess)
-     {
-         for (int iCpnt = 0; iCpnt < MAX_NUM_COMPONENT; iCpnt++)
-         {
-             pcPicYuvOrg = pcCU->getPic()->getPicYuvOrg();
-             iWidth = pcPicYuvOrg->getWidth((ComponentID)iCpnt);
-             iHeight = pcPicYuvOrg->getHeight((ComponentID)iCpnt);
-             if (iPOC == 0 && iAddr == 0 && oneTime)
-             {
-                 pphInfo[iCpnt] = new unsigned char[iWidth * iHeight];
-             }
-             // Processing just one time to prevent from having erronous dimension
-             if (oneTime)
-             {
-                 iWidthCTUList[iCpnt] = pcResiYuv->getWidth((ComponentID)iCpnt);
-                 iHeightCTUList[iCpnt] = pcResiYuv->getHeight((ComponentID)iCpnt);
-                 if (iCpnt == MAX_NUM_COMPONENT - 1) {
-                     oneTime = false;
-                 }
-             }
-             iLeftCurrCTU = pcCU->getCUPelX();
-             iTopCurrCTU = pcCU->getCUPelY();
-             if (iCpnt >= 1)
-             {
-                 iLeftCurrCTU /= 2;
-                 iTopCurrCTU /= 2;
-             }
+  // Int iRunMode;
+  // iRunMode = pcPic->getRunMode();
+  // if (iRunMode==0){
+  // // 20170612 
+  //    static Int iAddr, iPOC;
+  //    static Int iPOCFinished = -1;
+  //    static unsigned char* pphInfo[MAX_NUM_COMPONENT];
+  //    // Point to the file of residual
+  //    static FILE* fpYuvResi;
+  //    static TComPicYuv* pcPicYuvOrg;
+  //    static UInt iWidth, iHeight;
+  //    static UInt iWidthInCTU, iHeightInCTU;
+  //    static UInt iLeftCurrCTU, iTopCurrCTU;
+  //    static UInt iWidthCTUList[MAX_NUM_COMPONENT];
+  //    static UInt iHeightCTUList[MAX_NUM_COMPONENT];
+  //    static UInt iWidthCurrCTUValid, iHeightCurrCTUValid;
+  //    static bool isValidProcess = false;
+  //    static bool oneTime = true;
+  //    static Pel sInfoCurrPixel;
+  //    static Int prev_iAdrr = 0;
+  //    iAddr = pcCU->getCtuRsAddr();
+  //    iPOC = pcCU->getPic()->getPOC();
+  //    isValidProcess = true;
+  //    if (isValidProcess)
+  //    {
+  //        for (int iCpnt = 0; iCpnt < MAX_NUM_COMPONENT; iCpnt++)
+  //        {
+  //            pcPicYuvOrg = pcCU->getPic()->getPicYuvOrg();
+  //            iWidth = pcPicYuvOrg->getWidth((ComponentID)iCpnt);
+  //            iHeight = pcPicYuvOrg->getHeight((ComponentID)iCpnt);
+  //            if (iPOC == 0 && iAddr == 0 && oneTime)
+  //            {
+  //                pphInfo[iCpnt] = new unsigned char[iWidth * iHeight];
+  //            }
+  //            // Processing just one time to prevent from having erronous dimension
+  //            if (oneTime)
+  //            {
+  //                iWidthCTUList[iCpnt] = pcResiYuv->getWidth((ComponentID)iCpnt);
+  //                iHeightCTUList[iCpnt] = pcResiYuv->getHeight((ComponentID)iCpnt);
+  //                if (iCpnt == MAX_NUM_COMPONENT - 1) {
+  //                    oneTime = false;
+  //                }
+  //            }
+  //            iLeftCurrCTU = pcCU->getCUPelX();
+  //            iTopCurrCTU = pcCU->getCUPelY();
+  //            if (iCpnt >= 1)
+  //            {
+  //                iLeftCurrCTU /= 2;
+  //                iTopCurrCTU /= 2;
+  //            }
 
-             iWidthInCTU = iWidth % iWidthCTUList[iCpnt] == 0 ? iWidth / iWidthCTUList[iCpnt] : iWidth / iWidthCTUList[iCpnt] + 1;
-             iHeightInCTU = iHeight % iHeightCTUList[iCpnt] == 0 ? iHeight / iHeightCTUList[iCpnt] : iHeight / iHeightCTUList[iCpnt] + 1;
+  //            iWidthInCTU = iWidth % iWidthCTUList[iCpnt] == 0 ? iWidth / iWidthCTUList[iCpnt] : iWidth / iWidthCTUList[iCpnt] + 1;
+  //            iHeightInCTU = iHeight % iHeightCTUList[iCpnt] == 0 ? iHeight / iHeightCTUList[iCpnt] : iHeight / iHeightCTUList[iCpnt] + 1;
 
-             iWidthCurrCTUValid = iLeftCurrCTU + iWidthCTUList[iCpnt] <= iWidth ? iWidthCTUList[iCpnt] : iWidth - iLeftCurrCTU;
-             iHeightCurrCTUValid = iTopCurrCTU + iHeightCTUList[iCpnt] <= iHeight ? iHeightCTUList[iCpnt] : iHeight - iTopCurrCTU;
+  //            iWidthCurrCTUValid = iLeftCurrCTU + iWidthCTUList[iCpnt] <= iWidth ? iWidthCTUList[iCpnt] : iWidth - iLeftCurrCTU;
+  //            iHeightCurrCTUValid = iTopCurrCTU + iHeightCTUList[iCpnt] <= iHeight ? iHeightCTUList[iCpnt] : iHeight - iTopCurrCTU;
 
-             for (int y = 0; y < iHeightCurrCTUValid; y++)
-                 for (int x = 0; x < iWidthCurrCTUValid; x++)
-                 {
-                     sInfoCurrPixel = *(pcResiYuv->getAddrPix((ComponentID)iCpnt, x, y)) + 128;
-                     if (sInfoCurrPixel > 255)
-                         sInfoCurrPixel = 255;
-                     if (sInfoCurrPixel < 0)
-                         sInfoCurrPixel = 0;
-                     pphInfo[iCpnt][(y + iTopCurrCTU) * iWidth + (x + iLeftCurrCTU)] = (unsigned char)sInfoCurrPixel;
-                 }
+  //            for (int y = 0; y < iHeightCurrCTUValid; y++)
+  //                for (int x = 0; x < iWidthCurrCTUValid; x++)
+  //                {
+  //                    sInfoCurrPixel = *(pcResiYuv->getAddrPix((ComponentID)iCpnt, x, y)) + 128;
+  //                    if (sInfoCurrPixel > 255)
+  //                        sInfoCurrPixel = 255;
+  //                    if (sInfoCurrPixel < 0)
+  //                        sInfoCurrPixel = 0;
+  //                    pphInfo[iCpnt][(y + iTopCurrCTU) * iWidth + (x + iLeftCurrCTU)] = (unsigned char)sInfoCurrPixel;
+  //                }
 
-             if (iPOCFinished < iPOC && iAddr == iWidthInCTU * iHeightInCTU - 1 && pcCU->getCUPelX() + (UInt)pcCU->getWidth(0) == pcPicYuvOrg->getWidth(COMPONENT_Y) && pcCU->getCUPelY() + (UInt)pcCU->getHeight(0) == pcPicYuvOrg->getHeight(COMPONENT_Y))
-             {
-                 if (iCpnt == 0)
-                 {
-                     fpYuvResi = fopen("resi_rapide.yuv", "wb+");
-                 }
-                 else
-                 {
-                     fpYuvResi = fopen("resi_rapide.yuv", "ab+");
-                 }
-                 fwrite(pphInfo[iCpnt], sizeof(unsigned char), iWidth * iHeight, fpYuvResi);
-                 fclose(fpYuvResi);
+  //            if (iPOCFinished < iPOC && iAddr == iWidthInCTU * iHeightInCTU - 1 && pcCU->getCUPelX() + (UInt)pcCU->getWidth(0) == pcPicYuvOrg->getWidth(COMPONENT_Y) && pcCU->getCUPelY() + (UInt)pcCU->getHeight(0) == pcPicYuvOrg->getHeight(COMPONENT_Y))
+  //            {
+  //                if (iCpnt == 0&&iPOC==0)
+  //                {
+  //                    fpYuvResi = fopen("resi_rapide.yuv", "wb+");
+  //                }
+  //                else
+  //                {
+  //                    fpYuvResi = fopen("resi_rapide.yuv", "ab+");
+  //                }
+  //                fwrite(pphInfo[iCpnt], sizeof(unsigned char), iWidth * iHeight, fpYuvResi);
+  //                fclose(fpYuvResi);
 
-                 if (iCpnt == MAX_NUM_COMPONENT - 1) // if the residue of last conponent is already saved
-                     iPOCFinished = iPOC;
-             }
-             if (prev_iAdrr != iAddr) {
-                 //std::cout << iAddr << std::endl;
-                 //printf("%d %d\n", iWidthCTUList[0], iHeightCTUList[0]);
-                 //std::cout << iWidthInCTU << " " << iHeightInCTU << "" << std::endl;
-                 prev_iAdrr = iAddr;
-             }
-         }
-     }
-  }
+  //                if (iCpnt == MAX_NUM_COMPONENT - 1) // if the residue of last conponent is already saved
+  //                    iPOCFinished = iPOC;
+  //            }
+  //        }
+      // }
+  // }
 }
 
 

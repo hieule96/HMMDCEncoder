@@ -62,7 +62,6 @@ TComRdCost::~TComRdCost()
 Double TComRdCost::calcRdCost( Double numBits, Distortion distortion, DFunc eDFunc )
 {
   Double lambda = 1.0;
-
   switch ( eDFunc )
   {
     case DF_SSE:
@@ -81,7 +80,6 @@ Double TComRdCost::calcRdCost( Double numBits, Distortion distortion, DFunc eDFu
       assert (0);
       break;
   }
-
   if (eDFunc == DF_SAD)
   {
     if (m_costMode != COST_STANDARD_LOSSY)

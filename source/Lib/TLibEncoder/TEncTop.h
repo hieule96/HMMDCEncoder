@@ -57,6 +57,7 @@
 #include "TEncSampleAdaptiveOffset.h"
 #include "TEncPreanalyzer.h"
 #include "TEncRateCtrl.h"
+#include "TLibIPC/TEncIPC.h"
 //! \ingroup TLibEncoder
 //! \{
 // ====================================================================================================================
@@ -72,7 +73,7 @@ private:
   Int                     m_iNumPicRcvd;                  ///< number of received pictures
   UInt                    m_uiNumAllPicCoded;             ///< number of coded pictures
   TComList<TComPic*>      m_cListPic;                     ///< dynamic list of pictures
-
+  TEncIPC                 m_encoderIPC;                   /// tle spliting communication between python
   // encoder search
   TEncSearch              m_cSearch;                      ///< encoder search class
   //TEncEntropy*            m_pcEntropyCoder;                     ///< entropy encoder
@@ -157,7 +158,7 @@ public:
   TEncRateCtrl*           getRateCtrl           () { return &m_cRateCtrl;             }
   Void selectReferencePictureSet(TComSlice* slice, Int POCCurr, Int GOPid );
   Int getReferencePictureSetIdxForSOP(Int POCCurr, Int GOPid );
-
+  TEncIPC*               getTEncIPC             () {return &m_encoderIPC;}
   Void                   setParamSetChanged(Int spsId, Int ppsId);
   Bool                   PPSNeedsWriting(Int ppsId);
   Bool                   SPSNeedsWriting(Int spsId);

@@ -817,7 +817,13 @@ Void TEncSlice::compressSlice(TComPic* pcPic, const Bool bCompressEntireSlice, c
             pCtu->getSlice()->setSliceQpBase(estQP);
 #endif
         }
-
+        // tle : Modify setting lambda
+        if (pcPic->getRunMode()==0)
+        {
+            if (pcPic->getLamdaForcing()>0){
+                m_pcRdCost->setLambda(pcPic->getLamdaForcing(),pcSlice->getSPS()->getBitDepths());
+            }
+        }
         // run CTU trial encoder
         m_pcCuEncoder->compressCtu(pCtu);
 

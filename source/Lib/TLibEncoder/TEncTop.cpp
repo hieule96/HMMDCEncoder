@@ -231,6 +231,7 @@ Void TEncTop::init(Bool isFieldCoding)
   m_cSearch.init( this, &m_cTrQuant, m_iSearchRange, m_bipredSearchRange, m_motionEstimationSearchMethod, m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth, &m_cEntropyCoder, &m_cRdCost, getRDSbacCoder(), getRDGoOnSbacCoder() );
 
   m_iMaxRefPicNum = 0;
+
 }
 
 Void TEncTop::xInitScalingLists(TComSPS &sps, TComPPS &pps)

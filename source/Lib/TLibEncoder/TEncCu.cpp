@@ -78,6 +78,10 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
   m_ppcResiYuvTemp = new TComYuv*[m_uhTotalDepth-1];
   m_ppcRecoYuvTemp = new TComYuv*[m_uhTotalDepth-1];
   m_ppcOrigYuv     = new TComYuv*[m_uhTotalDepth-1];
+  //HARP: additional array (used by encodeResAndCalcRdInterCU(), will preserve residual)
+
+  m_ppcResiYuvBest_VIS  = new TComYuv*[m_uhTotalDepth-1];
+  m_ppcResiYuvTemp_VIS = new TComYuv*[m_uhTotalDepth-1];
   UInt uiNumPartitions;
   for( i=0 ; i<m_uhTotalDepth-1 ; i++)
   {
@@ -97,7 +101,9 @@ Void TEncCu::create(UChar uhTotalDepth, UInt uiMaxWidth, UInt uiMaxHeight, Chrom
     m_ppcRecoYuvTemp[i] = new TComYuv; m_ppcRecoYuvTemp[i]->create(uiWidth, uiHeight, chromaFormat);
 
     m_ppcOrigYuv    [i] = new TComYuv; m_ppcOrigYuv    [i]->create(uiWidth, uiHeight, chromaFormat);
-
+    //HARP
+    m_ppcResiYuvBest_VIS[i]  = new TComYuv; m_ppcResiYuvBest_VIS[i]->create(uiWidth, uiHeight,chromaFormat);
+    m_ppcResiYuvTemp_VIS[i] = new TComYuv; m_ppcResiYuvTemp_VIS[i]->create(uiWidth, uiHeight,chromaFormat);
   }
 
   m_bEncodeDQP                     = false;
@@ -156,6 +162,15 @@ Void TEncCu::destroy()
     {
       m_ppcOrigYuv[i]->destroy();     delete m_ppcOrigYuv[i];     m_ppcOrigYuv[i] = NULL;
     }
+    //HARP
+    if(m_ppcResiYuvBest_VIS[i])
+    {
+      m_ppcResiYuvBest_VIS[i]->destroy(); delete m_ppcResiYuvBest_VIS[i]; m_ppcResiYuvBest_VIS[i] = NULL;
+    }
+    if(m_ppcResiYuvTemp_VIS[i])
+    {
+      m_ppcResiYuvTemp_VIS[i]->destroy(); delete m_ppcResiYuvTemp_VIS[i]; m_ppcResiYuvTemp_VIS[i] = NULL;
+    }
   }
   if(m_ppcBestCU)
   {
@@ -203,6 +218,17 @@ Void TEncCu::destroy()
     delete [] m_ppcOrigYuv;
     m_ppcOrigYuv = NULL;
   }
+  //HARP
+  if(m_ppcResiYuvBest_VIS)
+  {
+    delete [] m_ppcResiYuvBest_VIS;
+    m_ppcResiYuvBest_VIS = NULL;
+  }
+  if(m_ppcResiYuvTemp_VIS)
+  {
+    delete [] m_ppcResiYuvTemp_VIS;
+    m_ppcResiYuvTemp_VIS = NULL;
+  }
 }
 
 /** \param    pcEncTop      pointer of encoder class
@@ -221,6 +247,7 @@ Void TEncCu::init( TEncTop* pcEncTop )
   m_pcRDGoOnSbacCoder  = pcEncTop->getRDGoOnSbacCoder();
 
   m_pcRateCtrl         = pcEncTop->getRateCtrl();
+  m_encoderIPC         = pcEncTop->getTEncIPC();
   m_lumaQPOffset       = 0;
   initLumaDeltaQpLUT();
 }
@@ -232,9 +259,47 @@ Void TEncCu::init( TEncTop* pcEncTop )
 /** 
  \param  pCtu pointer of CU data class
  */
+
+void TEncCu::writeResidual(TComDataCU* pCtu){
+  TComPic* pcPic = pCtu->getPic();
+  const UInt numpart= pCtu->getTotalNumPart();
+  const UInt cost = pCtu->getTotalCost();
+  const Distortion distortion = pCtu->getTotalDistortion();
+  const UInt bit = pCtu->getTotalBits();
+  // printf("Total Part [%d] cost : %d Distortion : %d Rate : %d\n",numpart,cost,distortion,bit);
+  // UInt iWidth, iHeight;
+  // UInt iWidthInCTU, iHeightInCTU;
+  // UInt iLeftCurrCTU, iTopCurrCTU;
+  // UInt iWidthCTUList[MAX_NUM_COMPONENT];
+  // UInt iHeightCTUList[MAX_NUM_COMPONENT];
+  // UInt iWidthCurrCTUValid,iHeightCurrCTUValid;
+  // unsigned char* pphInfo[MAX_NUM_COMPONENT];
+
+  // iWidthCurrCTUValid = iLeftCurrCTU + iWidthCTUList[iCpnt] <= iWidth ? iWidthCTUList[iCpnt] : iWidth - iLeftCurrCTU;
+  // iHeightCurrCTUValid = iTopCurrCTU + iHeightCTUList[iCpnt] <= iHeight ? iHeightCTUList[iCpnt] : iHeight - iTopCurrCTU;
+
+  // for (int iCpnt = 0; iCpnt < MAX_NUM_COMPONENT; iCpnt++){
+  //   if (iCpnt==COMPONENT_Y)
+  //     pphInfo[iCpnt] = new unsigned char[iWidthInCTU * iHeightInCTU];
+  //   else
+  //     pphInfo[iCpnt] = new unsigned char[iWidthInCTU/2 * iHeightInCTU/2];
+  // }
+
+  // for (int y = 0; y < iHeightCurrCTUValid; y++)
+  //     for (int x = 0; x < iWidthCurrCTUValid; x++)
+  //     {
+  //         sInfoCurrPixel = *(pcResiYuv->getAddrPix((ComponentID)iCpnt, x, y)) + 128;
+  //         if (sInfoCurrPixel > 255)
+  //             sInfoCurrPixel = 255;
+  //         if (sInfoCurrPixel < 0)
+  //             sInfoCurrPixel = 0;
+  //         pphInfo[iCpnt][(y + iTopCurrCTU) * iWidth + (x + iLeftCurrCTU)] = (unsigned char)sInfoCurrPixel;
+  //     }
+}
 // tle: counter control the number of Qp value
 Void TEncCu::compressCtu( TComDataCU* pCtu )
 {
+  // UInt buff [10];
   TComPic* pcPic = pCtu->getPic();
   Int iRunMode = pcPic->getRunMode();
   // initialize CU data
@@ -248,12 +313,15 @@ Void TEncCu::compressCtu( TComDataCU* pCtu )
   if (iRunMode == 1) {
       countQtreeElem = TMDCQPTable::getInstance()->readALineQtree();
       countQpElem = TMDCQPTable::getInstance()->readALineQp();
-      std::cout << "CTU " << CTU_index << std::endl;
+      // std::cout << "CTU " << CTU_index << std::endl;
   }
+  // m_encoderIPC->send((UInt*) "Hello",5);
+  // m_encoderIPC->receive(buff,10);
+  // printf("%s\n",buff);
   xCompressCU( m_ppcBestCU[0], m_ppcTempCU[0], 0 DEBUG_STRING_PASS_INTO(sDebug) );
   DEBUG_STRING_OUTPUT(std::cout, sDebug)
-
-
+  writeResidual(pCtu);
+  
   if (iRunMode == 1) {
       CTU_index++;
       index_QP_CU = 0;
@@ -582,7 +650,7 @@ if (iRunMode==1){
       bCheckCurrent = true;
       iMaxQP = QP_array[index_QP_CU];
       iMinQP = QP_array[index_QP_CU];
-      printf("CU_index: %d value: %d QP_pos: %d QP_value: %d\n", CU_index, QtreeTable[CU_index], index_QP_CU, QP_array[index_QP_CU]);
+      // printf("CU_index: %d value: %d QP_pos: %d QP_value: %d\n", CU_index, QtreeTable[CU_index], index_QP_CU, QP_array[index_QP_CU]);
       index_QP_CU++;
   }
   CU_index++;
@@ -1481,7 +1549,7 @@ Void TEncCu::xCheckRDCostMerge2Nx2N( TComDataCU*& rpcBestCU, TComDataCU*& rpcTem
                                                      m_ppcResiYuvTemp[uhDepth],
                                                      m_ppcResiYuvBest[uhDepth],
                                                      m_ppcRecoYuvTemp[uhDepth],
-                                                     (uiNoResidual != 0) DEBUG_STRING_PASS_INTO(tmpStr) );
+                                                     (uiNoResidual != 0) DEBUG_STRING_PASS_INTO(tmpStr));
 
 #if DEBUG_STRING
           DebugInterPredResiReco(tmpStr, *(m_ppcPredYuvTemp[uhDepth]), *(m_ppcResiYuvBest[uhDepth]), *(m_ppcRecoYuvTemp[uhDepth]), DebugStringGetPredModeMask(rpcTempCU->getPredictionMode(0)));
@@ -1632,14 +1700,13 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
 
   //Residual Luma
   Pel resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
-
-  m_pcPredSearch->estIntraPredLumaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth], resiLuma DEBUG_STRING_PASS_INTO(sTest) );
-
+  
+  m_pcPredSearch->estIntraPredLumaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth],m_ppcResiYuvTemp_VIS[uiDepth],resiLuma DEBUG_STRING_PASS_INTO(sTest) );
   m_ppcRecoYuvTemp[uiDepth]->copyToPicComponent(COMPONENT_Y, rpcTempCU->getPic()->getPicYuvRec(), rpcTempCU->getCtuRsAddr(), rpcTempCU->getZorderIdxInCtu() );
-
+  
   if (rpcBestCU->getPic()->getChromaFormat()!=CHROMA_400)
   {
-    m_pcPredSearch->estIntraPredChromaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth], resiLuma DEBUG_STRING_PASS_INTO(sTest) );
+    m_pcPredSearch->estIntraPredChromaQT( rpcTempCU, m_ppcOrigYuv[uiDepth], m_ppcPredYuvTemp[uiDepth], m_ppcResiYuvTemp[uiDepth], m_ppcRecoYuvTemp[uiDepth], m_ppcResiYuvTemp_VIS[uiDepth],resiLuma DEBUG_STRING_PASS_INTO(sTest) );
   }
   m_pcEntropyCoder->resetBits();
 
@@ -1647,7 +1714,6 @@ Void TEncCu::xCheckRDCostIntra( TComDataCU *&rpcBestCU,
   {
     m_pcEntropyCoder->encodeCUTransquantBypassFlag( rpcTempCU, 0,          true );
   }
-
   m_pcEntropyCoder->encodeSkipFlag ( rpcTempCU, 0,          true );
   m_pcEntropyCoder->encodePredMode( rpcTempCU, 0,          true );
   m_pcEntropyCoder->encodePartSize( rpcTempCU, 0, uiDepth, true );
@@ -1755,6 +1821,11 @@ Void TEncCu::xCheckBestMode( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UIn
     pcYuv = m_ppcRecoYuvBest[uiDepth];
     m_ppcRecoYuvBest[uiDepth] = m_ppcRecoYuvTemp[uiDepth];
     m_ppcRecoYuvTemp[uiDepth] = pcYuv;
+   
+    // Residual data
+    pcYuv = m_ppcResiYuvBest_VIS[uiDepth];
+    m_ppcResiYuvBest_VIS[uiDepth] = m_ppcResiYuvTemp_VIS[uiDepth];
+    m_ppcResiYuvTemp_VIS[uiDepth] = pcYuv;
 
     pcYuv = NULL;
     pcCU  = NULL;
@@ -1815,7 +1886,7 @@ Void TEncCu::xCopyYuv2Pic(TComPic* rpcPic, UInt uiCUAddr, UInt uiAbsPartIdx, UIn
   UInt uiPartIdxY = ( ( uiAbsPartIdxInRaster / rpcPic->getNumPartInCtuWidth() ) % uiSrcBlkWidth) / uiBlkWidth;
   UInt uiPartIdx = uiPartIdxY * ( uiSrcBlkWidth / uiBlkWidth ) + uiPartIdxX;
   m_ppcRecoYuvBest[uiSrcDepth]->copyToPicYuv(rpcPic->getPicYuvRec (), uiCUAddr, uiAbsPartIdx, uiDepth - uiSrcDepth, uiPartIdx);
-
+  m_ppcResiYuvBest_VIS[uiSrcDepth]->copyToPicYuv(rpcPic->getPicYuvResi (), uiCUAddr, uiAbsPartIdx, uiDepth - uiSrcDepth, uiPartIdx);
   m_ppcPredYuvBest[uiSrcDepth]->copyToPicYuv( rpcPic->getPicYuvPred (), uiCUAddr, uiAbsPartIdx, uiDepth - uiSrcDepth, uiPartIdx);
 
 }
@@ -1825,6 +1896,9 @@ Void TEncCu::xCopyYuv2Tmp( UInt uiPartUnitIdx, UInt uiNextDepth )
   UInt uiCurrDepth = uiNextDepth - 1;
   m_ppcRecoYuvBest[uiNextDepth]->copyToPartYuv( m_ppcRecoYuvTemp[uiCurrDepth], uiPartUnitIdx );
   m_ppcPredYuvBest[uiNextDepth]->copyToPartYuv( m_ppcPredYuvBest[uiCurrDepth], uiPartUnitIdx);
+
+  m_ppcResiYuvBest_VIS[uiNextDepth]->copyToPartYuv( m_ppcResiYuvTemp_VIS[uiCurrDepth], uiPartUnitIdx);
+
 }
 
 /** Function for filling the PCM buffer of a CU using its original sample array

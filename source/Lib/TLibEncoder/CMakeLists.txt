@@ -33,7 +33,7 @@ if( SET_ENABLE_TRACING )
 endif()
 
 target_include_directories( ${LIB_NAME} PUBLIC . )
-target_link_libraries( ${LIB_NAME} TLibCommon TLibSysuAnalyzer TLibMDCCommon Utilities Threads::Threads )
+target_link_libraries( ${LIB_NAME} TLibCommon TLibSysuAnalyzer TLibMDCCommon Utilities TLibIPC Threads::Threads )
 
 if( CMAKE_COMPILER_IS_GNUCC )
   # this is quite certainly a compiler problem

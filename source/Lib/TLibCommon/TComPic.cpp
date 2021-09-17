@@ -56,7 +56,7 @@ TComPic::TComPic()
 , m_uiCurrSliceIdx                        (0)
 , m_bCheckLTMSB                           (false)
 , m_iRunMode                                (0)
-, m_QuadTree_Array                        (NULL)
+, m_lamdaForcing                            (0)
 {
   for(UInt i=0; i<NUM_PIC_YUV; i++)
   {

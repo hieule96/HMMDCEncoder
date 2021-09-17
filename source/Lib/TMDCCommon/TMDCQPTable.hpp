@@ -13,6 +13,7 @@ class TMDCQPTable{
         Int readALineQp();
         UInt* getQPArray(){return qpArray;}
         Int readALineQtree();
+        Int readStdIn();
         UInt* getQtreeArray(){return qtreeArray;}
         void setIndexQpCU(Int index) { indexQpCU = index; }
         Int convertStringToIntArrayQP(UInt *bufferDest, char *str,int nbElement);

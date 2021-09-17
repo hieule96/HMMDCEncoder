@@ -151,6 +151,7 @@ protected:
   std::string m_quadtreeFile;                 ///< Qtree MDC File name
   std::string m_QPFile;                       ///< QP MDC File name
   Int m_encodingMode;           /// < 0: Produce residual 1: MDC encoding from 2 inputs files and bypass the process of HEVC
+  Double m_lamdaForcing;           /// Lamba forcing
   /* profile & level */
   Profile::Name m_profile;
   Level::Tier   m_levelTier;
@@ -1335,6 +1336,12 @@ public:
   const char* getQPFile() { return m_QPFile.c_str(); };
   Void setEncodingMode(int mode) { m_encodingMode = mode; };
   Int getEncodingMode() const { return m_encodingMode; };
+  Void setLambdaForcing(Double lambda){
+    m_lamdaForcing = lambda;
+  }
+  Double *getLambdaForcing(){
+    return &m_lamdaForcing;
+  }
 };
 
 //! \}

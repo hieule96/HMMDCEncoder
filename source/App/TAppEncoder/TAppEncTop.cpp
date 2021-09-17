@@ -540,6 +540,7 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setQtreeFile                                         (m_quadtreeFile);
   m_cTEncTop.setQPFile                                            (m_QPFile);
   m_cTEncTop.setEncodingMode                                      (m_encodingMode);
+  m_cTEncTop.setLambdaForcing                                     (std::stod(m_lamdaForcing));
   if (m_cTEncTop.getEncodingMode() == 0) {
       TSysuAnalyzerOutput::initInstanceEncoder(m_quadtreeFile.c_str());
   }
@@ -801,7 +802,6 @@ Void TAppEncTop::xWriteOutput(std::ostream& bitstreamFile, Int iNumEncoded, cons
     {
       TComPicYuv*  pcPicYuvRecTop  = *(iterPicYuvRec++);
       TComPicYuv*  pcPicYuvRecBottom  = *(iterPicYuvRec++);
-
       if (!m_reconFileName.empty())
       {
         m_cTVideoIOYuvReconFile.write( pcPicYuvRecTop, pcPicYuvRecBottom, ipCSC, m_confWinLeft, m_confWinRight, m_confWinTop, m_confWinBottom, NUM_CHROMA_FORMAT, m_isTopFieldFirst );
