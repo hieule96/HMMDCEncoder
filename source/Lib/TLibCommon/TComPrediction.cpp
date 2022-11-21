@@ -243,7 +243,10 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
   // Do the DC prediction
   if (modeDC)
   {
-    const Pel dcval = predIntraGetPredValDC(pSrc, srcStride, width, height);
+    Pel dcval = 128;
+    if (!DebugOptionList::ForceNoIntra.isSet()){
+      dcval = predIntraGetPredValDC(pSrc, srcStride, width, height);
+    }
 
     for (Int y=height;y>0;y--, pTrueDst+=dstStrideTrue)
     {
@@ -463,9 +466,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
 #endif
       xPredIntraAng( channelsBitDepthForPrediction, ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType, uiDirMode, enableEdgeFilters );
 
-      if( uiDirMode == DC_IDX )
-      {
-        xDCPredFiltering( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType );
+      if (!DebugOptionList::ForceNoIntra.isSet()){
+        if( uiDirMode == DC_IDX )
+        {
+          xDCPredFiltering( ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, channelType );
+        }
       }
     }
   }

@@ -73,7 +73,6 @@ private:
   Bool                  m_bNeededForOutput;
   UInt                  m_uiCurrSliceIdx;         // Index of current slice
   Bool                  m_bCheckLTMSB;
-
   Bool                  m_isTop;
   Bool                  m_isField;
   // tle: add information from the file
@@ -126,6 +125,7 @@ public:
   Int getRunMode() { return m_iRunMode; }
   Void setLamdaForcing(Double* lambda) { m_lamdaForcing = lambda; }
   Double getLamdaForcing() { return *m_lamdaForcing; }
+
   TComPicYuv*   getPicYuvOrg()        { return  m_apcPicYuv[PIC_YUV_ORG]; }
   TComPicYuv*   getPicYuvRec()        { return  m_apcPicYuv[PIC_YUV_REC]; }
 

@@ -1,6 +1,6 @@
 # executable
 set( EXE_NAME TAppEncoder )
-
+set( CMAKE_MDC_FOLDER ../../../../../PythonMDCEncoder)
 # get source files
 file( GLOB SRC_FILES "*.cpp" )
 

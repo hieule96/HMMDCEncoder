@@ -638,6 +638,8 @@ Void TEncSlice::calCostSliceI(TComPic* pcPic) // TODO: this only analyses the fi
 
 /** \param pcPic   picture class
  */
+int counter=0;
+static FILE* bppPerCTU;
 Void TEncSlice::compressSlice(TComPic* pcPic, const Bool bCompressEntireSlice, const Bool bFastDeltaQP)
 {
     // if bCompressEntireSlice is true, then the entire slice (not slice segment) is compressed,
@@ -660,7 +662,6 @@ Void TEncSlice::compressSlice(TComPic* pcPic, const Bool bCompressEntireSlice, c
     m_uiPicDist = 0;
 
     m_pcEntropyCoder->setEntropyCoder(m_pppcRDSbacCoder[0][CI_CURR_BEST]);
-    m_pcEntropyCoder->resetEntropy(pcSlice);
 
     TEncBinCABAC* pRDSbacCoder = (TEncBinCABAC*)m_pppcRDSbacCoder[0][CI_CURR_BEST]->getEncBinIf();
     pRDSbacCoder->setBinCountingEnableFlag(false);
@@ -670,7 +671,6 @@ Void TEncSlice::compressSlice(TComPic* pcPic, const Bool bCompressEntireSlice, c
     const UInt      frameWidthInCtus = pcPic->getPicSym()->getFrameWidthInCtus();
 
     m_pcCuEncoder->setFastDeltaQp(bFastDeltaQP);
-
     //------------------------------------------------------------------------------
     //  Weighted Prediction parameters estimation.
     //------------------------------------------------------------------------------
@@ -811,21 +811,22 @@ Void TEncSlice::compressSlice(TComPic* pcPic, const Bool bCompressEntireSlice, c
                 m_pcTrQuant->setLambda(estLambda);
 #endif
             }
-
             m_pcRateCtrl->setRCQP(estQP);
 #if ADAPTIVE_QP_SELECTION
             pCtu->getSlice()->setSliceQpBase(estQP);
 #endif
         }
-        // tle : Modify setting lambda
-        if (pcPic->getRunMode()==0)
+        // run CTU the compression process to create the structure of images
+        // Only apply the algorithm of only on I Slice
+        if (pcPic->getSlice(0)->getSliceType()==I_SLICE)
         {
-            if (pcPic->getLamdaForcing()>0){
-                m_pcRdCost->setLambda(pcPic->getLamdaForcing(),pcSlice->getSPS()->getBitDepths());
-            }
+            m_pcCuEncoder->compressCtu(pCtu,pcPic->getRunMode());
         }
-        // run CTU trial encoder
-        m_pcCuEncoder->compressCtu(pCtu);
+        else
+        {
+            m_pcCuEncoder->compressCtu(pCtu,0);
+        }
+        // m_pcCuEncoder->compressCtu(pCtu);
 
 
         // All CTU decisions have now been made. Restore entropy coder to an initial stage, ready to make a true encode,
@@ -841,6 +842,7 @@ Void TEncSlice::compressSlice(TComPic* pcPic, const Bool bCompressEntireSlice, c
         // encode CTU and calculate the true bit counters.
         // Write one time decoder cu pu
         m_pcCuEncoder->encodeCtu(pCtu,false);
+        // m_pcEntropyCoder->resetEntropy(pcSlice);
 
         pRDSbacCoder->setBinCountingEnableFlag(false);
 
@@ -848,6 +850,7 @@ Void TEncSlice::compressSlice(TComPic* pcPic, const Bool bCompressEntireSlice, c
 
         // Calculate if this CTU puts us over slice bit size.
         // cannot terminate if current slice/slice-segment would be 0 Ctu in size,
+        // @tle: Note that a CTU may exceed the byte limite 
         const UInt validEndOfSliceCtuTsAddr = ctuTsAddr + (ctuTsAddr == startCtuTsAddr ? 1 : 0);
         // Set slice end parameter
         if (pcSlice->getSliceMode() == FIXED_NUMBER_OF_BYTES && pcSlice->getSliceBits() + numberOfWrittenBits > (pcSlice->getSliceArgument() << 3))
@@ -1083,13 +1086,11 @@ Void TEncSlice::encodeSlice(TComPic* pcPic, TComOutputBitstream* pcSubstreams, U
                 m_pcEntropyCoder->encodeSAOBlkParam(saoblkParam, pcPic->getPicSym()->getSPS().getBitDepths(), sliceEnabled, leftMergeAvail, aboveMergeAvail);
             }
         }
-
 #if ENC_DEC_TRACE
         g_bJustDoIt = g_bEncDecTraceEnable;
 #endif
-        if (pcPic->getRunMode()==0){
-
-        m_pcCuEncoder->encodeCtu(pCtu,true);
+        if (pcPic->getRunMode()==0&&pcPic->getSlice(0)->getSliceType()==I_SLICE) {
+            m_pcCuEncoder->encodeCtu(pCtu,true);
         }
         else
         {
@@ -1123,6 +1124,7 @@ Void TEncSlice::encodeSlice(TComPic* pcPic, TComOutputBitstream* pcSubstreams, U
                 pcSlice->addSubstreamSize((pcSubstreams[uiSubStrm].getNumberOfWrittenBits() >> 3) + pcSubstreams[uiSubStrm].countStartCodeEmulations());
             }
         }
+        // m_pcBinCABAC->resetBits();
     } // CTU-loop
 
     if (depSliceSegmentsEnabled)

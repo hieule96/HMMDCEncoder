@@ -62,6 +62,7 @@ private:
   // class interface
   TDecTop                         m_cTDecTop;                     ///< decoder class
   TVideoIOYuv                     m_cTVideoIOYuvReconFile;        ///< reconstruction YUV class
+  TVideoIOYuv                     m_cTVideoIOYuvResiFile;        ///< reconstruction YUV class
 
   // for output control
   Int                             m_iPOCLastDisplay;              ///< last POC in display order

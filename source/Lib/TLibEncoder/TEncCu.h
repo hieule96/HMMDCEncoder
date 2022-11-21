@@ -124,11 +124,9 @@ public:
   Void  destroy             ();
 
   /// CTU analysis function
-  Void  compressCtu         ( TComDataCU*  pCtu );
+  Void compressCtu( TComDataCU* pCtu, UInt iRunMode );
 
   Void encodeCtu(TComDataCU* pCtu, bool writeQtreeOption);
-
-  Void compressCtu(TComDataCU* pCtu, FILE* fpQtree);
   /// CTU encoding function
   //Void  encodeCtu           ( TComDataCU*  pCtu );
 
@@ -143,6 +141,11 @@ protected:
 #else
   Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth        );
 #endif
+
+  Void xCompressCUFromQtree ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU,
+                              UInt uiDepth DEBUG_STRING_FN_DECLARE(sDebug_),UInt* QtreeTable, Int* QP_array,UInt* dArray,UInt &CU_index,UInt &QP_index, PartSize eParentPartSize = NUMBER_OF_PART_SIZES);
+
+
   Void  xEncodeCU            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth,Int *debug_array,Int *count);
   Int   xComputeQP          ( TComDataCU* pcCU, UInt uiDepth );
   Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth DEBUG_STRING_FN_DECLARE(sParent) DEBUG_STRING_FN_DECLARE(sTest) DEBUG_STRING_PASS_INTO(Bool bAddSizeInfo=true));

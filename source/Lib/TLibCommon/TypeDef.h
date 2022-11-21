@@ -53,19 +53,19 @@
 // Debugging
 // ====================================================================================================================
 
-#define DEBUG_STRING                                      1 ///< When enabled, prints out final decision debug info at encoder and decoder
+#define DEBUG_STRING                                      0 ///< When enabled, prints out final decision debug info at encoder and decoder
 #define DEBUG_ENCODER_SEARCH_BINS                         0 ///< When enabled, prints out each bin as it is coded during encoder search
-#define DEBUG_CABAC_BINS                                  0 ///< When enabled, prints out each bin as it is coded during final encode and decode
+#define DEBUG_CABAC_BINS                                  0///< When enabled, prints out each bin as it is coded during final encode and decode
 #define DEBUG_INTRA_SEARCH_COSTS                          0 ///< When enabled, prints out the cost for each mode during encoder search
 #define DEBUG_TRANSFORM_AND_QUANTISE                      0 ///< When enabled, prints out each TU as it passes through the transform-quantise-dequantise-inverseTransform process
 
-#define ENVIRONMENT_VARIABLE_DEBUG_AND_TEST               0 ///< When enabled, allows control of debug modifications via environment variables
-#define PRINT_MACRO_VALUES                                0 ///< When enabled, the encoder prints out a list of the non-environment-variable controlled macros and their values on startup
+#define ENVIRONMENT_VARIABLE_DEBUG_AND_TEST               1 ///< When enabled, allows control of debug modifications via environment variables
+#define PRINT_MACRO_VALUES                                1 ///< When enabled, the encoder prints out a list of the non-environment-variable controlled macros and their values on startup
 
 // TODO: rename this macro to DECODER_DEBUG_BIT_STATISTICS (may currently cause merge issues with other branches)
 // This can be enabled by the makefile
 #ifndef RExt__DECODER_DEBUG_BIT_STATISTICS
-#define RExt__DECODER_DEBUG_BIT_STATISTICS                0 ///< 0 (default) = decoder reports as normal, 1 = decoder produces bit usage statistics (will impact decoder run time by up to ~10%)
+#define RExt__DECODER_DEBUG_BIT_STATISTICS                1 ///< 0 (default) = decoder reports as normal, 1 = decoder produces bit usage statistics (will impact decoder run time by up to ~10%)
 #endif
 
 // This can be enabled by the makefile
@@ -120,7 +120,7 @@
 #error
 #endif
 
-#define MATRIX_MULT                                       0 ///< Brute force matrix multiplication instead of partial butterfly
+#define MATRIX_MULT                                       1 ///< Brute force matrix multiplication instead of partial butterfly
 
 #define O0043_BEST_EFFORT_DECODING                        0 ///< 0 (default) = disable code related to best effort decoding, 1 = enable code relating to best effort decoding [ decode-side only ].
 

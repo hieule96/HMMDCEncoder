@@ -39,6 +39,8 @@
 #include "TEncTop.h"
 #include "TEncPic.h"
 #include "TLibCommon/TComChromaFormat.h"
+#include "TMDCCommon/TMDCQPTable.hpp"
+
 #if FAST_BIT_EST
 #include "TLibCommon/ContextModel.h"
 #endif
@@ -199,14 +201,14 @@ Void TEncTop::init(Bool isFieldCoding)
   xInitPPS(pps0, sps0);
   xInitRPS(sps0, isFieldCoding);
   xInitScalingLists(sps0, pps0);
-
+  TMDCQPTable::initInstance(1024, this->m_QPFile.c_str(),this->m_quadtreeFile.c_str());
   if (m_wcgChromaQpControl.isEnabled())
   {
     TComPPS &pps1=*(m_ppsMap.allocatePS(1));
     xInitPPS(pps1, sps0);
     xInitScalingLists(sps0, pps1);
   }
-
+  
   // initialize processing unit classes
   m_cGOPEncoder.  init( this );
   m_cSliceEncoder.init( this );

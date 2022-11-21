@@ -284,6 +284,7 @@ Void TAppDecTop::xDestroyDecLib()
   if ( !m_reconFileName.empty() )
   {
     m_cTVideoIOYuvReconFile.close();
+    m_cTVideoIOYuvResiFile.close();
   }
 
   // destroy decoder class

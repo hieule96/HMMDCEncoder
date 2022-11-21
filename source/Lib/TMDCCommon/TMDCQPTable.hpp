@@ -10,14 +10,18 @@
 class TMDCQPTable{
     public:
         TMDCQPTable(Int nbElementReadLine,const char* QPFileName,const char* QtreeFileName);
+        TMDCQPTable(Int nbElementReadLine,const char * QPFileName);
         Int readALineQp();
-        UInt* getQPArray(){return qpArray;}
+        Int* getQPArray(){return qpArray;}
         Int readALineQtree();
         Int readStdIn();
         UInt* getQtreeArray(){return qtreeArray;}
-        void setIndexQpCU(Int index) { indexQpCU = index; }
-        Int convertStringToIntArrayQP(UInt *bufferDest, char *str,int nbElement);
+        Int convertStringToIntArrayQP(Int *bufferDest, char *str,int nbElement);
         Int convertStringtoIntArrayQtree(UInt *bufferDest, char *str,int nbElement);
+        Int getCturs() {return this->m_cturs;};
+        Void resetCturs() {this->m_cturs=0;};
+        Int getCountQP() {return this->m_countQPArr;};
+        Int getCountQtree(){return this->m_countQtreeArr;};
         void appendQPArray(Int QP);
         ~TMDCQPTable();
         static TMDCQPTable* getInstance() {return m_instance;}
@@ -27,12 +31,18 @@ class TMDCQPTable{
             }
             return m_instance;
         }
+        static TMDCQPTable* initInstance(Int nbElementReadLine,const char* QPFileName){
+            if (m_instance==NULL){
+                m_instance = new TMDCQPTable(nbElementReadLine,QPFileName); 
+            }
+            return m_instance;
+        }
     private:
-        UInt* qpArray;
+        Int* qpArray;
         UInt* qtreeArray;
-        Int indexQpCU;
-        Int indexCU;
-        Int m_QPArraySize;
+        Int m_cturs;
+        Int m_countQPArr;
+        Int m_countQtreeArr;
         std::ifstream fpQPFile;
         std::ifstream fpQtreeFile;
         static TMDCQPTable* m_instance;

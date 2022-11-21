@@ -91,13 +91,13 @@ Void TComYuv::destroy()
 
 Void TComYuv::clear()
 {
-  for(Int comp=0; comp<MAX_NUM_COMPONENT; comp++)
-  {
-    if (m_apiBuf[comp]!=NULL)
+    for(Int comp=0; comp<MAX_NUM_COMPONENT; comp++)
     {
-      ::memset( m_apiBuf[comp], 0, ( getWidth(ComponentID(comp)) * getHeight(ComponentID(comp))  )*sizeof(Pel) );
+      if (m_apiBuf[comp]!=NULL)
+      {
+        ::memset(m_apiBuf[comp], 0, ( getWidth(ComponentID(comp)) * getHeight(ComponentID(comp))  )*sizeof(Pel) );
+      }
     }
-  }
 }
 
 

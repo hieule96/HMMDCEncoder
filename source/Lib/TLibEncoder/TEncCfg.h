@@ -152,6 +152,7 @@ protected:
   std::string m_QPFile;                       ///< QP MDC File name
   Int m_encodingMode;           /// < 0: Produce residual 1: MDC encoding from 2 inputs files and bypass the process of HEVC
   Double m_lamdaForcing;           /// Lamba forcing
+  std::string m_resiNoQuant;
   /* profile & level */
   Profile::Name m_profile;
   Level::Tier   m_levelTier;
@@ -1332,8 +1333,10 @@ public:
   // tle MDC
   Void setQtreeFile(std::string QtreeFilename) { m_quadtreeFile = QtreeFilename; };
   Void setQPFile(std::string QPFilename) { m_QPFile = QPFilename; };
+  Void setResiNoQuant(std::string resiFileName){m_resiNoQuant=resiFileName;};
   const char* getQtreeFile() { return m_quadtreeFile.c_str(); };
   const char* getQPFile() { return m_QPFile.c_str(); };
+  const char* getResiNoQuant(){return m_resiNoQuant.c_str();};
   Void setEncodingMode(int mode) { m_encodingMode = mode; };
   Int getEncodingMode() const { return m_encodingMode; };
   Void setLambdaForcing(Double lambda){

@@ -44,7 +44,7 @@
 #include "ContextTables.h"
 #include "TComTU.h"
 #include "Debug.h"
-
+#include <fstream>
 typedef struct
 {
   Int    iNNZbeforePos0;
@@ -1446,7 +1446,7 @@ Void TComTrQuant::init(   UInt  uiMaxTrSize,
   m_useTransformSkipFast = useTransformSkipFast;
 }
 
-
+bool compressState = true;
 Void TComTrQuant::transformNxN(       TComTU        & rTu,
                                 const ComponentID     compID,
                                       Pel          *  pcResidual,
@@ -1524,6 +1524,10 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 #if DEBUG_TRANSFORM_AND_QUANTISE
       std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at output of quantiser\n";
       printBlock(rpcCoeff, uiWidth, uiHeight, uiWidth);
+      // std::fstream fs;
+      // fs.open("text.txt",std::fstream::out | std::fstream::app);
+      // printBlockToStream(fs,"",rpcCoeff,uiWidth,uiHeight,uiHeight);
+      // fs.close();
 #endif
     }
   }

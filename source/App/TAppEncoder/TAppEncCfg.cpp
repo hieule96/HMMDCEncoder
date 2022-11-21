@@ -779,12 +779,15 @@ Bool TAppEncCfg::parseCfg( Int argc, TChar* argv[] )
   // File, I/O and source parameters
   ("InputFile,i",                                     m_inputFileName,                             string(""), "Original YUV input file name")
   ("InputPathPrefix,-ipp",                            inputPathPrefix,                             string(""), "pathname to prepend to input filename")
-  ("BitstreamFile,b",                                 m_bitstreamFileName,                         string(""), "Bitstream output file name")
-  ("ReconFile,o",                                     m_reconFileName,                             string(""), "Reconstructed YUV output file name")
-  ("DescriptionQPSelectionFile",                      m_QPFile,                                    string(""), "File of Quadtree Structure")
-  ("QuadTreeStructureFile",                           m_quadtreeFile,                              string("decoder_cupu.txt"),"Quadtree structure file( default: decoder_cupu.txt)")
+  ("BitstreamFile1,b1",                                 m_bitstreamFileName1,                         string(""), "Bitstream output file name 1")
+  ("ReconFile1,o1",                                     m_reconFileName1,                             string(""), "Reconstructed YUV output file name 1")
+  ("BitstreamFile2,b2",                                 m_bitstreamFileName2,                         string(""), "Bitstream output file name 2")
+  ("ReconFile2,o2",                                     m_reconFileName2,                             string(""), "Reconstructed YUV output file name 2")
+  ("DescriptionQPSelectionFile,-qf",                  m_QPFile,                                    string(""), "File of Quadtree Structure")
+  ("QuadTreeStructureFile,-qt",                       m_quadtreeFile,                              string("decoder_cupu.txt"),"Quadtree structure file( default: decoder_cupu.txt)")
   ("DebugQtreeFile",                                  m_debugQtreeFile,                            string("Qt_"),"Debug Quadtree of Description File")
-  ("EncodingMode",                                    m_encodingMode,                                       0,"Encoding Mode Selection (0:default Encoding Normal and produce residual, 1: MDC encoding (Bypass the process of Quadtree spliting and Quantization")
+  ("ResidualNoQuant,-resi",                           m_resiNoQuant,                               string("resi_real.yuv"),"Residual for MDC")
+  ("EncodingMode,-em",                                m_encodingMode,                                       0,"Encoding Mode Selection (0:default Encoding Normal and produce residual, 1: MDC encoding (Bypass the process of Quadtree spliting and Quantization")
   ("LambdaValueForcing",                              m_lamdaForcing,                              string("0"),"Force Lambda value for MDC")
   ("SourceWidth,-wdt",                                m_iSourceWidth,                                       0, "Source picture width")
   ("SourceHeight,-hgt",                               m_iSourceHeight,                                      0, "Source picture height")
@@ -903,7 +906,7 @@ Bool TAppEncCfg::parseCfg( Int argc, TChar* argv[] )
   ("IQPFactor,-IQF",                                  m_dIntraQpFactor,                                  -1.0, "Intra QP Factor for Lambda Computation. If negative, the default will scale lambda based on GOP size (unless LambdaFromQpEnable then IntraQPOffset is used instead)")
 
   /* Quantization parameters */
-  ("QP,q",                                            m_iQP,                                               30, "Qp value")
+  ("QP,-q",                                            m_iQP,                                               30, "Qp value")
   ("QPIncrementFrame,-qpif",                          m_qpIncrementAtSourceFrame,       OptionalValue<UInt>(), "If a source file frame number is specified, the internal QP will be incremented for all POCs associated with source frames >= frame number. If empty, do not increment.")
   ("IntraQPOffset",                                   m_intraQPOffset,                                      0, "Qp offset value for intra slice, typically determined based on GOP size")
   ("LambdaFromQpEnable",                              m_lambdaFromQPEnable,                             false, "Enable flag for derivation of lambda from QP")
@@ -2101,7 +2104,9 @@ Void TAppEncCfg::xCheckParameter()
   Bool check_failed = false; /* abort if there is a fatal configuration problem */
 #define xConfirmPara(a,b) check_failed |= confirmPara(a,b)
 
-  xConfirmPara(m_bitstreamFileName.empty(), "A bitstream file name must be specified (BitstreamFile)");
+  xConfirmPara(m_bitstreamFileName1.empty(), "A bitstream 1 file name must be specified (BitstreamFile)");
+  xConfirmPara(m_bitstreamFileName2.empty(), "A bitstream 1 file name must be specified (BitstreamFile)");
+
   const UInt maxBitDepth=(m_chromaFormatIDC==CHROMA_400) ? m_internalBitDepth[CHANNEL_TYPE_LUMA] : std::max(m_internalBitDepth[CHANNEL_TYPE_LUMA], m_internalBitDepth[CHANNEL_TYPE_CHROMA]);
   xConfirmPara(m_bitDepthConstraint<maxBitDepth, "The internalBitDepth must not be greater than the bitDepthConstraint value");
   xConfirmPara(m_chromaFormatConstraint<m_chromaFormatIDC, "The chroma format used must not be greater than the chromaFormatConstraint value");
@@ -2297,7 +2302,7 @@ Void TAppEncCfg::xCheckParameter()
   xConfirmPara( m_iSearchRange < 0 ,                                                        "Search Range must be more than 0" );
   xConfirmPara( m_bipredSearchRange < 0 ,                                                   "Bi-prediction refinement search range must be more than 0" );
   xConfirmPara( m_minSearchWindow < 0,                                                      "Minimum motion search window size for the adaptive window ME must be greater than or equal to 0" );
-  xConfirmPara( m_iMaxDeltaQP > 7,                                                          "Absolute Delta QP exceeds supported range (0 to 7)" );
+  xConfirmPara( m_iMaxDeltaQP > 51,                                                          "Absolute Delta QP exceeds supported range (0 to 7)" );
   xConfirmPara(m_lumaLevelToDeltaQPMapping.mode &&  m_uiDeltaQpRD > 0, "Luma-level-based Delta QP cannot be used together with slice level multiple-QP optimization\n" );
   xConfirmPara( m_iMaxCuDQPDepth > m_uiMaxCUDepth - 1,                                          "Absolute depth for a minimum CuDQP exceeds maximum coding unit depth" );
 
@@ -2439,9 +2444,11 @@ Void TAppEncCfg::xCheckParameter()
   }
   Int numOK=0;
   xConfirmPara( m_iIntraPeriod >=0&&(m_iIntraPeriod%m_iGOPSize!=0), "Intra period must be a multiple of GOPSize, or -1" );
+  printf("GOP Size: %d\n",m_iGOPSize);
 
   for(Int i=0; i<m_iGOPSize; i++)
   {
+    printf("%d\n",m_GOPList[i].m_temporalId);
     if(m_GOPList[i].m_POC==m_iGOPSize)
     {
       xConfirmPara( m_GOPList[i].m_temporalId!=0 , "The last frame in each GOP must have temporal ID = 0 " );
@@ -3086,9 +3093,11 @@ Int TAppEncCfg::xDPBUsage(std::ostream *pOs)
 Void TAppEncCfg::xPrintParameter()
 {
   printf("\n");
-  printf("Input          File                    : %s\n", m_inputFileName.c_str()          );
-  printf("Bitstream      File                    : %s\n", m_bitstreamFileName.c_str()      );
-  printf("Reconstruction File                    : %s\n", m_reconFileName.c_str()          );
+  printf("Input          File 1                    : %s\n", m_inputFileName1.c_str()          );
+  printf("Bitstream      File 1                   : %s\n", m_bitstreamFileName1.c_str()      );
+  printf("Input          File 2                    : %s\n", m_inputFileName2.c_str()          );
+  printf("Bitstream      File 2                   : %s\n", m_bitstreamFileName2.c_str()      );
+  printf("Reconstruction File                    : %s\n", m_reconFileName1.c_str()          );
   printf("MDC(QP) file :                         : %s\n", m_QPFile.c_str());
   printf("Quadtree File:                         : %s\n", m_quadtreeFile.c_str());
   printf("Real     Format                        : %dx%d %gHz\n", m_iSourceWidth - m_confWinLeft - m_confWinRight, m_iSourceHeight - m_confWinTop - m_confWinBottom, (Double)m_iFrameRate/m_temporalSubsampleRatio );

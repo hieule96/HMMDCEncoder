@@ -101,6 +101,7 @@ namespace DebugOptionList
   extern EnvVar DebugPred;
   extern EnvVar ForceLumaMode;
   extern EnvVar ForceChromaMode;
+  extern EnvVar ForceNoIntra;
 
 #if DEBUG_STRING
   extern EnvVar DebugString_Structure;

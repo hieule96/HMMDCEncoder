@@ -248,6 +248,7 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
              ( ctuYPosInCtus + 1 == tileYPosInCtus + currentTile.getTileHeightInCtus() || wavefrontsEnabled)
             )
     {
+
       // The sub-stream/stream should be terminated after this CTU.
       // (end of slice-segment, end of tile, end of wavefront-CTU-row)
       UInt binVal;
@@ -257,7 +258,7 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
       pcSbacDecoder->parseRemainingBytes(true);
 #endif
     }
-
+    m_pcEntropyDecoder->resetEntropy(pcSlice);
   }
 
   assert(isLastCtuOfSliceSegment == true);

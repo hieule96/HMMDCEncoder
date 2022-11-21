@@ -1650,31 +1650,21 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     const Int numSubstreamRows     = pcSlice->getPPS()->getEntropyCodingSyncEnabledFlag() ? pcPic->getFrameHeightInCtus() : (pcSlice->getPPS()->getNumTileRowsMinus1() + 1);
     const Int numSubstreams        = numSubstreamRows * numSubstreamsColumns;
     std::vector<TComOutputBitstream> substreamsOut(numSubstreams);
-    //static FILE* fpQPValue;
-    //static FILE* fpQtree;
     // now compress (trial encode) the various slice segments (slices, and dependent slices)
+    pcPic->setRunMode(m_pcCfg->getEncodingMode());
+    TMDCQPTable::getInstance()->resetCturs();
+    // After this an yuv residual will be created
     {
       const UInt numberOfCtusInFrame=pcPic->getPicSym()->getNumberOfCtusInFrame();
       pcSlice->setSliceCurStartCtuTsAddr( 0 );
       pcSlice->setSliceSegmentCurStartCtuTsAddr( 0 );
+      // tle, the code loop over different slice and then however, the CTU cannot be split, therefore, it's arrive that a CTU is bigger than the RTP
+      
       for(UInt nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
       {
-          if (m_pcCfg->getEncodingMode() == 0) {
-              pcPic->setLamdaForcing((m_pcCfg->getLambdaForcing()));
-              m_pcSliceEncoder->precompressSlice(pcPic);
-              // After this an yuv residual will be created
-              pcPic->setRunMode(0);
-              // After have run the function, the residual will be exported
-              m_pcSliceEncoder->compressSlice(pcPic, false, false);
-
-          }
-          if (m_pcCfg->getEncodingMode() == 1) {
-              TMDCQPTable::initInstance(1024, m_pcCfg->getQPFile(), m_pcCfg->getQtreeFile());
-              // Invoke our script python here !!!
-              pcPic->setRunMode(1);
-              // REencoding with real value
-              m_pcSliceEncoder->compressSlice(pcPic, false, false);
-          }
+        m_pcSliceEncoder->precompressSlice(pcPic);
+        // Invoke our script python here !!!
+        m_pcSliceEncoder->compressSlice(pcPic, false, false);
         // Then invoke another compressSlide for MDC
         
         const UInt curSliceSegmentEnd = pcSlice->getSliceSegmentCurEndCtuTsAddr();
@@ -1985,15 +1975,15 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     xWriteLeadingSEIMessages(leadingSeiMessages, duInfoSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS(), duData);
     xWriteDuSEIMessages(duInfoSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS(), duData);
     // dump to Residual of 8 bit Unsigned and little endian
-    if (pcPic->getRunMode()==0){
-        if (pcPic->getPOC()==0){
-          pcPic->getPicYuvResi()->dumpResiTo8bit("test.yuv",false);
+    // if (pcPic->getRunMode()==0){
+    //     if (pcPic->getPOC()==0){
+    //       pcPic->getPicYuvResi()->dumpResiTo8bit(m_pcCfg->getResiNoQuant(),false);
 
-        }
-        else{
-          pcPic->getPicYuvResi()->dumpResiTo8bit("test.yuv",true);
-        }
-    }
+    //     }
+    //     else{
+    //       pcPic->getPicYuvResi()->dumpResiTo8bit(m_pcCfg->getResiNoQuant(),true);
+    //     }
+    // }
     pcPic->getPicYuvRec()->copyToPic(pcPicYuvRecOut);
 
     pcPic->setReconMark   ( true );

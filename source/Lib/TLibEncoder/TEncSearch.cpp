@@ -1685,8 +1685,8 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     
     //----- determine rate and r-d cost -----
     UInt uiSplitBits = xGetIntraBitsQT( rTu, true, false, false );
+    // printf("%d\n", uiSplitBits);
     dSplitCost       = m_pcRdCost->calcRdCost( uiSplitBits, uiSplitDistLuma );
-    //printf("%2.2f\n", dSplitCost);
     //===== compare and set best =====
     if( dSplitCost < dSingleCost )
     {
@@ -2374,6 +2374,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     {
       max=0;  // we are forcing a direction, so don't bother with mode check
     }
+    if (DebugOptionList::ForceNoIntra.isSet()){
+      max=0;
+    }
     for ( UInt uiMode = 0; uiMode < max; uiMode++)
 #else
     for( UInt uiMode = 0; uiMode < numModesForFullRD; uiMode++ )
@@ -2466,6 +2469,9 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       if (DebugOptionList::ForceLumaMode.isSet())
       {
         uiOrgMode = DebugOptionList::ForceLumaMode.getInt();
+      }
+      if (DebugOptionList::ForceNoIntra.isSet()){
+        uiOrgMode = 1;
       }
 #endif
 
@@ -2634,6 +2640,10 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
           {
             uiMinMode=4; // if the fixed mode has been renumbered because DM_CHROMA covers it, use DM_CHROMA.
           }
+          uiMaxMode=uiMinMode+1;
+        }
+        if(DebugOptionList::ForceNoIntra.isSet()){
+          uiMinMode = 4;
           uiMaxMode=uiMinMode+1;
         }
 #endif

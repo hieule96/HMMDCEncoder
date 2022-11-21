@@ -541,12 +541,9 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setQPFile                                            (m_QPFile);
   m_cTEncTop.setEncodingMode                                      (m_encodingMode);
   m_cTEncTop.setLambdaForcing                                     (std::stod(m_lamdaForcing));
+  m_cTEncTop.setResiNoQuant                                     (m_resiNoQuant);
   if (m_cTEncTop.getEncodingMode() == 0) {
       TSysuAnalyzerOutput::initInstanceEncoder(m_quadtreeFile.c_str());
-  }
-  else
-  {
-      TSysuAnalyzerOutput::initInstanceEncoder((m_debugQtreeFile + m_QPFile + ".txt").c_str());
   }
   // Test new function
 }
@@ -557,11 +554,14 @@ Void TAppEncTop::xCreateLib()
   m_cTVideoIOYuvInputFile.open( m_inputFileName,     false, m_inputBitDepth, m_MSBExtendedBitDepth, m_internalBitDepth );  // read  mode
   m_cTVideoIOYuvInputFile.skipFrames(m_FrameSkip, m_inputFileWidth, m_inputFileHeight, m_InputChromaFormatIDC);
 
-  if (!m_reconFileName.empty())
+  if (!m_reconFileName1.empty())
   {
-    m_cTVideoIOYuvReconFile.open(m_reconFileName, true, m_outputBitDepth, m_outputBitDepth, m_internalBitDepth);  // write mode
+    m_cTVideoIOYuvReconFile.open(m_reconFileName1, true, m_outputBitDepth, m_outputBitDepth, m_internalBitDepth);  // write mode
   }
-
+  if (!m_reconFileName2.empty())
+  {
+    m_cTVideoIOYuvReconFile.open(m_reconFileName2, true, m_outputBitDepth, m_outputBitDepth, m_internalBitDepth);  // write mode
+  }
   // Neo Decoder
   m_cTEncTop.create();
 }
@@ -596,11 +596,11 @@ Void TAppEncTop::xInitLib(Bool isFieldCoding)
 
 Void TAppEncTop::encode()
 {
-  fstream bitstreamFile(m_bitstreamFileName.c_str(), fstream::binary | fstream::out);
+  fstream bitstreamFile(m_bitstreamFileName1.c_str(), fstream::binary | fstream::out);
   
   if (!bitstreamFile)
   {
-    fprintf(stderr, "\nfailed to open bitstream file `%s' for writing\n", m_bitstreamFileName.c_str());
+    fprintf(stderr, "\nfailed to open bitstream file `%s' for writing\n", m_bitstreamFileName1.c_str());
     exit(EXIT_FAILURE);
   }
 

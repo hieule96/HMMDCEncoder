@@ -41,7 +41,7 @@
 #include "TComDataCU.h"
 #include "TComPic.h"
 #include "TComYuv.h"
-
+#include "fstream"
 static const UInt settingNameWidth  = 66;
 static const UInt settingHelpWidth  = 84;
 static const UInt settingValueWidth = 3;
@@ -151,6 +151,7 @@ EnvVar DebugOptionList::DebugRQT              ("DEBUG_RQT",         "0", "Output
 EnvVar DebugOptionList::DebugPred             ("DEBUG_PRED",        "0", "Output prediction debug"                                                                        );
 EnvVar DebugOptionList::ForceLumaMode         ("FORCE_LUMA_MODE",   "0", "Force a particular intra direction for Luma (0-34)"                                             );
 EnvVar DebugOptionList::ForceChromaMode       ("FORCE_CHROMA_MODE", "0", "Force a particular intra direction for chroma (0-5)"                                            );
+EnvVar DebugOptionList::ForceNoIntra          ("FORCE_NO_INTRA", "0", "Force to coding with no intra prediction");
 
 #if DEBUG_STRING
 EnvVar DebugOptionList::DebugString_Structure ("DEBUG_STRUCTURE",   "0", "Produce output on chosen structure                        bit0=intra, bit1=inter");
@@ -229,6 +230,73 @@ Void printSBACCoeffData(  const UInt          lastX,
       }
     }
     std::cout << std::endl;
+    if (chan == 0){
+      std::fstream fs;
+      fs.open ("test.txt", std::fstream::out | std::fstream::app);
+      if (scanIdx==0){
+        int stop_flag = 1;
+        for (UInt d=0; d<=(width-1)+(height-1)&&stop_flag; d++)
+        {
+            for (UInt i = 0;i<=d&&i<width&&stop_flag;i++){
+              if (i + width <= d) continue;
+              if (d%2!=0){
+                if (d!=(width-1)+(height-1) && i*width + d-i!=lastX+lastY*width) 
+                {
+                  fs << std::setw(3) << pCoeff[i*width + d-i] << ",";
+                }
+                else
+                {
+                  fs << std::setw(3) << pCoeff[i*width+ d-i]<<std::endl;
+                  stop_flag = 0;
+                }
+              }
+              else
+              {
+                if (d!=(width-1)+(height-1) && (d-i)*width + i!=lastX+lastY*width) 
+                {
+                  fs << std::setw(3) << pCoeff[(d-i)*width + i] << ",";
+                }
+                else
+                {
+                  fs << std::setw(3) << pCoeff[(d-i)*width + i]<<std::endl;
+                  stop_flag = 0;
+                }
+              }
+            }
+        }
+      }
+      else if (scanIdx==1){
+          int stop_flag = 1;
+          for (UInt i = 0;i < height&&stop_flag; i++){
+            for (UInt j = 0;j < width&&stop_flag; j++){
+              if (i*width + j != lastX+lastY*width){
+                fs<< std::setw(3) << pCoeff[i*width + j] <<",";
+              }
+              else
+              {
+                fs<< std::setw(3) << pCoeff[i*width + j] <<std::endl;
+                stop_flag = 0;
+              }
+            }
+          }
+      }
+      else if (scanIdx==2){
+          int stop_flag = 1;
+          for (UInt i = 0;i < width&&stop_flag;i++){
+            for (UInt j = 0;j<height&&stop_flag;j++){
+              if (i*width + j != lastX+lastY*width){
+                fs<< std::setw(3) << pCoeff[j*width + i] <<",";
+              }
+              else
+              {
+                fs<< std::setw(3) << pCoeff[j*width + i] <<std::endl;
+                stop_flag = 0;
+              }
+            }
+          }
+      }
+      fs.close(); 
+    }
   }
 }
 

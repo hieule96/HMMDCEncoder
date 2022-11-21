@@ -72,13 +72,16 @@ public:
 protected:
   // file I/O
   std::string m_inputFileName;                                ///< source file name
-  std::string m_bitstreamFileName;                            ///< output bitstream file
-  std::string m_reconFileName;                                ///< output reconstruction file
+  std::string m_bitstreamFileName1;                            ///< output bitstream file
+  std::string m_reconFileName1;                                ///< output reconstruction file
+  std::string m_bitstreamFileName2;
+  std::string m_reconFileName2;
   // tle
   // Multiple Description Coding
   std::string m_quadtreeFile;
   std::string m_QPFile;
   std::string m_debugQtreeFile;
+  std::string m_resiNoQuant;
   Int m_encodingMode;
   std::string m_lamdaForcing;
   // Lambda modifiers
