@@ -3818,8 +3818,8 @@ Distortion TEncSearch::xGetTemplateCost( TComDataCU* pcCU,
                                          )
 {
   Distortion uiCost = std::numeric_limits<Distortion>::max();
-
-  TComPicYuv* pcPicYuvRef = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec();
+  // reference must be central one
+  TComPicYuv* pcPicYuvRef = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYUVRecC();
 
   pcCU->clipMv( cMvCand );
 
@@ -3903,9 +3903,9 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
                         pcYuv->getStride(COMPONENT_Y),
                         pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) );
 #endif
-
-  Pel*        piRefY      = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdxPred )->getPicYuvRec()->getAddr( COMPONENT_Y, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiPartAddr );
-  Int         iRefStride  = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdxPred )->getPicYuvRec()->getStride(COMPONENT_Y);
+  // @tle reference picture must be the central
+  Pel*        piRefY      = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdxPred )->getPicYUVRecC()->getAddr( COMPONENT_Y, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiPartAddr );
+  Int         iRefStride  = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdxPred )->getPicYUVRecC()->getStride(COMPONENT_Y);
 
   TComMv      cMvPred = *pcMvPred;
 

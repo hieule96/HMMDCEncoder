@@ -4,22 +4,7 @@
 #define BUFFER_READ_SIZE 1024
 TMDCQPTable* TMDCQPTable::m_instance = NULL;
 
-
-TMDCQPTable::TMDCQPTable(Int nbElementReadLine,const char * QPFileName){
-        qpArray = new Int [nbElementReadLine];
-        memset(qpArray, 0, nbElementReadLine * sizeof(Int));
-        this->m_countQPArr = 0;
-        this->m_countQtreeArr = 0;
-        fpQPFile.open(QPFileName);
-        this->m_cturs = 0;
-        if (fpQPFile.fail()){
-            throw std::runtime_error("Cannot open file :");
-            std::cerr << "Cannot open file : " << QPFileName <<std::endl;
-            exit(EXIT_FAILURE);
-        }
-}
-
-TMDCQPTable::TMDCQPTable(Int nbElementReadLine,const char * QPFileName,const char * QtreeFileName){
+TMDCQPTable::TMDCQPTable(Int nbElementReadLine,const char * QPFileName1,const char *QPFileName2,const char * QtreeFileName){
         qpArray = new Int [nbElementReadLine];
         qtreeArray = new UInt[nbElementReadLine];
         this->m_cturs = 0;
@@ -32,9 +17,14 @@ TMDCQPTable::TMDCQPTable(Int nbElementReadLine,const char * QPFileName,const cha
             std::cerr << "Cannot open file : " << QtreeFileName << std::endl;
             exit(EXIT_FAILURE);
         }
-        fpQPFile.open(QPFileName);
-        if (fpQPFile.fail()){
-            std::cerr << "Cannot open file : " << QPFileName <<std::endl;
+        fpQPFile1.open(QPFileName1);
+        if (fpQPFile1.fail()){
+            std::cerr << "Cannot open file : " << QPFileName1 <<std::endl;
+            exit(EXIT_FAILURE);
+        }
+        fpQPFile2.open(QPFileName1);
+        if (fpQPFile2.fail()){
+            std::cerr << "Cannot open file : " << QPFileName1 <<std::endl;
             exit(EXIT_FAILURE);
         }
 }
@@ -107,15 +97,32 @@ Int TMDCQPTable::readALineQtree(){
     return this->m_countQtreeArr;
 }
 
-Int TMDCQPTable::readALineQp(){
+Int TMDCQPTable::readALineQp(Int iQPFile){
     char* buffer = new char[BUFFER_READ_SIZE];
     // get the buffer from the file
-    if(fpQPFile.is_open()){
-        fpQPFile.getline(buffer, BUFFER_READ_SIZE);
-    }
-    else
+    switch (iQPFile)
     {
-        throw std::runtime_error("readALineQp: Unexpected closed file");
+        case 1:
+            if(fpQPFile1.is_open()){
+                fpQPFile1.getline(buffer, BUFFER_READ_SIZE);
+            }
+            else
+            {
+                throw std::runtime_error("readALineQp: Unexpected closed file");
+            }
+            break;
+        case 2:
+            if(fpQPFile2.is_open()){
+                fpQPFile2.getline(buffer, BUFFER_READ_SIZE);
+            }
+            else
+            {
+                throw std::runtime_error("readALineQp: Unexpected closed file");
+            }
+            break;
+    default:
+        throw std::runtime_error("Bad iQP");
+        break;
     }
     //parsing this buffer
     this->m_countQPArr = convertStringToIntArrayQP(qpArray,buffer,BUFFER_READ_SIZE);
@@ -126,5 +133,6 @@ TMDCQPTable::~TMDCQPTable(){
     delete [] qpArray;
     delete [] qtreeArray;
     fpQtreeFile.close();
-    fpQPFile.close();
+    fpQPFile1.close();
+    fpQPFile2.close();
 }

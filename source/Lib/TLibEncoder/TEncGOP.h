@@ -41,7 +41,7 @@
 #include <list>
 
 #include <stdlib.h>
-
+#include <python3.10/Python.h>
 #include "TLibCommon/TComList.h"
 #include "TLibCommon/TComPic.h"
 #include "TLibCommon/TComBitCounter.h"
@@ -70,21 +70,43 @@ class TEncTop;
 // ====================================================================================================================
 // Class definition
 // ====================================================================================================================
-
+class EfficientFieldIRAPMapping;
 class TEncGOP
 {
   class DUData
   {
-  public:
-    DUData()
-    :accumBitsDU(0)
-    ,accumNalsDU(0) {};
+    public:
+      DUData()
+      :accumBitsDU(0)
+      ,accumNalsDU(0) {};
 
-    Int accumBitsDU;
-    Int accumNalsDU;
+      Int accumBitsDU;
+      Int accumNalsDU;
   };
+  public:
+    class ControlParameterForMDC
+    {
+      public:
+        Int actualHeadBits;
+        Int actualTotalBits;
+        Int uiNumSliceSegments;
+        Int numSubstreams;
+        Int estimatedBits;
+        std::size_t binCountsInNalUnits;
+        std::size_t numBytesInVclNalUnits;
+        ControlParameterForMDC():
+        actualHeadBits(0),
+        actualTotalBits(0),
+        uiNumSliceSegments(1),
+        binCountsInNalUnits(0),
+        numBytesInVclNalUnits(0),
+        numSubstreams(0),
+        estimatedBits(0)
+        {
 
-private:
+        };
+    };
+  private:
 
   TEncAnalyze             m_gcAnalyzeAll;
   TEncAnalyze             m_gcAnalyzeI;
@@ -116,9 +138,8 @@ private:
   //  Access channel
   TEncTop*                m_pcEncTop;
   TEncCfg*                m_pcCfg;
-  TEncSlice*              m_pcSliceEncoder;
+  std::array <TEncSlice*,2> m_pcArrSliceEncoder;
   TComList<TComPic*>*     m_pcListPic;
-
   TEncEntropy*            m_pcEntropyCoder;
   TEncCavlc*              m_pcCavlcCoder;
   TEncSbac*               m_pcSbacCoder;
@@ -146,17 +167,35 @@ private:
   SEIEncoder              m_seiEncoder;
   TComPicYuv*             m_pcDeblockingTempPicYuv;
   Int                     m_DBParam[MAX_ENCODER_DEBLOCKING_QUALITY_LAYERS][4];   //[layer_id][0: available; 1: bDBDisabled; 2: Beta Offset Div2; 3: Tc Offset Div2;]
-
+  Void xConfigSliceGOP(TComSlice *pcSlice,Int iGOPid, Int pocCurr, Bool isField, TComList <TComPic*> &rcListPic, TEncSlice* &pcSliceEncoder);
+  Void xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, UInt uiDepth);
+  Void centralConstruction(TComPic &rPic);
+  Void xCompressPicDescription(TComSlice* &rpcSlice,
+  TComPic* &rpcPic, Int iGOPid, Int iPOCLast, Int pocCurr, Bool isField, 
+  ControlParameterForMDC &rControl,
+  TComList <TComPic*> &rcListPic, TEncSlice* &rcSliceEncoder);
+  Void xWriteSPSPPSVPS(TComSlice* &rpcSlice,const TComPic *pcPic,AccessUnit &accessUnit,Bool &rbSeqFirst,Int &totalbit);
+  Void xLoopOverSliceToBs(TComPic* &rpcPic, TEncSlice* &rcSliceEncoder, std::vector<TComOutputBitstream> &substreamsOut, AccessUnit &accessUnit, std::deque<DUData> &duData, ControlParameterForMDC &pcontrol);
+  Void xwriteSEIMessageForMDC(TComPic *pcPic, TComSlice* pcSlice, Int iGOPid,Double PSNR_Y, Bool isField,AccessUnit &accessUnit, EfficientFieldIRAPMapping &effFieldIRAPMap, std::deque<DUData> &dudata);
 public:
   TEncGOP();
   virtual ~TEncGOP();
 
-  Void  create      ();
-  Void  destroy     ();
-
-  Void  init        ( TEncTop* pcTEncTop );
-  Void  compressGOP ( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRec,
-                     std::list<AccessUnit>& accessUnitsInGOP, Bool isField, Bool isTff, const InputColourSpaceConversion ip_conversion, const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogControl &outputLogCtrl );
+  Void create      ();
+  Void destroy     ();
+  Void ExecutePythonOptimizer();
+  Void init        ( TEncTop* pcTEncTop);
+  Void compressGOPMDC(Int iPOCLast, Int iNumPicRcvd, 
+  TComList <TComPic*> &rcListPic,
+  TComList<TComPicYuv*>& rcListPicYuvRecOut1,
+  TComList<TComPicYuv*>& rcListPicYuvRecOut2,
+  TComList<TComPicYuv*>& rcListPicYuvRecOutC,
+  std::list<AccessUnit>& accessUnitsInGOP1, 
+  std::list<AccessUnit>& accessUnitsInGOP2,
+  Bool isField, Bool isTff, const InputColourSpaceConversion ip_conversion, 
+  const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogControl &outputLogCtrl);
+  // Void  compressGOP ( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic, TComList<TComPicYuv*>& rcListPicYuvRec,
+  //                    std::list<AccessUnit>& accessUnitsInGOP, Bool isField, Bool isTff, const InputColourSpaceConversion ip_conversion, const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogControl &outputLogCtrl );
   Void  xAttachSliceDataToNalUnit (OutputNALUnit& rNalu, TComOutputBitstream* pcBitstreamRedirect);
 
 
@@ -168,7 +207,7 @@ public:
 
   Void  preLoopFilterPicAll  ( TComPic* pcPic, UInt64& ruiDist );
 
-  TEncSlice*  getSliceEncoder()   { return m_pcSliceEncoder; }
+  TEncSlice*  getSliceEncoder(Int iSEncoder)   { return m_pcArrSliceEncoder[iSEncoder]; }
   NalUnitType getNalUnitType( Int pocCurr, Int lastIdr, Bool isField );
   Void arrangeLongtermPicturesInRPS(TComSlice *, TComList<TComPic*>& );
 

@@ -9,9 +9,9 @@
 
 class TMDCQPTable{
     public:
-        TMDCQPTable(Int nbElementReadLine,const char* QPFileName,const char* QtreeFileName);
+        TMDCQPTable(Int nbElementReadLine,const char* QPFileName1,const char* QPFileName2,const char* QtreeFileName);
         TMDCQPTable(Int nbElementReadLine,const char * QPFileName);
-        Int readALineQp();
+        Int readALineQp(Int iQPFile);
         Int* getQPArray(){return qpArray;}
         Int readALineQtree();
         Int readStdIn();
@@ -25,15 +25,9 @@ class TMDCQPTable{
         void appendQPArray(Int QP);
         ~TMDCQPTable();
         static TMDCQPTable* getInstance() {return m_instance;}
-        static TMDCQPTable* initInstance(Int nbElementReadLine,const char* QPFileName, const char* QtreeFileName){
+        static TMDCQPTable* initInstance(Int nbElementReadLine,const char* QPFileName1,const char* QPFileName2, const char* QtreeFileName){
             if (m_instance==NULL){
-                m_instance = new TMDCQPTable(nbElementReadLine,QPFileName,QtreeFileName); 
-            }
-            return m_instance;
-        }
-        static TMDCQPTable* initInstance(Int nbElementReadLine,const char* QPFileName){
-            if (m_instance==NULL){
-                m_instance = new TMDCQPTable(nbElementReadLine,QPFileName); 
+                m_instance = new TMDCQPTable(nbElementReadLine,QPFileName1,QPFileName2,QtreeFileName); 
             }
             return m_instance;
         }
@@ -43,7 +37,8 @@ class TMDCQPTable{
         Int m_cturs;
         Int m_countQPArr;
         Int m_countQtreeArr;
-        std::ifstream fpQPFile;
+        std::ifstream fpQPFile1;
+        std::ifstream fpQPFile2;
         std::ifstream fpQtreeFile;
         static TMDCQPTable* m_instance;
 };

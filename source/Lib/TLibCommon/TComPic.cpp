@@ -57,6 +57,7 @@ TComPic::TComPic()
 , m_bCheckLTMSB                           (false)
 , m_iRunMode                                (0)
 , m_lamdaForcing                            (0)
+, m_descriptionId                           (0)
 {
   for(UInt i=0; i<NUM_PIC_YUV; i++)
   {
@@ -85,7 +86,9 @@ Void TComPic::create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirt
   const UInt         uiMaxDepth      = sps.getMaxTotalCUDepth();
 
 #if REDUCED_ENCODER_MEMORY
-  m_picSym.create( sps, pps, uiMaxDepth, bCreateForImmediateReconstruction );
+  m_arrPicSym[0].create( sps, pps, uiMaxDepth, bCreateForImmediateReconstruction );
+  m_arrPicSym[1].create( sps, pps, uiMaxDepth, bCreateForImmediateReconstruction );
+  m_pcpicSym = &m_arrPicSym[0];
   if (bCreateEncoderSourcePicYuv)
 #else
   m_picSym.create( sps, pps, uiMaxDepth );
@@ -115,7 +118,7 @@ Void TComPic::create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirt
 #if REDUCED_ENCODER_MEMORY
 Void TComPic::prepareForEncoderSourcePicYuv()
 {
-  const TComSPS &sps=m_picSym.getSPS();
+  const TComSPS &sps=m_pcpicSym->getSPS();
 
   const ChromaFormat chromaFormatIDC = sps.getChromaFormatIdc();
   const Int          iWidth          = sps.getPicWidthInLumaSamples();
@@ -138,7 +141,7 @@ Void TComPic::prepareForReconstruction()
 {
   if (m_apcPicYuv[PIC_YUV_REC] == NULL)
   {
-    const TComSPS &sps=m_picSym.getSPS();
+    const TComSPS &sps=m_pcpicSym->getSPS();
     const ChromaFormat chromaFormatIDC = sps.getChromaFormatIdc();
     const Int          iWidth          = sps.getPicWidthInLumaSamples();
     const Int          iHeight         = sps.getPicHeightInLumaSamples();
@@ -147,17 +150,24 @@ Void TComPic::prepareForReconstruction()
     const UInt         uiMaxDepth      = sps.getMaxTotalCUDepth();
 
     m_apcPicYuv[PIC_YUV_REC]  = new TComPicYuv;  m_apcPicYuv[PIC_YUV_REC]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
+    m_apcPicYuv[PIC_YUV_REC1]  = new TComPicYuv;  m_apcPicYuv[PIC_YUV_REC1]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
+    m_apcPicYuv[PIC_YUV_REC2]  = new TComPicYuv;  m_apcPicYuv[PIC_YUV_REC2]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
+
   }
 
   // mark it should be extended
   m_apcPicYuv[PIC_YUV_REC]->setBorderExtension(false);
+  m_apcPicYuv[PIC_YUV_REC1]->setBorderExtension(false);
+  m_apcPicYuv[PIC_YUV_REC2]->setBorderExtension(false);
 
-  m_picSym.prepareForReconstruction();
+  m_arrPicSym[0].prepareForReconstruction();
+  m_arrPicSym[1].prepareForReconstruction();
+
 }
 
 Void TComPic::releaseReconstructionIntermediateData()
 {
-  m_picSym.releaseReconstructionIntermediateData();
+  m_pcpicSym->releaseReconstructionIntermediateData();
 }
 
 Void TComPic::releaseEncoderSourceImageData()
@@ -184,13 +194,15 @@ Void TComPic::releaseAllReconstructionData()
     delete m_apcPicYuv[PIC_YUV_REC];
     m_apcPicYuv[PIC_YUV_REC] = NULL;
   }
-  m_picSym.releaseAllReconstructionData();
+  m_arrPicSym[0].releaseAllReconstructionData();
+  m_arrPicSym[1].releaseAllReconstructionData();
 }
 #endif
 
 Void TComPic::destroy()
 {
-  m_picSym.destroy();
+  m_arrPicSym[0].destroy();
+  m_arrPicSym[1].destroy();
 
   for(UInt i=0; i<NUM_PIC_YUV; i++)
   {

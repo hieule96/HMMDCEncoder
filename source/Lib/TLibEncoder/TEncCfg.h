@@ -149,7 +149,8 @@ protected:
   Bool      m_cabacZeroWordPaddingEnabled;
   // tle MDC
   std::string m_quadtreeFile;                 ///< Qtree MDC File name
-  std::string m_QPFile;                       ///< QP MDC File name
+  std::string m_QPFile1;                       ///< QP MDC File name
+  std::string m_QPFile2;
   Int m_encodingMode;           /// < 0: Produce residual 1: MDC encoding from 2 inputs files and bypass the process of HEVC
   Double m_lamdaForcing;           /// Lamba forcing
   std::string m_resiNoQuant;
@@ -1331,14 +1332,15 @@ public:
   Void      setSummaryVerboseness(UInt v)                            { m_summaryVerboseness = v; }
   UInt      getSummaryVerboseness( ) const                           { return m_summaryVerboseness; }
   // tle MDC
-  Void setQtreeFile(std::string QtreeFilename) { m_quadtreeFile = QtreeFilename; };
-  Void setQPFile(std::string QPFilename) { m_QPFile = QPFilename; };
-  Void setResiNoQuant(std::string resiFileName){m_resiNoQuant=resiFileName;};
-  const char* getQtreeFile() { return m_quadtreeFile.c_str(); };
-  const char* getQPFile() { return m_QPFile.c_str(); };
-  const char* getResiNoQuant(){return m_resiNoQuant.c_str();};
-  Void setEncodingMode(int mode) { m_encodingMode = mode; };
-  Int getEncodingMode() const { return m_encodingMode; };
+  Void setQtreeFile(std::string QtreeFilename) { m_quadtreeFile = QtreeFilename; }
+  Void setQPFile(std::string QPFilename1, std::string QPFilename2) { m_QPFile1 = QPFilename1;m_QPFile2 = QPFilename2;}
+  Void setResiNoQuant(std::string resiFileName){m_resiNoQuant=resiFileName;}
+  const char* getQtreeFile() { return m_quadtreeFile.c_str(); }
+  const char* getQPFile1() { return m_QPFile1.c_str(); }
+  const char* getQPFile2() { return m_QPFile2.c_str(); }
+  const char* getResiNoQuant(){return m_resiNoQuant.c_str();}
+  Void setEncodingMode(int mode) { m_encodingMode = mode; }
+  Int getEncodingMode() const { return m_encodingMode; }
   Void setLambdaForcing(Double lambda){
     m_lamdaForcing = lambda;
   }

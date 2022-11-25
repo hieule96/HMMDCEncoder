@@ -779,11 +779,13 @@ Bool TAppEncCfg::parseCfg( Int argc, TChar* argv[] )
   // File, I/O and source parameters
   ("InputFile,i",                                     m_inputFileName,                             string(""), "Original YUV input file name")
   ("InputPathPrefix,-ipp",                            inputPathPrefix,                             string(""), "pathname to prepend to input filename")
-  ("BitstreamFile1,b1",                                 m_bitstreamFileName1,                         string(""), "Bitstream output file name 1")
-  ("ReconFile1,o1",                                     m_reconFileName1,                             string(""), "Reconstructed YUV output file name 1")
-  ("BitstreamFile2,b2",                                 m_bitstreamFileName2,                         string(""), "Bitstream output file name 2")
-  ("ReconFile2,o2",                                     m_reconFileName2,                             string(""), "Reconstructed YUV output file name 2")
-  ("DescriptionQPSelectionFile,-qf",                  m_QPFile,                                    string(""), "File of Quadtree Structure")
+  ("BitstreamFile1,-b1",                              m_bitstreamFileName1,                         string(""), "Bitstream output file name 1")
+  ("ReconFile1,-o1",                                  m_reconFileName1,                             string(""), "Reconstructed YUV output file name 1")
+  ("BitstreamFile2,-b2",                              m_bitstreamFileName2,                         string(""), "Bitstream output file name 2")
+  ("ReconFile2,-o2",                                  m_reconFileName2,                             string(""), "Reconstructed YUV output file name 2")
+  ("RecconFileC,-oc",                                 m_reconFileNameC,                           string(""), "Central Reconstruction")
+  ("DescriptionQPSelectionFile1,-qf1",                m_QPFile1,                                    string(""), "File of Quadtree Structure")
+  ("DescriptionQPSelectionFile1,-qf2",                m_QPFile2,                                    string(""), "File of Quadtree Structure")
   ("QuadTreeStructureFile,-qt",                       m_quadtreeFile,                              string("decoder_cupu.txt"),"Quadtree structure file( default: decoder_cupu.txt)")
   ("DebugQtreeFile",                                  m_debugQtreeFile,                            string("Qt_"),"Debug Quadtree of Description File")
   ("ResidualNoQuant,-resi",                           m_resiNoQuant,                               string("resi_real.yuv"),"Residual for MDC")
@@ -3093,12 +3095,14 @@ Int TAppEncCfg::xDPBUsage(std::ostream *pOs)
 Void TAppEncCfg::xPrintParameter()
 {
   printf("\n");
-  printf("Input          File 1                    : %s\n", m_inputFileName1.c_str()          );
-  printf("Bitstream      File 1                   : %s\n", m_bitstreamFileName1.c_str()      );
-  printf("Input          File 2                    : %s\n", m_inputFileName2.c_str()          );
-  printf("Bitstream      File 2                   : %s\n", m_bitstreamFileName2.c_str()      );
-  printf("Reconstruction File                    : %s\n", m_reconFileName1.c_str()          );
-  printf("MDC(QP) file :                         : %s\n", m_QPFile.c_str());
+  printf("Input          File                    : %s\n", m_inputFileName.c_str()          );
+  printf("Bitstream      File 1                  : %s\n", m_bitstreamFileName1.c_str()      );
+  printf("Bitstream      File 2                  : %s\n", m_bitstreamFileName2.c_str()      );
+  printf("Reconstruction File 1                   : %s\n", m_reconFileName1.c_str()          );
+  printf("Reconstruction File 2                   : %s\n", m_reconFileName2.c_str()          );
+  printf("MDC(QP) file 1:                         : %s\n", m_QPFile1.c_str());
+  printf("MDC(QP) file 2:                         : %s\n", m_QPFile2.c_str());
+
   printf("Quadtree File:                         : %s\n", m_quadtreeFile.c_str());
   printf("Real     Format                        : %dx%d %gHz\n", m_iSourceWidth - m_confWinLeft - m_confWinRight, m_iSourceHeight - m_confWinTop - m_confWinBottom, (Double)m_iFrameRate/m_temporalSubsampleRatio );
   printf("Internal Format                        : %dx%d %gHz\n", m_iSourceWidth, m_iSourceHeight, (Double)m_iFrameRate/m_temporalSubsampleRatio );

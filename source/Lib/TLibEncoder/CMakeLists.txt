@@ -11,9 +11,10 @@ file( GLOB INC_FILES "*.h" )
 if( MSVC )
   file( GLOB NATVIS_FILES "../../VisualStudio/*.natvis" )
 endif()
+find_package(PythonLibs REQUIRED)
 
 # library
-add_library( ${LIB_NAME} SHARED ${SRC_FILES} ${INC_FILES} ${NATVIS_FILES} )
+add_library( ${LIB_NAME} SHARED ${SRC_FILES} ${INC_FILES} ${NATVIS_FILES} ${PYTHON_INCLUDE_DIRS} ${PYTHON_LIBRARIES} )
 target_compile_definitions( ${LIB_NAME} PUBLIC )
 
 if( HIGH_BITDEPTH )
@@ -32,9 +33,9 @@ if( SET_ENABLE_TRACING )
   endif()
 endif()
 
-target_include_directories( ${LIB_NAME} PUBLIC . )
-target_link_libraries( ${LIB_NAME} TLibCommon TLibSysuAnalyzer TLibMDCCommon Utilities TLibIPC Threads::Threads )
-
+target_include_directories( ${LIB_NAME} PUBLIC . ${PYTHON_INCLUDE_DIRS} )
+target_link_libraries( ${LIB_NAME} TLibCommon TLibSysuAnalyzer TLibMDCCommon Utilities TLibIPC Threads::Threads ${PYTHON_LIBRARIES}/libpython3.8.so )
+message(${PYTHON_LIBRARIES})
 if( CMAKE_COMPILER_IS_GNUCC )
   # this is quite certainly a compiler problem
   set_property( SOURCE "EncCu.cpp" APPEND PROPERTY COMPILE_FLAGS "-Wno-array-bounds" )

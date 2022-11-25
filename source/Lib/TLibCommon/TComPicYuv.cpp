@@ -226,6 +226,24 @@ Void  TComPicYuv::copyToPic (TComPicYuv*  pcPicYuvDst) const
 }
 
 
+Void TComPicYuv::copyCUToPic(TComPicYuv*  pcPicYuvDst,const Int ctuRSAddr,
+const Int uiAbsZorderIdx, const Int height, const Int width){
+  assert( m_chromaFormatIDC == pcPicYuvDst->getChromaFormat() );
+  for(Int comp=0; comp<getNumberValidComponents(); comp++)
+  {
+    const ComponentID compId=ComponentID(comp);
+    const Int strideSrc = getStride(compId);
+    const Pel *pSrc       = getAddr(compId,ctuRSAddr,uiAbsZorderIdx);
+          Pel *pDest      = pcPicYuvDst->getAddr(compId,ctuRSAddr,uiAbsZorderIdx);
+    const UInt strideDest = pcPicYuvDst->getStride(compId);
+
+    for(Int y=0; y<height; y++, pSrc+=strideSrc, pDest+=strideDest)
+    {
+      ::memcpy(pDest, pSrc, width*sizeof(Pel));
+    }
+  }
+}
+
 Void TComPicYuv::extendPicBorder ()
 {
   if ( m_bIsBorderExtended )

@@ -76,11 +76,12 @@ private:
   TComYuv**               m_ppcPredYuvBest; ///< Best Prediction Yuv for each depth
   TComYuv**               m_ppcResiYuvBest; ///< Best Residual Yuv for each depth
   TComYuv**               m_ppcRecoYuvBest; ///< Best Reconstruction Yuv for each depth
+
   TComYuv**               m_ppcPredYuvTemp; ///< Temporary Prediction Yuv for each depth
   TComYuv**               m_ppcResiYuvTemp; ///< Temporary Residual Yuv for each depth
   TComYuv**               m_ppcRecoYuvTemp; ///< Temporary Reconstruction Yuv for each depth
+  
   TComYuv**               m_ppcOrigYuv;     ///< Original Yuv for each depth
-  TEncIPC*                m_encoderIPC;
   //  Data : encoder control
   Bool                    m_bEncodeDQP;
   Bool                    m_bFastDeltaQP;
@@ -157,7 +158,6 @@ protected:
 #else
   Void  xCheckRDCostInter   ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, PartSize ePartSize  );
 #endif
-
   Void  xCheckRDCostIntra   ( TComDataCU *&rpcBestCU,
                               TComDataCU *&rpcTempCU,
                               PartSize     ePartSize

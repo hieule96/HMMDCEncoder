@@ -76,13 +76,13 @@ Void TEncSlice::destroy()
     m_viRdPicQp.clear();
 }
 
-Void TEncSlice::init(TEncTop* pcEncTop)
+Void TEncSlice::init(TEncTop* pcEncTop, Int iEncoder)
 {
     m_pcCfg = pcEncTop;
     m_pcListPic = pcEncTop->getListPic();
-
+    m_descriptionId = iEncoder;
     m_pcGOPEncoder = pcEncTop->getGOPEncoder();
-    m_pcCuEncoder = pcEncTop->getCuEncoder();
+    m_pcCuEncoder = pcEncTop->getCuEncoder(iEncoder);
     m_pcPredSearch = pcEncTop->getPredSearch();
 
     m_pcEntropyCoder = pcEncTop->getEntropyCoder();
@@ -638,8 +638,6 @@ Void TEncSlice::calCostSliceI(TComPic* pcPic) // TODO: this only analyses the fi
 
 /** \param pcPic   picture class
  */
-int counter=0;
-static FILE* bppPerCTU;
 Void TEncSlice::compressSlice(TComPic* pcPic, const Bool bCompressEntireSlice, const Bool bFastDeltaQP)
 {
     // if bCompressEntireSlice is true, then the entire slice (not slice segment) is compressed,

@@ -159,7 +159,7 @@ public:
 
   //  Copy function to picture
   Void          copyToPic         ( TComPicYuv*  pcPicYuvDst ) const ;
-
+  Void          copyCUToPic (TComPicYuv*  pcPicYuvDst,const Int ctuRSAddr,const Int uiAbsZorderIdx, const Int height, const Int width);
   //  Extend function of picture buffer
   Void          extendPicBorder   ();
 

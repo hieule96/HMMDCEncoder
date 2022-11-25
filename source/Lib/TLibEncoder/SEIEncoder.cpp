@@ -221,7 +221,7 @@ Void SEIEncoder::initSEISOPDescription(SEISOPDescription *sopDescriptionSEI, TCo
   sopDescriptionSEI->m_numPicsInSopMinus1 = i - 1;
 }
 
-Void SEIEncoder::initSEIBufferingPeriod(SEIBufferingPeriod *bufferingPeriodSEI, TComSlice *slice)
+Void SEIEncoder::initSEIBufferingPeriod(SEIBufferingPeriod *bufferingPeriodSEI, const TComSlice *slice)
 {
   assert (m_isInitialized);
   assert (bufferingPeriodSEI != NULL);

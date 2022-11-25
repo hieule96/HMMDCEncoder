@@ -51,6 +51,7 @@
 #include <math.h>
 #include <deque>
 #include "TMDCCommon/TMDCQPTable.hpp"
+#include <Python.h>
 using namespace std;
 
 //! \ingroup TLibEncoder
@@ -82,7 +83,10 @@ TEncGOP::TEncGOP()
   m_iLastRecoveryPicPOC = 0;
 
   m_pcCfg               = NULL;
-  m_pcSliceEncoder      = NULL;
+  for (auto i:m_pcArrSliceEncoder)
+  {
+    i = NULL;
+  }
   m_pcListPic           = NULL;
 
   m_pcEntropyCoder      = NULL;
@@ -102,6 +106,7 @@ TEncGOP::TEncGOP()
   m_associatedIRAPType = NAL_UNIT_CODED_SLICE_IDR_N_LP;
   m_associatedIRAPPOC  = 0;
   m_pcDeblockingTempPicYuv = NULL;
+  ExecutePythonOptimizer();
 }
 
 TEncGOP::~TEncGOP()
@@ -126,12 +131,15 @@ Void  TEncGOP::destroy()
   }
 }
 
-Void TEncGOP::init ( TEncTop* pcTEncTop )
+Void TEncGOP::init ( TEncTop* pcTEncTop)
 {
   m_pcEncTop     = pcTEncTop;
   m_pcCfg                = pcTEncTop;
   m_seiEncoder.init(m_pcCfg, pcTEncTop, this);
-  m_pcSliceEncoder       = pcTEncTop->getSliceEncoder();
+  for (int i=0;i<m_pcArrSliceEncoder.size();i++) 
+  {
+    m_pcArrSliceEncoder[i]=pcTEncTop->getSliceEncoder(i);
+  }
   m_pcListPic            = pcTEncTop->getListPic();
 
   m_pcEntropyCoder       = pcTEncTop->getEntropyCoder();
@@ -147,7 +155,13 @@ Void TEncGOP::init ( TEncTop* pcTEncTop )
 
 }
 
-
+Void TEncGOP::ExecutePythonOptimizer(){
+  std::cout << "Python" << std::endl;
+	PyObject* pInt;
+	Py_Initialize();
+	PyRun_SimpleString("print('Hello World from Embedded Python!!!')");
+	Py_Finalize();
+}
 
 #if MCTS_EXTRACTION
 Void TEncGOP::generateVPS_RBSP(TComBitIf* rbsp, const TComVPS *vps)
@@ -1179,103 +1193,10 @@ printHash(const HashType hashType, const std::string &digestStr)
 // ====================================================================================================================
 // Public member functions
 // ====================================================================================================================
-Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic,
-                           TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsInGOP,
-                           Bool isField, Bool isTff, const InputColourSpaceConversion ip_conversion, const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogControl &outputLogCtrl )
-{
-  // TODO: Split this function up.
-
-  TComPic*        pcPic = NULL;
-  TComPicYuv*     pcPicYuvRecOut;
-  TComSlice*      pcSlice;
-  TComOutputBitstream  *pcBitstreamRedirect;
-  pcBitstreamRedirect = new TComOutputBitstream;
-  AccessUnit::iterator  itLocationToPushSliceHeaderNALU; // used to store location where NALU containing slice header is to be inserted
-
-  xInitGOP( iPOCLast, iNumPicRcvd, isField );
-
-  m_iNumPicCoded = 0;
-  SEIMessages leadingSeiMessages;
-  SEIMessages nestedSeiMessages;
-  SEIMessages duInfoSeiMessages;
-  SEIMessages trailingSeiMessages;
-  std::deque<DUData> duData;
-  SEIDecodingUnitInfo decodingUnitInfoSEI;
-
-  EfficientFieldIRAPMapping effFieldIRAPMap;
-  if (m_pcCfg->getEfficientFieldIRAPEnabled())
-  {
-    effFieldIRAPMap.initialize(isField, m_iGopSize, iPOCLast, iNumPicRcvd, m_iLastIDR, this, m_pcCfg);
-  }
-
-  // reset flag indicating whether pictures have been encoded
-  for ( Int iGOPid=0; iGOPid < m_iGopSize; iGOPid++ )
-  {
-    m_pcCfg->setEncodedFlag(iGOPid, false);
-  }
-
-  for ( Int iGOPid=0; iGOPid < m_iGopSize; iGOPid++ )
-  {
-    if (m_pcCfg->getEfficientFieldIRAPEnabled())
-    {
-      iGOPid=effFieldIRAPMap.adjustGOPid(iGOPid);
-    }
-
-    //-- For time output for each slice
-    clock_t iBeforeTime = clock();
 
 
-    /////////////////////////////////////////////////////////////////////////////////////////////////// Initial to start encoding
-    Int iTimeOffset;
-    Int pocCurr;
 
-    if(iPOCLast == 0) //case first frame or first top field
-    {
-      pocCurr=0;
-      iTimeOffset = 1;
-    }
-    else if(iPOCLast == 1 && isField) //case first bottom field, just like the first frame, the poc computation is not right anymore, we set the right value
-    {
-      pocCurr = 1;
-      iTimeOffset = 1;
-    }
-    else
-    {
-      pocCurr = iPOCLast - iNumPicRcvd + m_pcCfg->getGOPEntry(iGOPid).m_POC - ((isField && m_iGopSize>1) ? 1:0);
-      iTimeOffset = m_pcCfg->getGOPEntry(iGOPid).m_POC;
-    }
-
-    if(pocCurr>=m_pcCfg->getFramesToBeEncoded())
-    {
-      if (m_pcCfg->getEfficientFieldIRAPEnabled())
-      {
-        iGOPid=effFieldIRAPMap.restoreGOPid(iGOPid);
-      }
-      continue;
-    }
-
-    if( getNalUnitType(pocCurr, m_iLastIDR, isField) == NAL_UNIT_CODED_SLICE_IDR_W_RADL || getNalUnitType(pocCurr, m_iLastIDR, isField) == NAL_UNIT_CODED_SLICE_IDR_N_LP )
-    {
-      m_iLastIDR = pocCurr;
-    }
-    // start a new access unit: create an entry in the list of output access units
-    accessUnitsInGOP.push_back(AccessUnit());
-    AccessUnit& accessUnit = accessUnitsInGOP.back();
-    xGetBuffer( rcListPic, rcListPicYuvRecOut, iNumPicRcvd, iTimeOffset, pcPic, pcPicYuvRecOut, pocCurr, isField );
-
-#if REDUCED_ENCODER_MEMORY
-    pcPic->prepareForReconstruction();
-
-#endif
-    //  Slice data initialization
-    pcPic->clearSliceBuffer();
-    pcPic->allocateNewSlice();
-    m_pcSliceEncoder->setSliceIdx(0);
-    pcPic->setCurrSliceIdx(0);
-
-    m_pcSliceEncoder->initEncSlice ( pcPic, iPOCLast, pocCurr, iGOPid, pcSlice, isField );
-
-    pcSlice->setLastIDR(m_iLastIDR);
+Void TEncGOP::xConfigSliceGOP(TComSlice *pcSlice,Int iGOPid, Int pocCurr, Bool isField, TComList <TComPic*> &rcListPic, TEncSlice* &pcSliceEncoder){
     pcSlice->setSliceIdx(0);
     //set default slice level flag to the same as SPS level flag
     pcSlice->setLFCrossSliceBoundaryFlag(  pcSlice->getPPS()->getLoopFilterAcrossSlicesEnabledFlag()  );
@@ -1435,7 +1356,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     if (pcSlice->getPOC() > m_RASPOCforResetEncoder && m_pcCfg->getResetEncoderStateAfterIRAP())
     {
       // need to reset encoder decisions.
-      m_pcSliceEncoder->resetEncoderDecisions();
+      pcSliceEncoder->resetEncoderDecisions();
 
       if (pcSlice->getSPS()->getUseSAO())
       {
@@ -1448,7 +1369,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       m_RASPOCforResetEncoder = pcSlice->getPOC();
     }
 
-    pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
+    pcSlice->setEncCABACTableIdx(pcSliceEncoder->getEncCABACTableIdx());
 #if MCTS_EXTRACTION
     SliceType  encCABACTableIdx = pcSlice->getEncCABACTableIdx();
     Bool encCabacInitFlag = (pcSlice->getSliceType() != encCABACTableIdx && encCABACTableIdx != I_SLICE) ? true : false;
@@ -1511,422 +1432,299 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     {
       pcSlice->setEnableTMVPFlag(0);
     }
-    
-    // set adaptive search range for non-intra-slices
-    if (m_pcCfg->getUseASR() && pcSlice->getSliceType()!=I_SLICE)
-    {
-      m_pcSliceEncoder->setSearchRange(pcSlice);
-    }
+}
 
-    Bool bGPBcheck=false;
-    if ( pcSlice->getSliceType() == B_SLICE)
-    {
-      if ( pcSlice->getNumRefIdx(RefPicList( 0 ) ) == pcSlice->getNumRefIdx(RefPicList( 1 ) ) )
-      {
-        bGPBcheck=true;
-        Int i;
-        for ( i=0; i < pcSlice->getNumRefIdx(RefPicList( 1 ) ); i++ )
-        {
-          if ( pcSlice->getRefPOC(RefPicList(1), i) != pcSlice->getRefPOC(RefPicList(0), i) )
-          {
-            bGPBcheck=false;
-            break;
-          }
-        }
-      }
-    }
-    if(bGPBcheck)
-    {
-      pcSlice->setMvdL1ZeroFlag(true);
-    }
-    else
-    {
-      pcSlice->setMvdL1ZeroFlag(false);
-    }
-
-
-    Double lambda            = 0.0;
-    Int actualHeadBits       = 0;
-    Int actualTotalBits      = 0;
-    Int estimatedBits        = 0;
-    Int tmpBitsBeforeWriting = 0;
-    if ( m_pcCfg->getUseRateCtrl() ) // TODO: does this work with multiple slices and slice-segments?
-    {
-      Int frameLevel = m_pcRateCtrl->getRCSeq()->getGOPID2Level( iGOPid );
-      if ( pcPic->getSlice(0)->getSliceType() == I_SLICE )
-      {
-        frameLevel = 0;
-      }
-      m_pcRateCtrl->initRCPic( frameLevel );
-      estimatedBits = m_pcRateCtrl->getRCPic()->getTargetBits();
-
-      if (m_pcRateCtrl->getCpbSaturationEnabled() && frameLevel != 0)
-      {
-        Int estimatedCpbFullness = m_pcRateCtrl->getCpbState() + m_pcRateCtrl->getBufferingRate();
-
-        // prevent overflow
-        if (estimatedCpbFullness - estimatedBits > (Int)(m_pcRateCtrl->getCpbSize()*0.9f))
-        {
-          estimatedBits = estimatedCpbFullness - (Int)(m_pcRateCtrl->getCpbSize()*0.9f);
-        }
-
-        estimatedCpbFullness -= m_pcRateCtrl->getBufferingRate();
-        // prevent underflow
-        if (estimatedCpbFullness - estimatedBits < m_pcRateCtrl->getRCPic()->getLowerBound())
-        {
-          estimatedBits = max(200, estimatedCpbFullness - m_pcRateCtrl->getRCPic()->getLowerBound());
-        }
-
-        m_pcRateCtrl->getRCPic()->setTargetBits(estimatedBits);
-      }
-
-      Int sliceQP = m_pcCfg->getInitialQP();
-      if ( ( pcSlice->getPOC() == 0 && m_pcCfg->getInitialQP() > 0 ) || ( frameLevel == 0 && m_pcCfg->getForceIntraQP() ) ) // QP is specified
-      {
-        Int    NumberBFrames = ( m_pcCfg->getGOPSize() - 1 );
-        Double dLambda_scale = 1.0 - Clip3( 0.0, 0.5, 0.05*(Double)NumberBFrames );
-        Double dQPFactor     = 0.57*dLambda_scale;
-        Int    SHIFT_QP      = 12;
-        Int    bitdepth_luma_qp_scale = 0;
-        Double qp_temp = (Double) sliceQP + bitdepth_luma_qp_scale - SHIFT_QP;
-        lambda = dQPFactor*pow( 2.0, qp_temp/3.0 );
-      }
-      else if ( frameLevel == 0 )   // intra case, but use the model
-      {
-        m_pcSliceEncoder->calCostSliceI(pcPic); // TODO: This only analyses the first slice segment - what about the others?
-
-        if ( m_pcCfg->getIntraPeriod() != 1 )   // do not refine allocated bits for all intra case
-        {
-          Int bits = m_pcRateCtrl->getRCSeq()->getLeftAverageBits();
-          bits = m_pcRateCtrl->getRCPic()->getRefineBitsForIntra( bits );
-
-          if (m_pcRateCtrl->getCpbSaturationEnabled() )
-          {
-            Int estimatedCpbFullness = m_pcRateCtrl->getCpbState() + m_pcRateCtrl->getBufferingRate();
-
-            // prevent overflow
-            if (estimatedCpbFullness - bits > (Int)(m_pcRateCtrl->getCpbSize()*0.9f))
-            {
-              bits = estimatedCpbFullness - (Int)(m_pcRateCtrl->getCpbSize()*0.9f);
-            }
-
-            estimatedCpbFullness -= m_pcRateCtrl->getBufferingRate();
-            // prevent underflow
-            if (estimatedCpbFullness - bits < m_pcRateCtrl->getRCPic()->getLowerBound())
-            {
-              bits = estimatedCpbFullness - m_pcRateCtrl->getRCPic()->getLowerBound();
-            }
-          }
-
-          if ( bits < 200 )
-          {
-            bits = 200;
-          }
-          m_pcRateCtrl->getRCPic()->setTargetBits( bits );
-        }
-
-        list<TEncRCPic*> listPreviousPicture = m_pcRateCtrl->getPicList();
-        m_pcRateCtrl->getRCPic()->getLCUInitTargetBits();
-        lambda  = m_pcRateCtrl->getRCPic()->estimatePicLambda( listPreviousPicture, pcSlice->getSliceType());
-        sliceQP = m_pcRateCtrl->getRCPic()->estimatePicQP( lambda, listPreviousPicture );
-      }
-      else    // normal case
-      {
-        list<TEncRCPic*> listPreviousPicture = m_pcRateCtrl->getPicList();
-        lambda  = m_pcRateCtrl->getRCPic()->estimatePicLambda( listPreviousPicture, pcSlice->getSliceType());
-        sliceQP = m_pcRateCtrl->getRCPic()->estimatePicQP( lambda, listPreviousPicture );
-      }
-
-      sliceQP = Clip3( -pcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, sliceQP );
-      m_pcRateCtrl->getRCPic()->setPicEstQP( sliceQP );
-
-      m_pcSliceEncoder->resetQP( pcPic, sliceQP, lambda );
-    }
-
-    UInt uiNumSliceSegments = 1;
-
-    // Allocate some coders, now the number of tiles are known.
-    const Int numSubstreamsColumns = (pcSlice->getPPS()->getNumTileColumnsMinus1() + 1);
-    const Int numSubstreamRows     = pcSlice->getPPS()->getEntropyCodingSyncEnabledFlag() ? pcPic->getFrameHeightInCtus() : (pcSlice->getPPS()->getNumTileRowsMinus1() + 1);
-    const Int numSubstreams        = numSubstreamRows * numSubstreamsColumns;
-    std::vector<TComOutputBitstream> substreamsOut(numSubstreams);
-    // now compress (trial encode) the various slice segments (slices, and dependent slices)
-    pcPic->setRunMode(m_pcCfg->getEncodingMode());
-    TMDCQPTable::getInstance()->resetCturs();
-    // After this an yuv residual will be created
-    {
-      const UInt numberOfCtusInFrame=pcPic->getPicSym()->getNumberOfCtusInFrame();
-      pcSlice->setSliceCurStartCtuTsAddr( 0 );
-      pcSlice->setSliceSegmentCurStartCtuTsAddr( 0 );
-      // tle, the code loop over different slice and then however, the CTU cannot be split, therefore, it's arrive that a CTU is bigger than the RTP
-      
-      for(UInt nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
-      {
-        m_pcSliceEncoder->precompressSlice(pcPic);
-        // Invoke our script python here !!!
-        m_pcSliceEncoder->compressSlice(pcPic, false, false);
-        // Then invoke another compressSlide for MDC
+// This function will compress, make a slice and build two descriptions
+// then do the loop filtering
+// pcSlice must be not null before the compression
+// return number of slice segment for an image
+Void TEncGOP::xCompressPicDescription(TComSlice* &rpcSlice,
+TComPic* &rpcPic, Int iGOPid, Int iPOCLast, Int pocCurr, Bool isField, 
+ControlParameterForMDC &rControl,
+TComList <TComPic*> &rcListPic, TEncSlice* &rcSliceEncoder){
+      #if REDUCED_ENCODER_MEMORY
+          // allocation the processing pic, in our case, two pcPic and the Pic central for the P-frame after
+          rpcPic->prepareForReconstruction();
+      #endif
+        rpcPic->clearSliceBuffer();
+        rpcPic->allocateNewSlice();
+        rpcPic->setCurrSliceIdx(0);
+        rcSliceEncoder->initEncSlice(rpcPic, iPOCLast, pocCurr, iGOPid, rpcSlice, isField);
+        rcSliceEncoder->setSliceIdx(0);
+        rpcSlice->setLastIDR(m_iLastIDR);
+        rpcSlice->setSliceIdx(0);
+        //set default slice level flag to the same as SPS level flag
+        rpcSlice->setLFCrossSliceBoundaryFlag(  rpcSlice->getPPS()->getLoopFilterAcrossSlicesEnabledFlag()  );
+        xConfigSliceGOP(rpcSlice,iGOPid,pocCurr,isField,rcListPic,rcSliceEncoder);
+        // next function begin here
+        SliceType  encCABACTableIdx = rpcSlice->getEncCABACTableIdx();
+        Bool encCabacInitFlag = (rpcSlice->getSliceType() != encCABACTableIdx && encCABACTableIdx != I_SLICE) ? true : false;
         
-        const UInt curSliceSegmentEnd = pcSlice->getSliceSegmentCurEndCtuTsAddr();
-        if (curSliceSegmentEnd < numberOfCtusInFrame)
+        // equal to 1 at the beginning of each Pic 
+        rControl.uiNumSliceSegments = 1;
+        // Allocate some coders, now the number of tiles are known.
+        const Int numSubstreamsColumns = (rpcSlice->getPPS()->getNumTileColumnsMinus1() + 1);
+        const Int numSubstreamRows     = rpcSlice->getPPS()->getEntropyCodingSyncEnabledFlag() ? rpcPic->getFrameHeightInCtus() : (rpcSlice->getPPS()->getNumTileRowsMinus1() + 1);
+        const Int numSubstreams        = numSubstreamRows * numSubstreamsColumns;
+        rControl.numSubstreams = numSubstreams;
+        // now compress (trial encode) the various slice segments (slices, and dependent slices)
+        // After this an yuv residual will be created
         {
-          const Bool bNextSegmentIsDependentSlice=curSliceSegmentEnd<pcSlice->getSliceCurEndCtuTsAddr();
-          const UInt sliceBits=pcSlice->getSliceBits();
-          pcPic->allocateNewSlice();
-          // prepare for next slice
-          pcPic->setCurrSliceIdx                    ( uiNumSliceSegments );
-          m_pcSliceEncoder->setSliceIdx             ( uiNumSliceSegments   );
-          pcSlice = pcPic->getSlice                 ( uiNumSliceSegments   );
-          assert(pcSlice->getPPS()!=0);
-          pcSlice->copySliceInfo                    ( pcPic->getSlice(uiNumSliceSegments-1)  );
-          pcSlice->setSliceIdx                      ( uiNumSliceSegments   );
-          if (bNextSegmentIsDependentSlice)
+            const UInt numberOfCtusInFrame=rpcPic->getPicSym()->getNumberOfCtusInFrame();
+            rpcSlice->setSliceCurStartCtuTsAddr( 0 );
+            rpcSlice->setSliceSegmentCurStartCtuTsAddr( 0 );
+            // tle, the code loop over different slice and then however, the CTU cannot be split, therefore, it's arrive that a CTU is bigger than the RTP
+            
+            for(UInt nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
+            {
+              rcSliceEncoder->precompressSlice(rpcPic);
+              rcSliceEncoder->compressSlice(rpcPic, false, false);          
+              const UInt curSliceSegmentEnd = rpcSlice->getSliceSegmentCurEndCtuTsAddr();
+              if (curSliceSegmentEnd < numberOfCtusInFrame)
+              {
+                const Bool bNextSegmentIsDependentSlice=curSliceSegmentEnd<rpcSlice->getSliceCurEndCtuTsAddr();
+                const UInt sliceBits=rpcSlice->getSliceBits();
+                rpcPic->allocateNewSlice();
+                // prepare for next slice
+                rpcPic->setCurrSliceIdx                    ( rControl.uiNumSliceSegments );
+                rcSliceEncoder->setSliceIdx             ( rControl.uiNumSliceSegments   );
+                rpcSlice = rpcPic->getSlice                 ( rControl.uiNumSliceSegments   );
+                assert(rpcSlice->getPPS()!=0);
+                rpcSlice->copySliceInfo                    ( rpcPic->getSlice(rControl.uiNumSliceSegments-1)  );
+                rpcSlice->setSliceIdx                      ( rControl.uiNumSliceSegments   );
+                if (bNextSegmentIsDependentSlice)
+                {
+                  rpcSlice->setSliceBits(sliceBits);
+                }
+                else
+                {
+                  rpcSlice->setSliceCurStartCtuTsAddr      ( curSliceSegmentEnd );
+                  rpcSlice->setSliceBits(0);
+                }
+                rpcSlice->setDependentSliceSegmentFlag(bNextSegmentIsDependentSlice);
+                rpcSlice->setSliceSegmentCurStartCtuTsAddr ( curSliceSegmentEnd );
+                // TODO: optimise cabac_init during compress slice to improve multi-slice operation
+                // pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
+                rControl.uiNumSliceSegments ++;
+              }
+              nextCtuTsAddr = curSliceSegmentEnd;
+            }
+        }
+        // get slice already encoded from the beginning
+        rpcSlice = rpcPic->getSlice(0);
+        // SAO parameter estimation using non-deblocked pixels for CTU bottom and right boundary areas
+        if( rpcSlice->getSPS()->getUseSAO() && m_pcCfg->getSaoCtuBoundary() )
+        {
+          m_pcSAO->getPreDBFStatistics(rpcPic);
+        }
+        //-- Loop filter
+        Bool bLFCrossTileBoundary = rpcSlice->getPPS()->getLoopFilterAcrossTilesEnabledFlag();
+        m_pcLoopFilter->setCfg(bLFCrossTileBoundary);
+        if ( m_pcCfg->getDeblockingFilterMetric() )
+        {
+          if ( m_pcCfg->getDeblockingFilterMetric()==2 )
           {
-            pcSlice->setSliceBits(sliceBits);
+            applyDeblockingFilterParameterSelection(rpcPic, rControl.uiNumSliceSegments, iGOPid);
           }
           else
           {
-            pcSlice->setSliceCurStartCtuTsAddr      ( curSliceSegmentEnd );
-            pcSlice->setSliceBits(0);
+            applyDeblockingFilterMetric(rpcPic, rControl.uiNumSliceSegments);
           }
-          pcSlice->setDependentSliceSegmentFlag(bNextSegmentIsDependentSlice);
-          pcSlice->setSliceSegmentCurStartCtuTsAddr ( curSliceSegmentEnd );
-          // TODO: optimise cabac_init during compress slice to improve multi-slice operation
-          // pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
-          uiNumSliceSegments ++;
         }
-        nextCtuTsAddr = curSliceSegmentEnd;
-      }
-    }
+        m_pcLoopFilter->loopFilterPic( rpcPic );
+}
 
 
-    duData.clear();
-    pcSlice = pcPic->getSlice(0);
-
-    // SAO parameter estimation using non-deblocked pixels for CTU bottom and right boundary areas
-    if( pcSlice->getSPS()->getUseSAO() && m_pcCfg->getSaoCtuBoundary() )
-    {
-      m_pcSAO->getPreDBFStatistics(pcPic);
-    }
-
-    //-- Loop filter
-    Bool bLFCrossTileBoundary = pcSlice->getPPS()->getLoopFilterAcrossTilesEnabledFlag();
-    m_pcLoopFilter->setCfg(bLFCrossTileBoundary);
-    if ( m_pcCfg->getDeblockingFilterMetric() )
-    {
-      if ( m_pcCfg->getDeblockingFilterMetric()==2 )
-      {
-        applyDeblockingFilterParameterSelection(pcPic, uiNumSliceSegments, iGOPid);
-      }
-      else
-      {
-        applyDeblockingFilterMetric(pcPic, uiNumSliceSegments);
-      }
-    }
-    m_pcLoopFilter->loopFilterPic( pcPic );
-    /////////////////////////////////////////////////////////////////////////////////////////////////// File writing
-    // Set entropy coder
-    m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
-
-    // write various parameter sets
-    //bool writePS = m_bSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && (pcPic->getSlice(0)->getSliceType() == I_SLICE));
-    bool writePS = m_bSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && (pcSlice->isIRAP()));
+Void TEncGOP::xWriteSPSPPSVPS(TComSlice* &rpcSlice,const TComPic *pcPic,AccessUnit &accessUnit,Bool &rbSeqFirst,Int &totalbit){
+    
+    const bool writePS = rbSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && (rpcSlice->isIRAP()));
+    SEIMessages leadingSeiMessages;
     if (writePS)
     {
-      m_pcEncTop->setParamSetChanged(pcSlice->getSPS()->getSPSId(), pcSlice->getPPS()->getPPSId());
+      // write parameter set
+      m_pcEncTop->setParamSetChanged(rpcSlice->getSPS()->getSPSId(), rpcSlice->getPPS()->getPPSId());
     }
-    actualTotalBits += xWriteParameterSets(accessUnit, pcSlice, writePS);
+    totalbit += xWriteParameterSets(accessUnit, rpcSlice, writePS);
 
     if (writePS)
     {
       // create prefix SEI messages at the beginning of the sequence
       assert(leadingSeiMessages.empty());
 #if MCTS_EXTRACTION
-      xCreateIRAPLeadingSEIMessages(leadingSeiMessages, m_pcEncTop->getVPS(),  pcSlice->getSPS(), pcSlice->getPPS());
+      xCreateIRAPLeadingSEIMessages(leadingSeiMessages, m_pcEncTop->getVPS(),  rpcSlice->getSPS(), rpcSlice->getPPS());
 #else
       xCreateIRAPLeadingSEIMessages(leadingSeiMessages, pcSlice->getSPS(), pcSlice->getPPS());
 #endif
-
-      m_bSeqFirst = false;
+      // only change if second description
+      if (pcPic->getDescriptionId()==2) rbSeqFirst = false;
     }
     if (m_pcCfg->getAccessUnitDelimiter())
     {
-      xWriteAccessUnitDelimiter(accessUnit, pcSlice);
+      xWriteAccessUnitDelimiter(accessUnit, rpcSlice);
     }
+}
 
-    // reset presence of BP SEI indication
-    m_bufferingPeriodSEIPresentInAU = false;
-    // create prefix SEI associated with a picture
-    xCreatePerPictureSEIMessages(iGOPid, leadingSeiMessages, nestedSeiMessages, pcSlice);
 
-    /* use the main bitstream buffer for storing the marshalled picture */
-    m_pcEntropyCoder->setBitstream(NULL);
+Void TEncGOP::xLoopOverSliceToBs(TComPic* &rpcPic, TEncSlice* &rcSliceEncoder, std::vector<TComOutputBitstream> &substreamsOut, 
+AccessUnit &accessUnit, std::deque<DUData> &duData, ControlParameterForMDC &pcontrol){
 
-    pcSlice = pcPic->getSlice(0);
-
-    if (pcSlice->getSPS()->getUseSAO())
-    {
-      Bool sliceEnabled[MAX_NUM_COMPONENT];
-      TComBitCounter tempBitCounter;
-      tempBitCounter.resetBits();
-      m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(&tempBitCounter);
-      m_pcSAO->initRDOCabacCoder(m_pcEncTop->getRDGoOnSbacCoder(), pcSlice);
-      m_pcSAO->SAOProcess(pcPic, sliceEnabled, pcPic->getSlice(0)->getLambdas(),
-                          m_pcCfg->getTestSAODisableAtPictureLevel(),
-                          m_pcCfg->getSaoEncodingRate(),
-                          m_pcCfg->getSaoEncodingRateChroma(),
-                          m_pcCfg->getSaoCtuBoundary());
-      m_pcSAO->PCMLFDisableProcess(pcPic);
-      m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(NULL);
-
-      //assign SAO slice header
-      for(Int s=0; s< uiNumSliceSegments; s++)
+      TComOutputBitstream  *pcBitstreamRedirect;
+      pcBitstreamRedirect = new TComOutputBitstream;
+      TComSlice* pcSlice = rpcPic->getSlice(0);
+      if (pcSlice->getSPS()->getUseSAO())
       {
-        pcPic->getSlice(s)->setSaoEnabledFlag(CHANNEL_TYPE_LUMA, sliceEnabled[COMPONENT_Y]);
-        assert(sliceEnabled[COMPONENT_Cb] == sliceEnabled[COMPONENT_Cr]);
-        pcPic->getSlice(s)->setSaoEnabledFlag(CHANNEL_TYPE_CHROMA, sliceEnabled[COMPONENT_Cb]);
-      }
-    }
+        Bool sliceEnabled[MAX_NUM_COMPONENT];
+        TComBitCounter tempBitCounter;
+        tempBitCounter.resetBits();
+        m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(&tempBitCounter);
+        m_pcSAO->initRDOCabacCoder(m_pcEncTop->getRDGoOnSbacCoder(), pcSlice);
+        m_pcSAO->SAOProcess(rpcPic, sliceEnabled, rpcPic->getSlice(0)->getLambdas(),
+                            m_pcCfg->getTestSAODisableAtPictureLevel(),
+                            m_pcCfg->getSaoEncodingRate(),
+                            m_pcCfg->getSaoEncodingRateChroma(),
+                            m_pcCfg->getSaoCtuBoundary());
+        m_pcSAO->PCMLFDisableProcess(rpcPic);
+        m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(NULL);
 
-    // pcSlice is currently slice 0.
-    std::size_t binCountsInNalUnits   = 0; // For implementation of cabac_zero_word stuffing (section 7.4.3.10)
-    std::size_t numBytesInVclNalUnits = 0; // For implementation of cabac_zero_word stuffing (section 7.4.3.10)
-
-    for( UInt sliceSegmentStartCtuTsAddr = 0, sliceIdxCount=0; sliceSegmentStartCtuTsAddr < pcPic->getPicSym()->getNumberOfCtusInFrame(); sliceIdxCount++, sliceSegmentStartCtuTsAddr=pcSlice->getSliceSegmentCurEndCtuTsAddr() )
-    {
-      pcSlice = pcPic->getSlice(sliceIdxCount);
-      if(sliceIdxCount > 0 && pcSlice->getSliceType()!= I_SLICE)
-      {
-        pcSlice->checkColRefIdx(sliceIdxCount, pcPic);
-      }
-      pcPic->setCurrSliceIdx(sliceIdxCount);
-      m_pcSliceEncoder->setSliceIdx(sliceIdxCount);
-
-      pcSlice->setRPS(pcPic->getSlice(0)->getRPS());
-      pcSlice->setRPSidx(pcPic->getSlice(0)->getRPSidx());
-
-      for ( UInt ui = 0 ; ui < numSubstreams; ui++ )
-      {
-        substreamsOut[ui].clear();
-      }
-
-      m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
-      m_pcEntropyCoder->resetEntropy      ( pcSlice );
-      /* start slice NALunit */
-      OutputNALUnit nalu( pcSlice->getNalUnitType(), pcSlice->getTLayer() );
-      m_pcEntropyCoder->setBitstream(&nalu.m_Bitstream);
-
-      pcSlice->setNoRaslOutputFlag(false);
-      if (pcSlice->isIRAP())
-      {
-        if (pcSlice->getNalUnitType() >= NAL_UNIT_CODED_SLICE_BLA_W_LP && pcSlice->getNalUnitType() <= NAL_UNIT_CODED_SLICE_IDR_N_LP)
+        //assign SAO slice header
+        for(Int s=0; s< pcontrol.uiNumSliceSegments; s++)
         {
-          pcSlice->setNoRaslOutputFlag(true);
+          rpcPic->getSlice(s)->setSaoEnabledFlag(CHANNEL_TYPE_LUMA, sliceEnabled[COMPONENT_Y]);
+          assert(sliceEnabled[COMPONENT_Cb] == sliceEnabled[COMPONENT_Cr]);
+          rpcPic->getSlice(s)->setSaoEnabledFlag(CHANNEL_TYPE_CHROMA, sliceEnabled[COMPONENT_Cb]);
         }
-        //the inference for NoOutputPriorPicsFlag
-        // KJS: This cannot happen at the encoder
-        if (!m_bFirst && pcSlice->isIRAP() && pcSlice->getNoRaslOutputFlag())
+      }
+      for( UInt sliceSegmentStartCtuTsAddr = 0, sliceIdxCount=0; 
+      sliceSegmentStartCtuTsAddr < rpcPic->getPicSym()->getNumberOfCtusInFrame(); 
+      sliceIdxCount++, sliceSegmentStartCtuTsAddr=pcSlice->getSliceSegmentCurEndCtuTsAddr() )
+      {
+        pcSlice = rpcPic->getSlice(sliceIdxCount);
+        if(sliceIdxCount > 0 && pcSlice->getSliceType()!= I_SLICE)
         {
-          if (pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA)
+          pcSlice->checkColRefIdx(sliceIdxCount, rpcPic);
+        }
+        rpcPic->setCurrSliceIdx(sliceIdxCount);
+        rcSliceEncoder->setSliceIdx(sliceIdxCount);
+
+        pcSlice->setRPS(rpcPic->getSlice(0)->getRPS());
+        pcSlice->setRPSidx(rpcPic->getSlice(0)->getRPSidx());
+
+        for ( UInt ui = 0 ; ui < pcontrol.numSubstreams; ui++ )
+        {
+          substreamsOut[ui].clear();
+        }
+
+        m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
+        m_pcEntropyCoder->resetEntropy      ( pcSlice );
+        /* start slice NALunit */
+        OutputNALUnit nalu( pcSlice->getNalUnitType(), pcSlice->getTLayer() );
+        m_pcEntropyCoder->setBitstream(&nalu.m_Bitstream);
+
+        pcSlice->setNoRaslOutputFlag(false);
+        if (pcSlice->isIRAP())
+        {
+          if (pcSlice->getNalUnitType() >= NAL_UNIT_CODED_SLICE_BLA_W_LP && pcSlice->getNalUnitType() <= NAL_UNIT_CODED_SLICE_IDR_N_LP)
           {
-            pcSlice->setNoOutputPriorPicsFlag(true);
+            pcSlice->setNoRaslOutputFlag(true);
+          }
+          //the inference for NoOutputPriorPicsFlag
+          // KJS: This cannot happen at the encoder
+          if (!m_bFirst && pcSlice->isIRAP() && pcSlice->getNoRaslOutputFlag())
+          {
+            if (pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA)
+            {
+              pcSlice->setNoOutputPriorPicsFlag(true);
+            }
           }
         }
-      }
 
-      pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
-#if MCTS_EXTRACTION
-      encCABACTableIdx = pcSlice->getEncCABACTableIdx();
-      encCabacInitFlag = (pcSlice->getSliceType() != encCABACTableIdx && encCABACTableIdx != I_SLICE) ? true : false;
-      pcSlice->setCabacInitFlag(encCabacInitFlag);
-#endif
-      tmpBitsBeforeWriting = m_pcEntropyCoder->getNumberOfWrittenBits();
-      m_pcEntropyCoder->encodeSliceHeader(pcSlice);
-      actualHeadBits += ( m_pcEntropyCoder->getNumberOfWrittenBits() - tmpBitsBeforeWriting );
+        pcSlice->setEncCABACTableIdx(rcSliceEncoder->getEncCABACTableIdx());
+  #if MCTS_EXTRACTION
+        SliceType encCABACTableIdx = pcSlice->getEncCABACTableIdx();
+        Bool encCabacInitFlag = (pcSlice->getSliceType() != encCABACTableIdx && encCABACTableIdx != I_SLICE) ? true : false;
+        pcSlice->setCabacInitFlag(encCabacInitFlag);
+  #endif
+        Int tmpBitsBeforeWriting = m_pcEntropyCoder->getNumberOfWrittenBits();
+        m_pcEntropyCoder->encodeSliceHeader(pcSlice);
+        pcontrol.actualHeadBits += ( m_pcEntropyCoder->getNumberOfWrittenBits() - tmpBitsBeforeWriting );
 
-      pcSlice->setFinalized(true);
+        pcSlice->setFinalized(true);
 
-      pcSlice->clearSubstreamSizes(  );
-      {
-        UInt numBinsCoded = 0;
-        m_pcSliceEncoder->encodeSlice(pcPic, &(substreamsOut[0]), numBinsCoded);
-        binCountsInNalUnits+=numBinsCoded;
-      }
-
-      {
-        // Construct the final bitstream by concatenating substreams.
-        // The final bitstream is either nalu.m_Bitstream or pcBitstreamRedirect;
-        // Complete the slice header info.
-        m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
-        m_pcEntropyCoder->setBitstream(&nalu.m_Bitstream);
-        m_pcEntropyCoder->encodeTilesWPPEntryPoint( pcSlice );
-
-        // Append substreams...
-        TComOutputBitstream *pcOut = pcBitstreamRedirect;
-        const Int numZeroSubstreamsAtStartOfSlice  = pcPic->getSubstreamForCtuAddr(pcSlice->getSliceSegmentCurStartCtuTsAddr(), false, pcSlice);
-        const Int numSubstreamsToCode  = pcSlice->getNumberOfSubstreamSizes()+1;
-        for ( UInt ui = 0 ; ui < numSubstreamsToCode; ui++ )
+        pcSlice->clearSubstreamSizes(  );
         {
-          pcOut->addSubstream(&(substreamsOut[ui+numZeroSubstreamsAtStartOfSlice]));
+          UInt numBinsCoded = 0;
+          rcSliceEncoder->encodeSlice(rpcPic, &(substreamsOut[0]), numBinsCoded);
+          pcontrol.binCountsInNalUnits+=numBinsCoded;
         }
-      }
 
-      // If current NALU is the first NALU of slice (containing slice header) and more NALUs exist (due to multiple dependent slices) then buffer it.
-      // If current NALU is the last NALU of slice and a NALU was buffered, then (a) Write current NALU (b) Update an write buffered NALU at approproate location in NALU list.
-      Bool bNALUAlignedWrittenToList    = false; // used to ensure current NALU is not written more than once to the NALU list.
-      xAttachSliceDataToNalUnit(nalu, pcBitstreamRedirect);
-      accessUnit.push_back(new NALUnitEBSP(nalu));
-      actualTotalBits += UInt(accessUnit.back()->m_nalUnitData.str().size()) * 8;
-      numBytesInVclNalUnits += (std::size_t)(accessUnit.back()->m_nalUnitData.str().size());
-      bNALUAlignedWrittenToList = true;
+        {
+          // Construct the final bitstream by concatenating substreams.
+          // The final bitstream is either nalu.m_Bitstream or pcBitstreamRedirect;
+          // Complete the slice header info.
+          m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
+          m_pcEntropyCoder->setBitstream(&nalu.m_Bitstream);
+          m_pcEntropyCoder->encodeTilesWPPEntryPoint( pcSlice );
 
-      if (!bNALUAlignedWrittenToList)
-      {
-        nalu.m_Bitstream.writeAlignZero();
+          // Append substreams...
+          TComOutputBitstream *pcOut = pcBitstreamRedirect;
+          const Int numZeroSubstreamsAtStartOfSlice  = rpcPic->getSubstreamForCtuAddr(pcSlice->getSliceSegmentCurStartCtuTsAddr(), false, pcSlice);
+          const Int numSubstreamsToCode  = pcSlice->getNumberOfSubstreamSizes()+1;
+          for ( UInt ui = 0 ; ui < numSubstreamsToCode; ui++ )
+          {
+            pcOut->addSubstream(&(substreamsOut[ui+numZeroSubstreamsAtStartOfSlice]));
+          }
+        }
+
+        // If current NALU is the first NALU of slice (containing slice header) and more NALUs exist (due to multiple dependent slices) then buffer it.
+        // If current NALU is the last NALU of slice and a NALU was buffered, then (a) Write current NALU (b) Update an write buffered NALU at approproate location in NALU list.
+        Bool bNALUAlignedWrittenToList    = false; // used to ensure current NALU is not written more than once to the NALU list.
+        xAttachSliceDataToNalUnit(nalu, pcBitstreamRedirect);
         accessUnit.push_back(new NALUnitEBSP(nalu));
-      }
+        pcontrol.actualTotalBits += UInt(accessUnit.back()->m_nalUnitData.str().size()) * 8;
+        pcontrol.numBytesInVclNalUnits += (std::size_t)(accessUnit.back()->m_nalUnitData.str().size());
+        bNALUAlignedWrittenToList = true;
 
-      if( ( m_pcCfg->getPictureTimingSEIEnabled() || m_pcCfg->getDecodingUnitInfoSEIEnabled() ) &&
-          ( pcSlice->getSPS()->getVuiParametersPresentFlag() ) &&
-          ( ( pcSlice->getSPS()->getVuiParameters()->getHrdParameters()->getNalHrdParametersPresentFlag() )
-         || ( pcSlice->getSPS()->getVuiParameters()->getHrdParameters()->getVclHrdParametersPresentFlag() ) ) &&
-          ( pcSlice->getSPS()->getVuiParameters()->getHrdParameters()->getSubPicCpbParamsPresentFlag() ) )
-      {
-          UInt numNalus = 0;
-        UInt numRBSPBytes = 0;
-        for (AccessUnit::const_iterator it = accessUnit.begin(); it != accessUnit.end(); it++)
+        if (!bNALUAlignedWrittenToList)
         {
-          numRBSPBytes += UInt((*it)->m_nalUnitData.str().size());
-          numNalus ++;
+          nalu.m_Bitstream.writeAlignZero();
+          accessUnit.push_back(new NALUnitEBSP(nalu));
         }
-        duData.push_back(DUData());
-        duData.back().accumBitsDU = ( numRBSPBytes << 3 );
-        duData.back().accumNalsDU = numNalus;
-      }
-    } // end iteration over slices
 
-    // cabac_zero_words processing
-    cabac_zero_word_padding(pcSlice, pcPic, binCountsInNalUnits, numBytesInVclNalUnits, accessUnit.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
+        if( ( m_pcCfg->getPictureTimingSEIEnabled() || m_pcCfg->getDecodingUnitInfoSEIEnabled() ) &&
+            ( pcSlice->getSPS()->getVuiParametersPresentFlag() ) &&
+            ( ( pcSlice->getSPS()->getVuiParameters()->getHrdParameters()->getNalHrdParametersPresentFlag() )
+          || ( pcSlice->getSPS()->getVuiParameters()->getHrdParameters()->getVclHrdParametersPresentFlag() ) ) &&
+            ( pcSlice->getSPS()->getVuiParameters()->getHrdParameters()->getSubPicCpbParamsPresentFlag() ) )
+        {
+          UInt numNalus = 0;
+          UInt numRBSPBytes = 0;
+          for (AccessUnit::const_iterator it = accessUnit.begin(); it != accessUnit.end(); it++)
+          {
+            numRBSPBytes += UInt((*it)->m_nalUnitData.str().size());
+            numNalus ++;
+          }
+          duData.push_back(DUData());
+          duData.back().accumBitsDU = ( numRBSPBytes << 3 );
+          duData.back().accumNalsDU = numNalus;
+        }
+      } // end iteration over slices
+}
 
-    pcPic->compressMotion();
 
-    //-- For time output for each slice
-    Double dEncTime = (Double)(clock()-iBeforeTime) / CLOCKS_PER_SEC;
-
+Void TEncGOP::xwriteSEIMessageForMDC(TComPic *pcPic, TComSlice* pcSlice, Int iGOPid,Double PSNR_Y, Bool isField,
+AccessUnit &accessUnit, EfficientFieldIRAPMapping &effFieldIRAPMap, std::deque<DUData> &duData){
+    SEIMessages leadingSeiMessages;
+    SEIMessages nestedSeiMessages;
+    SEIMessages duInfoSeiMessages;
+    SEIMessages trailingSeiMessages;
     std::string digestStr;
+    xCreatePerPictureSEIMessages(iGOPid, leadingSeiMessages, nestedSeiMessages, pcSlice);
     if (m_pcCfg->getDecodedPictureHashSEIType()!=HASHTYPE_NONE)
     {
       SEIDecodedPictureHash *decodedPictureHashSei = new SEIDecodedPictureHash();
       m_seiEncoder.initDecodedPictureHashSEI(decodedPictureHashSei, pcPic, digestStr, pcSlice->getSPS()->getBitDepths());
       trailingSeiMessages.push_back(decodedPictureHashSei);
     }
-
-    m_pcCfg->setEncodedFlag(iGOPid, true);
-
-    Double PSNR_Y;
-
-    xCalculateAddPSNRs( isField, isTff, iGOPid, pcPic, accessUnit, rcListPic, dEncTime, ip_conversion, snr_conversion, outputLogCtrl, &PSNR_Y );
-    
     // Only produce the Green Metadata SEI message with the last picture.
     if( m_pcCfg->getSEIGreenMetadataInfoSEIEnable() && pcSlice->getPOC() == ( m_pcCfg->getFramesToBeEncoded() - 1 )  )
     {
@@ -1934,38 +1732,9 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       m_seiEncoder.initSEIGreenMetadataInfo(seiGreenMetadataInfo, (UInt)(PSNR_Y * 100 + 0.5));
       trailingSeiMessages.push_back(seiGreenMetadataInfo);
     }
-    
     xWriteTrailingSEIMessages(trailingSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS());
     
     printHash(m_pcCfg->getDecodedPictureHashSEIType(), digestStr);
-
-    if ( m_pcCfg->getUseRateCtrl() )
-    {
-      Double avgQP     = m_pcRateCtrl->getRCPic()->calAverageQP();
-      Double avgLambda = m_pcRateCtrl->getRCPic()->calAverageLambda();
-      if ( avgLambda < 0.0 )
-      {
-        avgLambda = lambda;
-      }
-
-      m_pcRateCtrl->getRCPic()->updateAfterPicture( actualHeadBits, actualTotalBits, avgQP, avgLambda, pcSlice->getSliceType());
-      m_pcRateCtrl->getRCPic()->addToPictureLsit( m_pcRateCtrl->getPicList() );
-
-      m_pcRateCtrl->getRCSeq()->updateAfterPic( actualTotalBits );
-      if ( pcSlice->getSliceType() != I_SLICE )
-      {
-        m_pcRateCtrl->getRCGOP()->updateAfterPicture( actualTotalBits );
-      }
-      else    // for intra picture, the estimated bits are used to update the current status in the GOP
-      {
-        m_pcRateCtrl->getRCGOP()->updateAfterPicture( estimatedBits );
-      }
-      if (m_pcRateCtrl->getCpbSaturationEnabled())
-      {
-        m_pcRateCtrl->updateCpbState(actualTotalBits);
-        printf(" [CPB %6d bits]", m_pcRateCtrl->getCpbState());
-      }
-    }
 
     xCreatePictureTimingSEI(m_pcCfg->getEfficientFieldIRAPEnabled()?effFieldIRAPMap.GetIRAPGOPid():0, leadingSeiMessages, nestedSeiMessages, duInfoSeiMessages, pcSlice, isField, duData);
     if (m_pcCfg->getScalableNestingSEIEnabled())
@@ -1974,48 +1743,1090 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     }
     xWriteLeadingSEIMessages(leadingSeiMessages, duInfoSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS(), duData);
     xWriteDuSEIMessages(duInfoSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS(), duData);
-    // dump to Residual of 8 bit Unsigned and little endian
-    // if (pcPic->getRunMode()==0){
-    //     if (pcPic->getPOC()==0){
-    //       pcPic->getPicYuvResi()->dumpResiTo8bit(m_pcCfg->getResiNoQuant(),false);
-
-    //     }
-    //     else{
-    //       pcPic->getPicYuvResi()->dumpResiTo8bit(m_pcCfg->getResiNoQuant(),true);
-    //     }
-    // }
-    pcPic->getPicYuvRec()->copyToPic(pcPicYuvRecOut);
-
-    pcPic->setReconMark   ( true );
-    m_bFirst = false;
-    m_iNumPicCoded++;
-    m_totalCoded ++;
-    /* logging: insert a newline at end of picture period */
-    printf("\n");
-    fflush(stdout);
-
-    if (m_pcCfg->getEfficientFieldIRAPEnabled())
-    {
-      iGOPid=effFieldIRAPMap.restoreGOPid(iGOPid);
-    }
-#if REDUCED_ENCODER_MEMORY
-
-    pcPic->releaseReconstructionIntermediateData();
-    if (!isField) // don't release the source data for field-coding because the fields are dealt with in pairs. // TODO: release source data for interlace simulations.
-    {
-      pcPic->releaseEncoderSourceImageData();
-    }
-
-#endif
-  } // iGOPid-loop
-
-  delete pcBitstreamRedirect;
-  assert ( (m_iNumPicCoded == iNumPicRcvd) );
 }
+
+
+// rewrite this function into the funtion which compress two times the images with different QP and do 
+// the ME on the central description.
+// Create two pcPic, two for lateral and one for the interprediction at the end
+// a merging process based on CTU saving in the pcPic
+Void TEncGOP::compressGOPMDC(Int iPOCLast, Int iNumPicRcvd, 
+TComList <TComPic*> &rcListPic,
+TComList<TComPicYuv*>& rcListPicYuvRecOut1,
+TComList<TComPicYuv*>& rcListPicYuvRecOut2,
+TComList<TComPicYuv*>& rcListPicYuvRecOutC,
+std::list<AccessUnit>& accessUnitsInGOP1, 
+std::list<AccessUnit>& accessUnitsInGOP2,
+Bool isField, Bool isTff, const InputColourSpaceConversion ip_conversion, 
+const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogControl &outputLogCtrl)
+{
+  // pcPic contains all the pointer to description and central description
+  TComPic*        pcPic = NULL;
+  
+  // TComPicYUV storage for each description 1,2 and central
+  TComPicYuv*     pcPicYuvRecOut1=NULL;
+  TComPicYuv*     pcPicYuvRecOut2=NULL;
+  TComPicYuv*     pcPicYuvRecOutC=NULL;
+  // TComSlice slice for each bs, we have only two bitstreams
+  TComSlice*      pcSlice1=NULL;
+  TComSlice*      pcSlice2=NULL;
+
+
+  TComOutputBitstream  *pcBitstreamRedirect;
+  pcBitstreamRedirect = new TComOutputBitstream;
+  AccessUnit::iterator  itLocationToPushSliceHeaderNALU; // used to store location where NALU containing slice header is to be inserted
+  xInitGOP( iPOCLast, iNumPicRcvd, isField );
+
+  m_iNumPicCoded = 0;
+
+  std::deque<DUData> duData1,duData2;
+  ControlParameterForMDC control1,control2;
+
+  EfficientFieldIRAPMapping effFieldIRAPMap;
+  if (m_pcCfg->getEfficientFieldIRAPEnabled())
+  {
+    effFieldIRAPMap.initialize(isField, m_iGopSize, iPOCLast, iNumPicRcvd, m_iLastIDR, this, m_pcCfg);
+  }
+  // Mark if the frame in the GOP is encoded or not, by default not 
+  for ( Int iGOPid=0; iGOPid < m_iGopSize; iGOPid++ )
+  {
+    m_pcCfg->setEncodedFlag(iGOPid, false);
+  }
+  // compress each frame in the group of picture
+  for ( Int iGOPid=0; iGOPid < m_iGopSize; iGOPid++ )
+  {
+      if (m_pcCfg->getEfficientFieldIRAPEnabled())
+      {
+        iGOPid=effFieldIRAPMap.adjustGOPid(iGOPid);
+      }
+      clock_t iBeforeTime = clock();
+      /////////////////////////////////////////////////////////////////////////////////////////////////// Initial to start encoding
+      Int iTimeOffset;
+      Int pocCurr;
+
+      if(iPOCLast == 0) //case first frame or first top field
+      {
+        pocCurr=0;
+        iTimeOffset = 1;
+      }
+      else if(iPOCLast == 1 && isField) //case first bottom field, just like the first frame, the poc computation is not right anymore, we set the right value
+      {
+        pocCurr = 1;
+        iTimeOffset = 1;
+      }
+      else
+      {
+        pocCurr = iPOCLast - iNumPicRcvd + m_pcCfg->getGOPEntry(iGOPid).m_POC - ((isField && m_iGopSize>1) ? 1:0);
+        iTimeOffset = m_pcCfg->getGOPEntry(iGOPid).m_POC;
+      }
+      // To break when the frame to be encode < GOP size
+      if(pocCurr>=m_pcCfg->getFramesToBeEncoded())
+      {
+        if (m_pcCfg->getEfficientFieldIRAPEnabled())
+        {
+          iGOPid=effFieldIRAPMap.restoreGOPid(iGOPid);
+        }
+        continue;
+      }
+      // start a new access unit for description 1: create an entry in the list of output access units
+      accessUnitsInGOP1.push_back(AccessUnit());
+      AccessUnit& accessUnit1 = accessUnitsInGOP1.back();
+      // start a new access unit for description 2: create an entry in the list of output access units
+      accessUnitsInGOP2.push_back(AccessUnit());
+      AccessUnit& accessUnit2 = accessUnitsInGOP2.back();
+      // No bitstream for central but it must be retained
+      xGetBuffer( rcListPic, rcListPicYuvRecOut1, iNumPicRcvd, iTimeOffset, pcPic, pcPicYuvRecOut1, pocCurr, isField );
+      xGetBuffer( rcListPic, rcListPicYuvRecOut2, iNumPicRcvd, iTimeOffset, pcPic, pcPicYuvRecOut2, pocCurr, isField );
+      xGetBuffer( rcListPic, rcListPicYuvRecOutC, iNumPicRcvd, iTimeOffset, pcPic, pcPicYuvRecOutC, pocCurr, isField );
+      
+      
+      duData1.clear();
+
+      pcPic->setRunMode(m_pcCfg->getEncodingMode());
+      // Description 1
+      pcPic->setDescriptionId(1);
+      TMDCQPTable::getInstance()->resetCturs();
+      xCompressPicDescription(pcSlice1,pcPic,iGOPid,iPOCLast,pocCurr,isField,control1,rcListPic,m_pcArrSliceEncoder[0]);
+      std::vector<TComOutputBitstream> substreamsOut1(control1.numSubstreams);
+      m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
+      xWriteSPSPPSVPS(pcSlice1,pcPic,accessUnit1,m_bSeqFirst,control1.actualTotalBits);
+      m_pcEntropyCoder->setBitstream(NULL);
+      xLoopOverSliceToBs(pcPic,m_pcArrSliceEncoder[0],substreamsOut1,accessUnit1,duData1,control1);
+      // cabac_zero_words processing
+      cabac_zero_word_padding(pcSlice1, pcPic, control1.binCountsInNalUnits, control1.numBytesInVclNalUnits, accessUnit1.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
+      pcPic->compressMotion();
+
+      duData2.clear();
+      // Description 2
+      pcPic->setDescriptionId(2);
+      TMDCQPTable::getInstance()->resetCturs();
+      xCompressPicDescription(pcSlice2,pcPic,iGOPid,iPOCLast,pocCurr,isField,control2,rcListPic,m_pcArrSliceEncoder[1]);
+      std::vector<TComOutputBitstream> substreamsOut2(control2.numSubstreams);
+      // Set entropy coder
+      m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
+      // write SPSPPSVPS
+      xWriteSPSPPSVPS(pcSlice2,pcPic,accessUnit2,m_bSeqFirst,control2.actualTotalBits);
+      /* use the main bitstream buffer for storing the marshalled picture */
+      m_pcEntropyCoder->setBitstream(NULL);
+      // write data
+      xLoopOverSliceToBs(pcPic,m_pcArrSliceEncoder[1],substreamsOut2,accessUnit2,duData2,control2);
+      // cabac_zero_words processing
+      cabac_zero_word_padding(pcSlice2, pcPic, control2.binCountsInNalUnits, control2.numBytesInVclNalUnits, accessUnit2.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
+      pcPic->compressMotion();
+
+      centralConstruction(*pcPic);
+      //where we need to pay attention to have the central before the compression
+      //@tle: add function to build the best quality image
+
+
+
+      Double PSNR_Y_1,PSNR_Y_2,PSNR_Y_0;
+      Double dEncTime = (Double)(clock()-iBeforeTime) / CLOCKS_PER_SEC;
+      pcPic->setDescriptionId(1);
+      xCalculateAddPSNRs( isField, isTff, iGOPid, pcPic, accessUnit1, rcListPic, dEncTime, ip_conversion, snr_conversion, outputLogCtrl, &PSNR_Y_1 );
+      printf("\n");
+      fflush(stdout);
+      xwriteSEIMessageForMDC(pcPic,pcSlice1,iGOPid,PSNR_Y_1,isField,accessUnit1,effFieldIRAPMap,duData1);
+      pcPic->setDescriptionId(2);
+      xCalculateAddPSNRs( isField, isTff, iGOPid, pcPic, accessUnit2, rcListPic, dEncTime, ip_conversion, snr_conversion, outputLogCtrl, &PSNR_Y_2 );
+      printf("\n");
+      fflush(stdout);
+      xwriteSEIMessageForMDC(pcPic,pcSlice2,iGOPid,PSNR_Y_2,isField,accessUnit2,effFieldIRAPMap,duData2);
+      pcPic->setDescriptionId(0);
+      xCalculateAddPSNRs( isField, isTff, iGOPid, pcPic, accessUnit2, rcListPic, dEncTime, ip_conversion, snr_conversion, outputLogCtrl, &PSNR_Y_2 );
+      printf("\n");
+      fflush(stdout);
+
+      //-- For time output for each slice
+      pcPic->getPicYUVRec1()->copyToPic(pcPicYuvRecOut1);
+      pcPic->getPicYUVRec2()->copyToPic(pcPicYuvRecOut2);
+      pcPic->getPicYUVRecC()->copyToPic(pcPicYuvRecOutC);
+
+      pcPic->setReconMark   ( true );
+      m_bFirst = false;
+      m_iNumPicCoded++;
+      m_totalCoded ++;
+      /* logging: insert a newline at end of picture period */
+      printf("\n");
+      fflush(stdout);
+      if (m_pcCfg->getEfficientFieldIRAPEnabled())
+      {
+        iGOPid=effFieldIRAPMap.restoreGOPid(iGOPid);
+      }
+  #if REDUCED_ENCODER_MEMORY
+
+      pcPic->releaseReconstructionIntermediateData();
+      if (!isField) // don't release the source data for field-coding because the fields are dealt with in pairs. // TODO: release source data for interlace simulations.
+      {
+        pcPic->releaseEncoderSourceImageData();
+      }
+
+  #endif
+    } // iGOPid-loop
+    delete pcBitstreamRedirect;
+    assert ( (m_iNumPicCoded == iNumPicRcvd) );
+
+}
+
+
+Void TEncGOP::xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, UInt uiDepth){
+  TComPic   *const pcPic   = pcCU1->getPic();
+
+  TComSlice *const pcSlice = pcCU1->getSlice();
+  const TComSPS   &sps =*(pcSlice->getSPS());
+  const TComPPS   &pps =*(pcSlice->getPPS());
+
+  const UInt maxCUWidth  = sps.getMaxCUWidth();
+  const UInt maxCUHeight = sps.getMaxCUHeight();
+
+        Bool bBoundary = false;
+        UInt uiLPelX   = pcCU1->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
+  const UInt uiRPelX   = uiLPelX + (maxCUWidth>>uiDepth)  - 1;
+        UInt uiTPelY   = pcCU1->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
+  const UInt uiBPelY   = uiTPelY + (maxCUHeight>>uiDepth) - 1;
+  
+  // check if at the boundaries
+  if( ( uiRPelX >= sps.getPicWidthInLumaSamples() ) && ( uiBPelY >= sps.getPicHeightInLumaSamples() ) )
+  {
+    bBoundary = true;
+  }
+  // quadtree 
+  if( ( ( uiDepth < pcCU1->getDepth( uiAbsPartIdx ) ) && ( uiDepth < sps.getLog2DiffMaxMinCodingBlockSize() ) ) || bBoundary )
+  {
+    UInt uiQNumParts = ( pcPic->getNumPartitionsInCtu() >> (uiDepth<<1) )>>2;
+    for ( UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++, uiAbsPartIdx+=uiQNumParts )
+    {
+      uiLPelX   = pcCU1->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
+      uiTPelY   = pcCU1->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
+      if( ( uiLPelX < sps.getPicWidthInLumaSamples() ) && ( uiTPelY < sps.getPicHeightInLumaSamples() ) )
+      {
+        xSelectCu( pcCU1,pcCU2, uiAbsPartIdx, uiDepth+1);
+      }
+    }
+    return;
+  }
+  // Check if two Pic has the same structure
+  assert(pcCU1->getHeight(uiAbsPartIdx)==pcCU2->getHeight(uiAbsPartIdx));
+  assert(pcCU1->getHeight(uiAbsPartIdx)==pcCU2->getHeight(uiAbsPartIdx));
+  // for each CU in the quadtree, perform the merging process
+  if (pcCU1->getQP(uiAbsPartIdx)<pcCU2->getQP(uiAbsPartIdx)){
+    pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
+  }
+  else
+  {
+    pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
+  }
+}
+
+
+// this function fusion two description to have one
+Void TEncGOP::centralConstruction(TComPic &rPic){
+    const UInt numberOfCtusInFrame = rPic.getNumberOfCtusInFrame();
+    for (int i=0;i<numberOfCtusInFrame;i++){
+        TComDataCU* pCtuD1 = rPic.getPicSym(1)->getCtu(i);
+        TComDataCU* pCtuD2 = rPic.getPicSym(2)->getCtu(i);
+        xSelectCu(pCtuD1,pCtuD2,0,0);
+    }
+}
+
+
+// Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rcListPic,
+//                            TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsInGOP,
+//                            Bool isField, Bool isTff, const InputColourSpaceConversion ip_conversion, const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogControl &outputLogCtrl )
+// {
+//   // TODO: Split this function up.
+
+//   TComPic*        pcPic = NULL;
+//   TComPicYuv*     pcPicYuvRecOut;
+//   TComSlice*      pcSlice;
+//   TComOutputBitstream  *pcBitstreamRedirect;
+//   pcBitstreamRedirect = new TComOutputBitstream;
+//   AccessUnit::iterator  itLocationToPushSliceHeaderNALU; // used to store location where NALU containing slice header is to be inserted
+
+//   xInitGOP( iPOCLast, iNumPicRcvd, isField );
+
+//   m_iNumPicCoded = 0;
+//   SEIMessages leadingSeiMessages;
+//   SEIMessages nestedSeiMessages;
+//   SEIMessages duInfoSeiMessages;
+//   SEIMessages trailingSeiMessages;
+//   std::deque<DUData> duData;
+//   SEIDecodingUnitInfo decodingUnitInfoSEI;
+
+//   EfficientFieldIRAPMapping effFieldIRAPMap;
+//   if (m_pcCfg->getEfficientFieldIRAPEnabled())
+//   {
+//     effFieldIRAPMap.initialize(isField, m_iGopSize, iPOCLast, iNumPicRcvd, m_iLastIDR, this, m_pcCfg);
+//   }
+
+//   // reset flag indicating whether pictures have been encoded
+//   for ( Int iGOPid=0; iGOPid < m_iGopSize; iGOPid++ )
+//   {
+//     m_pcCfg->setEncodedFlag(iGOPid, false);
+//   }
+
+//   for ( Int iGOPid=0; iGOPid < m_iGopSize; iGOPid++ )
+//   {
+//     if (m_pcCfg->getEfficientFieldIRAPEnabled())
+//     {
+//       iGOPid=effFieldIRAPMap.adjustGOPid(iGOPid);
+//     }
+
+//     //-- For time output for each slice
+//     clock_t iBeforeTime = clock();
+
+
+//     /////////////////////////////////////////////////////////////////////////////////////////////////// Initial to start encoding
+//     Int iTimeOffset;
+//     Int pocCurr;
+
+//     if(iPOCLast == 0) //case first frame or first top field
+//     {
+//       pocCurr=0;
+//       iTimeOffset = 1;
+//     }
+//     else if(iPOCLast == 1 && isField) //case first bottom field, just like the first frame, the poc computation is not right anymore, we set the right value
+//     {
+//       pocCurr = 1;
+//       iTimeOffset = 1;
+//     }
+//     else
+//     {
+//       pocCurr = iPOCLast - iNumPicRcvd + m_pcCfg->getGOPEntry(iGOPid).m_POC - ((isField && m_iGopSize>1) ? 1:0);
+//       iTimeOffset = m_pcCfg->getGOPEntry(iGOPid).m_POC;
+//     }
+
+//     if(pocCurr>=m_pcCfg->getFramesToBeEncoded())
+//     {
+//       if (m_pcCfg->getEfficientFieldIRAPEnabled())
+//       {
+//         iGOPid=effFieldIRAPMap.restoreGOPid(iGOPid);
+//       }
+//       continue;
+//     }
+
+//     if( getNalUnitType(pocCurr, m_iLastIDR, isField) == NAL_UNIT_CODED_SLICE_IDR_W_RADL || getNalUnitType(pocCurr, m_iLastIDR, isField) == NAL_UNIT_CODED_SLICE_IDR_N_LP )
+//     {
+//       m_iLastIDR = pocCurr;
+//     }
+//     // start a new access unit: create an entry in the list of output access units
+//     accessUnitsInGOP.push_back(AccessUnit());
+//     AccessUnit& accessUnit = accessUnitsInGOP.back();
+//     // Modify the buffer
+//     xGetBuffer( rcListPic, rcListPicYuvRecOut, iNumPicRcvd, iTimeOffset, pcPic, pcPicYuvRecOut, pocCurr, isField );
+
+// #if REDUCED_ENCODER_MEMORY
+//     pcPic->prepareForReconstruction();
+
+// #endif
+//     //  Slice data initialization
+//     pcPic->clearSliceBuffer();
+//     pcPic->allocateNewSlice();
+//     m_pcSliceEncoder->setSliceIdx(0);
+//     pcPic->setCurrSliceIdx(0);
+
+//     m_pcSliceEncoder->initEncSlice ( pcPic, iPOCLast, pocCurr, iGOPid, pcSlice, isField );
+
+//     pcSlice->setLastIDR(m_iLastIDR);
+//     pcSlice->setSliceIdx(0);
+//     //set default slice level flag to the same as SPS level flag
+//     pcSlice->setLFCrossSliceBoundaryFlag(  pcSlice->getPPS()->getLoopFilterAcrossSlicesEnabledFlag()  );
+
+//     if(pcSlice->getSliceType()==B_SLICE&&m_pcCfg->getGOPEntry(iGOPid).m_sliceType=='P')
+//     {
+//       pcSlice->setSliceType(P_SLICE);
+//     }
+//     if(pcSlice->getSliceType()==B_SLICE&&m_pcCfg->getGOPEntry(iGOPid).m_sliceType=='I')
+//     {
+//       pcSlice->setSliceType(I_SLICE);
+//     }
+    
+//     // Set the nal unit type
+//     pcSlice->setNalUnitType(getNalUnitType(pocCurr, m_iLastIDR, isField));
+//     if(pcSlice->getTemporalLayerNonReferenceFlag())
+//     {
+//       if (pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_TRAIL_R &&
+//           !(m_iGopSize == 1 && pcSlice->getSliceType() == I_SLICE))
+//         // Add this condition to avoid POC issues with encoder_intra_main.cfg configuration (see #1127 in bug tracker)
+//       {
+//         pcSlice->setNalUnitType(NAL_UNIT_CODED_SLICE_TRAIL_N);
+//       }
+//       if(pcSlice->getNalUnitType()==NAL_UNIT_CODED_SLICE_RADL_R)
+//       {
+//         pcSlice->setNalUnitType(NAL_UNIT_CODED_SLICE_RADL_N);
+//       }
+//       if(pcSlice->getNalUnitType()==NAL_UNIT_CODED_SLICE_RASL_R)
+//       {
+//         pcSlice->setNalUnitType(NAL_UNIT_CODED_SLICE_RASL_N);
+//       }
+//     }
+
+//     if (m_pcCfg->getEfficientFieldIRAPEnabled())
+//     {
+//       if ( pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_LP
+//         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_RADL
+//         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_N_LP
+//         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL
+//         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_N_LP
+//         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA )  // IRAP picture
+//       {
+//         m_associatedIRAPType = pcSlice->getNalUnitType();
+//         m_associatedIRAPPOC = pocCurr;
+//       }
+//       pcSlice->setAssociatedIRAPType(m_associatedIRAPType);
+//       pcSlice->setAssociatedIRAPPOC(m_associatedIRAPPOC);
+//     }
+//     // Do decoding refresh marking if any
+//     pcSlice->decodingRefreshMarking(m_pocCRA, m_bRefreshPending, rcListPic, m_pcCfg->getEfficientFieldIRAPEnabled());
+//     m_pcEncTop->selectReferencePictureSet(pcSlice, pocCurr, iGOPid);
+//     if (!m_pcCfg->getEfficientFieldIRAPEnabled())
+//     {
+//       if ( pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_LP
+//         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_RADL
+//         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_N_LP
+//         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL
+//         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_N_LP
+//         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA )  // IRAP picture
+//       {
+//         m_associatedIRAPType = pcSlice->getNalUnitType();
+//         m_associatedIRAPPOC = pocCurr;
+//       }
+//       pcSlice->setAssociatedIRAPType(m_associatedIRAPType);
+//       pcSlice->setAssociatedIRAPPOC(m_associatedIRAPPOC);
+//     }
+
+//     if ((pcSlice->checkThatAllRefPicsAreAvailable(rcListPic, pcSlice->getRPS(), false, m_iLastRecoveryPicPOC, m_pcCfg->getDecodingRefreshType() == 3) != 0) || (pcSlice->isIRAP()) 
+//       || (m_pcCfg->getEfficientFieldIRAPEnabled() && isField && pcSlice->getAssociatedIRAPType() >= NAL_UNIT_CODED_SLICE_BLA_W_LP && pcSlice->getAssociatedIRAPType() <= NAL_UNIT_CODED_SLICE_CRA && pcSlice->getAssociatedIRAPPOC() == pcSlice->getPOC()+1)
+//       )
+//     {
+//       pcSlice->createExplicitReferencePictureSetFromReference(rcListPic, pcSlice->getRPS(), pcSlice->isIRAP(), m_iLastRecoveryPicPOC, m_pcCfg->getDecodingRefreshType() == 3, m_pcCfg->getEfficientFieldIRAPEnabled());
+//     }
+
+//     pcSlice->applyReferencePictureSet(rcListPic, pcSlice->getRPS());
+
+//     if(pcSlice->getTLayer() > 0 
+//       &&  !( pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_RADL_N     // Check if not a leading picture
+//           || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_RADL_R
+//           || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_RASL_N
+//           || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_RASL_R )
+//         )
+//     {
+//       if(pcSlice->isTemporalLayerSwitchingPoint(rcListPic) || pcSlice->getSPS()->getTemporalIdNestingFlag())
+//       {
+//         if(pcSlice->getTemporalLayerNonReferenceFlag())
+//         {
+//           pcSlice->setNalUnitType(NAL_UNIT_CODED_SLICE_TSA_N);
+//         }
+//         else
+//         {
+//           pcSlice->setNalUnitType(NAL_UNIT_CODED_SLICE_TSA_R);
+//         }
+//       }
+//       else if(pcSlice->isStepwiseTemporalLayerSwitchingPointCandidate(rcListPic))
+//       {
+//         Bool isSTSA=true;
+//         for(Int ii=iGOPid+1;(ii<m_pcCfg->getGOPSize() && isSTSA==true);ii++)
+//         {
+//           Int lTid= m_pcCfg->getGOPEntry(ii).m_temporalId;
+//           if(lTid==pcSlice->getTLayer())
+//           {
+//             const TComReferencePictureSet* nRPS = pcSlice->getSPS()->getRPSList()->getReferencePictureSet(ii);
+//             for(Int jj=0;jj<nRPS->getNumberOfPictures();jj++)
+//             {
+//               if(nRPS->getUsed(jj))
+//               {
+//                 Int tPoc=m_pcCfg->getGOPEntry(ii).m_POC+nRPS->getDeltaPOC(jj);
+//                 Int kk=0;
+//                 for(kk=0;kk<m_pcCfg->getGOPSize();kk++)
+//                 {
+//                   if(m_pcCfg->getGOPEntry(kk).m_POC==tPoc)
+//                   {
+//                     break;
+//                   }
+//                 }
+//                 Int tTid=m_pcCfg->getGOPEntry(kk).m_temporalId;
+//                 if(tTid >= pcSlice->getTLayer())
+//                 {
+//                   isSTSA=false;
+//                   break;
+//                 }
+//               }
+//             }
+//           }
+//         }
+//         if(isSTSA==true)
+//         {
+//           if(pcSlice->getTemporalLayerNonReferenceFlag())
+//           {
+//             pcSlice->setNalUnitType(NAL_UNIT_CODED_SLICE_STSA_N);
+//           }
+//           else
+//           {
+//             pcSlice->setNalUnitType(NAL_UNIT_CODED_SLICE_STSA_R);
+//           }
+//         }
+//       }
+//     }
+//     arrangeLongtermPicturesInRPS(pcSlice, rcListPic);
+//     TComRefPicListModification* refPicListModification = pcSlice->getRefPicListModification();
+//     refPicListModification->setRefPicListModificationFlagL0(0);
+//     refPicListModification->setRefPicListModificationFlagL1(0);
+//     pcSlice->setNumRefIdx(REF_PIC_LIST_0,min(m_pcCfg->getGOPEntry(iGOPid).m_numRefPicsActive,pcSlice->getRPS()->getNumberOfPictures()));
+//     pcSlice->setNumRefIdx(REF_PIC_LIST_1,min(m_pcCfg->getGOPEntry(iGOPid).m_numRefPicsActive,pcSlice->getRPS()->getNumberOfPictures()));
+
+//     //  Set reference list
+//     pcSlice->setRefPicList ( rcListPic );
+
+//     //  Slice info. refinement
+//     if ( (pcSlice->getSliceType() == B_SLICE) && (pcSlice->getNumRefIdx(REF_PIC_LIST_1) == 0) )
+//     {
+//       pcSlice->setSliceType ( P_SLICE );
+//     }
+
+
+//     if (pcSlice->getPOC() > m_RASPOCforResetEncoder && m_pcCfg->getResetEncoderStateAfterIRAP())
+//     {
+//       // need to reset encoder decisions.
+//       m_pcSliceEncoder->resetEncoderDecisions();
+
+//       if (pcSlice->getSPS()->getUseSAO())
+//       {
+//         m_pcSAO->resetEncoderDecisions();
+//       }
+//       m_RASPOCforResetEncoder=MAX_INT;
+//     }
+//     if (pcSlice->isIRAP())
+//     {
+//       m_RASPOCforResetEncoder = pcSlice->getPOC();
+//     }
+
+//     pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
+// #if MCTS_EXTRACTION
+//     SliceType  encCABACTableIdx = pcSlice->getEncCABACTableIdx();
+//     Bool encCabacInitFlag = (pcSlice->getSliceType() != encCABACTableIdx && encCABACTableIdx != I_SLICE) ? true : false;
+//     pcSlice->setCabacInitFlag(encCabacInitFlag);
+// #endif
+
+//     if (pcSlice->getSliceType() == B_SLICE)
+//     {
+//       const UInt uiColFromL0 = calculateCollocatedFromL0Flag(pcSlice);
+//       pcSlice->setColFromL0Flag(uiColFromL0);
+//       Bool bLowDelay = true;
+//       Int  iCurrPOC  = pcSlice->getPOC();
+//       Int iRefIdx = 0;
+
+//       for (iRefIdx = 0; iRefIdx < pcSlice->getNumRefIdx(REF_PIC_LIST_0) && bLowDelay; iRefIdx++)
+//       {
+//         if ( pcSlice->getRefPic(REF_PIC_LIST_0, iRefIdx)->getPOC() > iCurrPOC )
+//         {
+//           bLowDelay = false;
+//         }
+//       }
+//       for (iRefIdx = 0; iRefIdx < pcSlice->getNumRefIdx(REF_PIC_LIST_1) && bLowDelay; iRefIdx++)
+//       {
+//         if ( pcSlice->getRefPic(REF_PIC_LIST_1, iRefIdx)->getPOC() > iCurrPOC )
+//         {
+//           bLowDelay = false;
+//         }
+//       }
+
+//       pcSlice->setCheckLDC(bLowDelay);
+//     }
+//     else
+//     {
+//       pcSlice->setCheckLDC(true);
+//     }
+
+
+//     //-------------------------------------------------------------
+//     pcSlice->setRefPOCList();
+
+//     pcSlice->setList1IdxToList0Idx();
+
+//     if (m_pcEncTop->getTMVPModeId() == 2)
+//     {
+//       if (iGOPid == 0) // first picture in SOP (i.e. forward B)
+//       {
+//         pcSlice->setEnableTMVPFlag(0);
+//       }
+//       else
+//       {
+//         // Note: pcSlice->getColFromL0Flag() is assumed to be always 0 and getcolRefIdx() is always 0.
+//         pcSlice->setEnableTMVPFlag(1);
+//       }
+//     }
+//     else if (m_pcEncTop->getTMVPModeId() == 1)
+//     {
+//       pcSlice->setEnableTMVPFlag(1);
+//     }
+//     else
+//     {
+//       pcSlice->setEnableTMVPFlag(0);
+//     }
+    
+//     // set adaptive search range for non-intra-slices
+//     if (m_pcCfg->getUseASR() && pcSlice->getSliceType()!=I_SLICE)
+//     {
+//       m_pcSliceEncoder->setSearchRange(pcSlice);
+//     }
+
+//     Bool bGPBcheck=false;
+//     if ( pcSlice->getSliceType() == B_SLICE)
+//     {
+//       if ( pcSlice->getNumRefIdx(RefPicList( 0 ) ) == pcSlice->getNumRefIdx(RefPicList( 1 ) ) )
+//       {
+//         bGPBcheck=true;
+//         Int i;
+//         for ( i=0; i < pcSlice->getNumRefIdx(RefPicList( 1 ) ); i++ )
+//         {
+//           if ( pcSlice->getRefPOC(RefPicList(1), i) != pcSlice->getRefPOC(RefPicList(0), i) )
+//           {
+//             bGPBcheck=false;
+//             break;
+//           }
+//         }
+//       }
+//     }
+//     if(bGPBcheck)
+//     {
+//       pcSlice->setMvdL1ZeroFlag(true);
+//     }
+//     else
+//     {
+//       pcSlice->setMvdL1ZeroFlag(false);
+//     }
+
+
+//     Double lambda            = 0.0;
+//     Int actualHeadBits       = 0;
+//     Int actualTotalBits      = 0;
+//     Int estimatedBits        = 0;
+//     Int tmpBitsBeforeWriting = 0;
+//     if ( m_pcCfg->getUseRateCtrl() ) // TODO: does this work with multiple slices and slice-segments?
+//     {
+//       Int frameLevel = m_pcRateCtrl->getRCSeq()->getGOPID2Level( iGOPid );
+//       if ( pcPic->getSlice(0)->getSliceType() == I_SLICE )
+//       {
+//         frameLevel = 0;
+//       }
+//       m_pcRateCtrl->initRCPic( frameLevel );
+//       estimatedBits = m_pcRateCtrl->getRCPic()->getTargetBits();
+
+//       if (m_pcRateCtrl->getCpbSaturationEnabled() && frameLevel != 0)
+//       {
+//         Int estimatedCpbFullness = m_pcRateCtrl->getCpbState() + m_pcRateCtrl->getBufferingRate();
+
+//         // prevent overflow
+//         if (estimatedCpbFullness - estimatedBits > (Int)(m_pcRateCtrl->getCpbSize()*0.9f))
+//         {
+//           estimatedBits = estimatedCpbFullness - (Int)(m_pcRateCtrl->getCpbSize()*0.9f);
+//         }
+
+//         estimatedCpbFullness -= m_pcRateCtrl->getBufferingRate();
+//         // prevent underflow
+//         if (estimatedCpbFullness - estimatedBits < m_pcRateCtrl->getRCPic()->getLowerBound())
+//         {
+//           estimatedBits = max(200, estimatedCpbFullness - m_pcRateCtrl->getRCPic()->getLowerBound());
+//         }
+
+//         m_pcRateCtrl->getRCPic()->setTargetBits(estimatedBits);
+//       }
+
+//       Int sliceQP = m_pcCfg->getInitialQP();
+//       if ( ( pcSlice->getPOC() == 0 && m_pcCfg->getInitialQP() > 0 ) || ( frameLevel == 0 && m_pcCfg->getForceIntraQP() ) ) // QP is specified
+//       {
+//         Int    NumberBFrames = ( m_pcCfg->getGOPSize() - 1 );
+//         Double dLambda_scale = 1.0 - Clip3( 0.0, 0.5, 0.05*(Double)NumberBFrames );
+//         Double dQPFactor     = 0.57*dLambda_scale;
+//         Int    SHIFT_QP      = 12;
+//         Int    bitdepth_luma_qp_scale = 0;
+//         Double qp_temp = (Double) sliceQP + bitdepth_luma_qp_scale - SHIFT_QP;
+//         lambda = dQPFactor*pow( 2.0, qp_temp/3.0 );
+//       }
+//       else if ( frameLevel == 0 )   // intra case, but use the model
+//       {
+//         m_pcSliceEncoder->calCostSliceI(pcPic); // TODO: This only analyses the first slice segment - what about the others?
+
+//         if ( m_pcCfg->getIntraPeriod() != 1 )   // do not refine allocated bits for all intra case
+//         {
+//           Int bits = m_pcRateCtrl->getRCSeq()->getLeftAverageBits();
+//           bits = m_pcRateCtrl->getRCPic()->getRefineBitsForIntra( bits );
+
+//           if (m_pcRateCtrl->getCpbSaturationEnabled() )
+//           {
+//             Int estimatedCpbFullness = m_pcRateCtrl->getCpbState() + m_pcRateCtrl->getBufferingRate();
+
+//             // prevent overflow
+//             if (estimatedCpbFullness - bits > (Int)(m_pcRateCtrl->getCpbSize()*0.9f))
+//             {
+//               bits = estimatedCpbFullness - (Int)(m_pcRateCtrl->getCpbSize()*0.9f);
+//             }
+
+//             estimatedCpbFullness -= m_pcRateCtrl->getBufferingRate();
+//             // prevent underflow
+//             if (estimatedCpbFullness - bits < m_pcRateCtrl->getRCPic()->getLowerBound())
+//             {
+//               bits = estimatedCpbFullness - m_pcRateCtrl->getRCPic()->getLowerBound();
+//             }
+//           }
+
+//           if ( bits < 200 )
+//           {
+//             bits = 200;
+//           }
+//           m_pcRateCtrl->getRCPic()->setTargetBits( bits );
+//         }
+
+//         list<TEncRCPic*> listPreviousPicture = m_pcRateCtrl->getPicList();
+//         m_pcRateCtrl->getRCPic()->getLCUInitTargetBits();
+//         lambda  = m_pcRateCtrl->getRCPic()->estimatePicLambda( listPreviousPicture, pcSlice->getSliceType());
+//         sliceQP = m_pcRateCtrl->getRCPic()->estimatePicQP( lambda, listPreviousPicture );
+//       }
+//       else    // normal case
+//       {
+//         list<TEncRCPic*> listPreviousPicture = m_pcRateCtrl->getPicList();
+//         lambda  = m_pcRateCtrl->getRCPic()->estimatePicLambda( listPreviousPicture, pcSlice->getSliceType());
+//         sliceQP = m_pcRateCtrl->getRCPic()->estimatePicQP( lambda, listPreviousPicture );
+//       }
+
+//       sliceQP = Clip3( -pcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, sliceQP );
+//       m_pcRateCtrl->getRCPic()->setPicEstQP( sliceQP );
+
+//       m_pcSliceEncoder->resetQP( pcPic, sliceQP, lambda );
+//     }
+
+//     UInt uiNumSliceSegments = 1;
+
+//     // Allocate some coders, now the number of tiles are known.
+//     const Int numSubstreamsColumns = (pcSlice->getPPS()->getNumTileColumnsMinus1() + 1);
+//     const Int numSubstreamRows     = pcSlice->getPPS()->getEntropyCodingSyncEnabledFlag() ? pcPic->getFrameHeightInCtus() : (pcSlice->getPPS()->getNumTileRowsMinus1() + 1);
+//     const Int numSubstreams        = numSubstreamRows * numSubstreamsColumns;
+//     std::vector<TComOutputBitstream> substreamsOut(numSubstreams);
+//     // now compress (trial encode) the various slice segments (slices, and dependent slices)
+//     pcPic->setRunMode(m_pcCfg->getEncodingMode());
+//     TMDCQPTable::getInstance()->resetCturs();
+//     // After this an yuv residual will be created
+//     {
+//       const UInt numberOfCtusInFrame=pcPic->getPicSym()->getNumberOfCtusInFrame();
+//       pcSlice->setSliceCurStartCtuTsAddr( 0 );
+//       pcSlice->setSliceSegmentCurStartCtuTsAddr( 0 );
+//       // tle, the code loop over different slice and then however, the CTU cannot be split, therefore, it's arrive that a CTU is bigger than the RTP
+      
+//       for(UInt nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
+//       {
+//         m_pcSliceEncoder->precompressSlice(pcPic);
+//         // Invoke our script python here !!!
+//         m_pcSliceEncoder->compressSlice(pcPic, false, false);
+//         // Then invoke another compressSlide for MDC
+        
+//         const UInt curSliceSegmentEnd = pcSlice->getSliceSegmentCurEndCtuTsAddr();
+//         if (curSliceSegmentEnd < numberOfCtusInFrame)
+//         {
+//           const Bool bNextSegmentIsDependentSlice=curSliceSegmentEnd<pcSlice->getSliceCurEndCtuTsAddr();
+//           const UInt sliceBits=pcSlice->getSliceBits();
+//           pcPic->allocateNewSlice();
+//           // prepare for next slice
+//           pcPic->setCurrSliceIdx                    ( uiNumSliceSegments );
+//           m_pcSliceEncoder->setSliceIdx             ( uiNumSliceSegments   );
+//           pcSlice = pcPic->getSlice                 ( uiNumSliceSegments   );
+//           assert(pcSlice->getPPS()!=0);
+//           pcSlice->copySliceInfo                    ( pcPic->getSlice(uiNumSliceSegments-1)  );
+//           pcSlice->setSliceIdx                      ( uiNumSliceSegments   );
+//           if (bNextSegmentIsDependentSlice)
+//           {
+//             pcSlice->setSliceBits(sliceBits);
+//           }
+//           else
+//           {
+//             pcSlice->setSliceCurStartCtuTsAddr      ( curSliceSegmentEnd );
+//             pcSlice->setSliceBits(0);
+//           }
+//           pcSlice->setDependentSliceSegmentFlag(bNextSegmentIsDependentSlice);
+//           pcSlice->setSliceSegmentCurStartCtuTsAddr ( curSliceSegmentEnd );
+//           // TODO: optimise cabac_init during compress slice to improve multi-slice operation
+//           // pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
+//           uiNumSliceSegments ++;
+//         }
+//         nextCtuTsAddr = curSliceSegmentEnd;
+//       }
+//     }
+
+
+//     duData.clear();
+//     pcSlice = pcPic->getSlice(0);
+
+//     // SAO parameter estimation using non-deblocked pixels for CTU bottom and right boundary areas
+//     if( pcSlice->getSPS()->getUseSAO() && m_pcCfg->getSaoCtuBoundary() )
+//     {
+//       m_pcSAO->getPreDBFStatistics(pcPic);
+//     }
+
+//     //-- Loop filter
+//     Bool bLFCrossTileBoundary = pcSlice->getPPS()->getLoopFilterAcrossTilesEnabledFlag();
+//     m_pcLoopFilter->setCfg(bLFCrossTileBoundary);
+//     if ( m_pcCfg->getDeblockingFilterMetric() )
+//     {
+//       if ( m_pcCfg->getDeblockingFilterMetric()==2 )
+//       {
+//         applyDeblockingFilterParameterSelection(pcPic, uiNumSliceSegments, iGOPid);
+//       }
+//       else
+//       {
+//         applyDeblockingFilterMetric(pcPic, uiNumSliceSegments);
+//       }
+//     }
+//     m_pcLoopFilter->loopFilterPic( pcPic );
+//     /////////////////////////////////////////////////////////////////////////////////////////////////// File writing
+//     // Set entropy coder
+//     m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
+
+//     // write various parameter sets
+//     //bool writePS = m_bSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && (pcPic->getSlice(0)->getSliceType() == I_SLICE));
+//     bool writePS = m_bSeqFirst || (m_pcCfg->getReWriteParamSetsFlag() && (pcSlice->isIRAP()));
+//     if (writePS)
+//     {
+//       m_pcEncTop->setParamSetChanged(pcSlice->getSPS()->getSPSId(), pcSlice->getPPS()->getPPSId());
+//     }
+//     actualTotalBits += xWriteParameterSets(accessUnit, pcSlice, writePS);
+
+//     if (writePS)
+//     {
+//       // create prefix SEI messages at the beginning of the sequence
+//       assert(leadingSeiMessages.empty());
+// #if MCTS_EXTRACTION
+//       xCreateIRAPLeadingSEIMessages(leadingSeiMessages, m_pcEncTop->getVPS(),  pcSlice->getSPS(), pcSlice->getPPS());
+// #else
+//       xCreateIRAPLeadingSEIMessages(leadingSeiMessages, pcSlice->getSPS(), pcSlice->getPPS());
+// #endif
+
+//       m_bSeqFirst = false;
+//     }
+//     if (m_pcCfg->getAccessUnitDelimiter())
+//     {
+//       xWriteAccessUnitDelimiter(accessUnit, pcSlice);
+//     }
+
+//     // reset presence of BP SEI indication
+//     m_bufferingPeriodSEIPresentInAU = false;
+//     // create prefix SEI associated with a picture
+//     xCreatePerPictureSEIMessages(iGOPid, leadingSeiMessages, nestedSeiMessages, pcSlice);
+
+//     /* use the main bitstream buffer for storing the marshalled picture */
+//     m_pcEntropyCoder->setBitstream(NULL);
+
+//     pcSlice = pcPic->getSlice(0);
+
+//     if (pcSlice->getSPS()->getUseSAO())
+//     {
+//       Bool sliceEnabled[MAX_NUM_COMPONENT];
+//       TComBitCounter tempBitCounter;
+//       tempBitCounter.resetBits();
+//       m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(&tempBitCounter);
+//       m_pcSAO->initRDOCabacCoder(m_pcEncTop->getRDGoOnSbacCoder(), pcSlice);
+//       m_pcSAO->SAOProcess(pcPic, sliceEnabled, pcPic->getSlice(0)->getLambdas(),
+//                           m_pcCfg->getTestSAODisableAtPictureLevel(),
+//                           m_pcCfg->getSaoEncodingRate(),
+//                           m_pcCfg->getSaoEncodingRateChroma(),
+//                           m_pcCfg->getSaoCtuBoundary());
+//       m_pcSAO->PCMLFDisableProcess(pcPic);
+//       m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(NULL);
+
+//       //assign SAO slice header
+//       for(Int s=0; s< uiNumSliceSegments; s++)
+//       {
+//         pcPic->getSlice(s)->setSaoEnabledFlag(CHANNEL_TYPE_LUMA, sliceEnabled[COMPONENT_Y]);
+//         assert(sliceEnabled[COMPONENT_Cb] == sliceEnabled[COMPONENT_Cr]);
+//         pcPic->getSlice(s)->setSaoEnabledFlag(CHANNEL_TYPE_CHROMA, sliceEnabled[COMPONENT_Cb]);
+//       }
+//     }
+
+//     // pcSlice is currently slice 0.
+//     std::size_t binCountsInNalUnits   = 0; // For implementation of cabac_zero_word stuffing (section 7.4.3.10)
+//     std::size_t numBytesInVclNalUnits = 0; // For implementation of cabac_zero_word stuffing (section 7.4.3.10)
+
+//     for( UInt sliceSegmentStartCtuTsAddr = 0, sliceIdxCount=0; sliceSegmentStartCtuTsAddr < pcPic->getPicSym()->getNumberOfCtusInFrame(); sliceIdxCount++, sliceSegmentStartCtuTsAddr=pcSlice->getSliceSegmentCurEndCtuTsAddr() )
+//     {
+//       pcSlice = pcPic->getSlice(sliceIdxCount);
+//       if(sliceIdxCount > 0 && pcSlice->getSliceType()!= I_SLICE)
+//       {
+//         pcSlice->checkColRefIdx(sliceIdxCount, pcPic);
+//       }
+//       pcPic->setCurrSliceIdx(sliceIdxCount);
+//       m_pcSliceEncoder->setSliceIdx(sliceIdxCount);
+
+//       pcSlice->setRPS(pcPic->getSlice(0)->getRPS());
+//       pcSlice->setRPSidx(pcPic->getSlice(0)->getRPSidx());
+
+//       for ( UInt ui = 0 ; ui < numSubstreams; ui++ )
+//       {
+//         substreamsOut[ui].clear();
+//       }
+
+//       m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
+//       m_pcEntropyCoder->resetEntropy      ( pcSlice );
+//       /* start slice NALunit */
+//       OutputNALUnit nalu( pcSlice->getNalUnitType(), pcSlice->getTLayer() );
+//       m_pcEntropyCoder->setBitstream(&nalu.m_Bitstream);
+
+//       pcSlice->setNoRaslOutputFlag(false);
+//       if (pcSlice->isIRAP())
+//       {
+//         if (pcSlice->getNalUnitType() >= NAL_UNIT_CODED_SLICE_BLA_W_LP && pcSlice->getNalUnitType() <= NAL_UNIT_CODED_SLICE_IDR_N_LP)
+//         {
+//           pcSlice->setNoRaslOutputFlag(true);
+//         }
+//         //the inference for NoOutputPriorPicsFlag
+//         // KJS: This cannot happen at the encoder
+//         if (!m_bFirst && pcSlice->isIRAP() && pcSlice->getNoRaslOutputFlag())
+//         {
+//           if (pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA)
+//           {
+//             pcSlice->setNoOutputPriorPicsFlag(true);
+//           }
+//         }
+//       }
+
+//       pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
+// #if MCTS_EXTRACTION
+//       encCABACTableIdx = pcSlice->getEncCABACTableIdx();
+//       encCabacInitFlag = (pcSlice->getSliceType() != encCABACTableIdx && encCABACTableIdx != I_SLICE) ? true : false;
+//       pcSlice->setCabacInitFlag(encCabacInitFlag);
+// #endif
+//       tmpBitsBeforeWriting = m_pcEntropyCoder->getNumberOfWrittenBits();
+//       m_pcEntropyCoder->encodeSliceHeader(pcSlice);
+//       actualHeadBits += ( m_pcEntropyCoder->getNumberOfWrittenBits() - tmpBitsBeforeWriting );
+
+//       pcSlice->setFinalized(true);
+
+//       pcSlice->clearSubstreamSizes(  );
+//       {
+//         UInt numBinsCoded = 0;
+//         m_pcSliceEncoder->encodeSlice(pcPic, &(substreamsOut[0]), numBinsCoded);
+//         binCountsInNalUnits+=numBinsCoded;
+//       }
+
+//       {
+//         // Construct the final bitstream by concatenating substreams.
+//         // The final bitstream is either nalu.m_Bitstream or pcBitstreamRedirect;
+//         // Complete the slice header info.
+//         m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
+//         m_pcEntropyCoder->setBitstream(&nalu.m_Bitstream);
+//         m_pcEntropyCoder->encodeTilesWPPEntryPoint( pcSlice );
+
+//         // Append substreams...
+//         TComOutputBitstream *pcOut = pcBitstreamRedirect;
+//         const Int numZeroSubstreamsAtStartOfSlice  = pcPic->getSubstreamForCtuAddr(pcSlice->getSliceSegmentCurStartCtuTsAddr(), false, pcSlice);
+//         const Int numSubstreamsToCode  = pcSlice->getNumberOfSubstreamSizes()+1;
+//         for ( UInt ui = 0 ; ui < numSubstreamsToCode; ui++ )
+//         {
+//           pcOut->addSubstream(&(substreamsOut[ui+numZeroSubstreamsAtStartOfSlice]));
+//         }
+//       }
+
+//       // If current NALU is the first NALU of slice (containing slice header) and more NALUs exist (due to multiple dependent slices) then buffer it.
+//       // If current NALU is the last NALU of slice and a NALU was buffered, then (a) Write current NALU (b) Update an write buffered NALU at approproate location in NALU list.
+//       Bool bNALUAlignedWrittenToList    = false; // used to ensure current NALU is not written more than once to the NALU list.
+//       xAttachSliceDataToNalUnit(nalu, pcBitstreamRedirect);
+//       accessUnit.push_back(new NALUnitEBSP(nalu));
+//       actualTotalBits += UInt(accessUnit.back()->m_nalUnitData.str().size()) * 8;
+//       numBytesInVclNalUnits += (std::size_t)(accessUnit.back()->m_nalUnitData.str().size());
+//       bNALUAlignedWrittenToList = true;
+
+//       if (!bNALUAlignedWrittenToList)
+//       {
+//         nalu.m_Bitstream.writeAlignZero();
+//         accessUnit.push_back(new NALUnitEBSP(nalu));
+//       }
+
+//       if( ( m_pcCfg->getPictureTimingSEIEnabled() || m_pcCfg->getDecodingUnitInfoSEIEnabled() ) &&
+//           ( pcSlice->getSPS()->getVuiParametersPresentFlag() ) &&
+//           ( ( pcSlice->getSPS()->getVuiParameters()->getHrdParameters()->getNalHrdParametersPresentFlag() )
+//          || ( pcSlice->getSPS()->getVuiParameters()->getHrdParameters()->getVclHrdParametersPresentFlag() ) ) &&
+//           ( pcSlice->getSPS()->getVuiParameters()->getHrdParameters()->getSubPicCpbParamsPresentFlag() ) )
+//       {
+//           UInt numNalus = 0;
+//         UInt numRBSPBytes = 0;
+//         for (AccessUnit::const_iterator it = accessUnit.begin(); it != accessUnit.end(); it++)
+//         {
+//           numRBSPBytes += UInt((*it)->m_nalUnitData.str().size());
+//           numNalus ++;
+//         }
+//         duData.push_back(DUData());
+//         duData.back().accumBitsDU = ( numRBSPBytes << 3 );
+//         duData.back().accumNalsDU = numNalus;
+//       }
+//     } // end iteration over slices
+
+//     // cabac_zero_words processing
+//     cabac_zero_word_padding(pcSlice, pcPic, binCountsInNalUnits, numBytesInVclNalUnits, accessUnit.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
+
+//     pcPic->compressMotion();
+
+//     //-- For time output for each slice
+//     Double dEncTime = (Double)(clock()-iBeforeTime) / CLOCKS_PER_SEC;
+
+//     std::string digestStr;
+//     if (m_pcCfg->getDecodedPictureHashSEIType()!=HASHTYPE_NONE)
+//     {
+//       SEIDecodedPictureHash *decodedPictureHashSei = new SEIDecodedPictureHash();
+//       m_seiEncoder.initDecodedPictureHashSEI(decodedPictureHashSei, pcPic, digestStr, pcSlice->getSPS()->getBitDepths());
+//       trailingSeiMessages.push_back(decodedPictureHashSei);
+//     }
+
+//     m_pcCfg->setEncodedFlag(iGOPid, true);
+
+//     Double PSNR_Y;
+
+//     xCalculateAddPSNRs( isField, isTff, iGOPid, pcPic, accessUnit, rcListPic, dEncTime, ip_conversion, snr_conversion, outputLogCtrl, &PSNR_Y );
+    
+//     // Only produce the Green Metadata SEI message with the last picture.
+//     if( m_pcCfg->getSEIGreenMetadataInfoSEIEnable() && pcSlice->getPOC() == ( m_pcCfg->getFramesToBeEncoded() - 1 )  )
+//     {
+//       SEIGreenMetadataInfo *seiGreenMetadataInfo = new SEIGreenMetadataInfo;
+//       m_seiEncoder.initSEIGreenMetadataInfo(seiGreenMetadataInfo, (UInt)(PSNR_Y * 100 + 0.5));
+//       trailingSeiMessages.push_back(seiGreenMetadataInfo);
+//     }
+    
+//     xWriteTrailingSEIMessages(trailingSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS());
+    
+//     printHash(m_pcCfg->getDecodedPictureHashSEIType(), digestStr);
+
+//     if ( m_pcCfg->getUseRateCtrl() )
+//     {
+//       Double avgQP     = m_pcRateCtrl->getRCPic()->calAverageQP();
+//       Double avgLambda = m_pcRateCtrl->getRCPic()->calAverageLambda();
+//       if ( avgLambda < 0.0 )
+//       {
+//         avgLambda = lambda;
+//       }
+
+//       m_pcRateCtrl->getRCPic()->updateAfterPicture( actualHeadBits, actualTotalBits, avgQP, avgLambda, pcSlice->getSliceType());
+//       m_pcRateCtrl->getRCPic()->addToPictureLsit( m_pcRateCtrl->getPicList() );
+
+//       m_pcRateCtrl->getRCSeq()->updateAfterPic( actualTotalBits );
+//       if ( pcSlice->getSliceType() != I_SLICE )
+//       {
+//         m_pcRateCtrl->getRCGOP()->updateAfterPicture( actualTotalBits );
+//       }
+//       else    // for intra picture, the estimated bits are used to update the current status in the GOP
+//       {
+//         m_pcRateCtrl->getRCGOP()->updateAfterPicture( estimatedBits );
+//       }
+//       if (m_pcRateCtrl->getCpbSaturationEnabled())
+//       {
+//         m_pcRateCtrl->updateCpbState(actualTotalBits);
+//         printf(" [CPB %6d bits]", m_pcRateCtrl->getCpbState());
+//       }
+//     }
+
+//     xCreatePictureTimingSEI(m_pcCfg->getEfficientFieldIRAPEnabled()?effFieldIRAPMap.GetIRAPGOPid():0, leadingSeiMessages, nestedSeiMessages, duInfoSeiMessages, pcSlice, isField, duData);
+//     if (m_pcCfg->getScalableNestingSEIEnabled())
+//     {
+//       xCreateScalableNestingSEI (leadingSeiMessages, nestedSeiMessages);
+//     }
+//     xWriteLeadingSEIMessages(leadingSeiMessages, duInfoSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS(), duData);
+//     xWriteDuSEIMessages(duInfoSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS(), duData);
+//     // dump to Residual of 8 bit Unsigned and little endian
+//     // if (pcPic->getRunMode()==0){
+//     //     if (pcPic->getPOC()==0){
+//     //       pcPic->getPicYuvResi()->dumpResiTo8bit(m_pcCfg->getResiNoQuant(),false);
+
+//     //     }
+//     //     else{
+//     //       pcPic->getPicYuvResi()->dumpResiTo8bit(m_pcCfg->getResiNoQuant(),true);
+//     //     }
+//     // }
+//     pcPic->getPicYuvRec()->copyToPic(pcPicYuvRecOut);
+
+//     pcPic->setReconMark   ( true );
+//     m_bFirst = false;
+//     m_iNumPicCoded++;
+//     m_totalCoded ++;
+//     /* logging: insert a newline at end of picture period */
+//     printf("\n");
+//     fflush(stdout);
+
+//     if (m_pcCfg->getEfficientFieldIRAPEnabled())
+//     {
+//       iGOPid=effFieldIRAPMap.restoreGOPid(iGOPid);
+//     }
+// #if REDUCED_ENCODER_MEMORY
+
+//     pcPic->releaseReconstructionIntermediateData();
+//     if (!isField) // don't release the source data for field-coding because the fields are dealt with in pairs. // TODO: release source data for interlace simulations.
+//     {
+//       pcPic->releaseEncoderSourceImageData();
+//     }
+
+// #endif
+//   } // iGOPid-loop
+//   delete pcBitstreamRedirect;
+//   // assert ( (m_iNumPicCoded == iNumPicRcvd) );
+// }
 
 Void TEncGOP::printOutSummary(UInt uiNumAllPicCoded, Bool isField, const TEncAnalyze::OutputLogControl &outputLogCtrl, const BitDepths &bitDepths)
 {
-  assert (uiNumAllPicCoded == m_gcAnalyzeAll.getNumPic());
+  // assert (uiNumAllPicCoded == m_gcAnalyzeAll.getNumPic());
 
 
   //--CFG_KDY
@@ -2104,7 +2915,8 @@ Void TEncGOP::xInitGOP( Int iPOCLast, Int iNumPicRcvd, Bool isField )
   return;
 }
 
-
+// @object: assign the last pic to the pointer rpcPic and rpcPicYuvRecOut
+//
 Void TEncGOP::xGetBuffer( TComList<TComPic*>&      rcListPic,
                          TComList<TComPicYuv*>&    rcListPicYuvRecOut,
                          Int                       iNumPicRcvd,
@@ -2149,7 +2961,7 @@ Void TEncGOP::xGetBuffer( TComList<TComPic*>&      rcListPic,
   return;
 }
 
-UInt64 TEncGOP::xFindDistortionFrame (TComPicYuv* pcPic0, TComPicYuv* pcPic1, const BitDepths &bitDepths)
+UInt64 TEncGOP::xFindDistortionFrame (TComPicYuv* pcPic0, TComPicYuv* pcPic, const BitDepths &bitDepths)
 {
   UInt64  uiTotalDiff = 0;
 
@@ -2157,7 +2969,7 @@ UInt64 TEncGOP::xFindDistortionFrame (TComPicYuv* pcPic0, TComPicYuv* pcPic1, co
   {
     const ComponentID ch=ComponentID(chan);
     Pel*  pSrc0   = pcPic0 ->getAddr(ch);
-    Pel*  pSrc1   = pcPic1 ->getAddr(ch);
+    Pel*  pSrc1   = pcPic ->getAddr(ch);
     UInt  uiShift     = 2 * DISTORTION_PRECISION_ADJUSTMENT(bitDepths.recon[toChannelType(ch)]-8);
 
     const Int   iStride = pcPic0->getStride(ch);

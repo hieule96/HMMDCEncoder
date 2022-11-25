@@ -72,7 +72,7 @@ public:
   Void initSEIDisplayOrientation(SEIDisplayOrientation *sei);
   Void initSEIToneMappingInfo(SEIToneMappingInfo *sei);
   Void initSEISOPDescription(SEISOPDescription *sei, TComSlice *slice, Int picInGOP, Int lastIdr, Int currGOPSize);
-  Void initSEIBufferingPeriod(SEIBufferingPeriod *sei, TComSlice *slice);
+  Void initSEIBufferingPeriod(SEIBufferingPeriod *sei, const TComSlice *slice);
   Void initSEIScalableNesting(SEIScalableNesting *sei, SEIMessages &nestedSEIs);
   Void initSEIRecoveryPoint(SEIRecoveryPoint *sei, TComSlice *slice);
   Void initSEISegmentedRectFramePacking(SEISegmentedRectFramePacking *sei);

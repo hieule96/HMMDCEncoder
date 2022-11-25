@@ -61,8 +61,11 @@ private:
   TVideoIOYuv                m_cTVideoIOYuvInputFile;       ///< input YUV file
   TVideoIOYuv                m_cTVideoIOYuvReconFile1;       ///< output reconstruction file
   TVideoIOYuv                m_cTVideoIOYuvReconFile2;       ///< output reconstruction file
-  TComList<TComPicYuv*>      m_cListPicYuvRes;
-  TComList<TComPicYuv*>      m_cListPicYuvRec;              ///< list of reconstruction YUV files
+  TVideoIOYuv                m_cTVideoIOYuvReconFileC;       ///< output reconstruction file
+
+  TComList<TComPicYuv*>      m_cListPicYuvRec1;              ///< list of reconstruction YUV files
+  TComList<TComPicYuv*>      m_cListPicYuvRec2;              ///< list of reconstruction YUV files
+  TComList<TComPicYuv*>      m_cListPicYuvRecC;              ///< list of reconstruction YUV files
 
   Int                        m_iFrameRcvd;                  ///< number of received frames
 
@@ -78,13 +81,16 @@ protected:
 
 
   /// obtain required buffers
-  Void xGetBuffer(TComPicYuv*& rpcPicYuvRec);
-
+  Void xGetBuffer1(TComPicYuv*& rpcPicYuvRec);
+  Void xGetBuffer2(TComPicYuv*& rpcPicYuvRec);
+  Void xGetBufferC( TComPicYuv*& rpcPicYuvRec);
   /// delete allocated buffers
   Void  xDeleteBuffer     ();
 
   // file I/O
-  Void xWriteOutput(std::ostream& bitstreamFile, Int iNumEncoded, const std::list<AccessUnit>& accessUnits); ///< write bitstream to file
+  Void xWriteOutput1(std::ostream& bitstreamFile, Int iNumEncoded, const std::list<AccessUnit>& accessUnits); ///< write bitstream to file
+  Void xWriteOutput2(std::ostream& bitstreamFile, Int iNumEncoded, const std::list<AccessUnit>& accessUnits); ///< write bitstream to file
+  Void xWriteOutputC( Int iNumEncoded );
   Void rateStatsAccum(const AccessUnit& au, const std::vector<UInt>& stats);
   Void printRateSummary();
   Void printChromaFormat();

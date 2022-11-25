@@ -62,6 +62,7 @@ class TEncSlice
   : public WeightPredAnalysis
 {
 private:
+  Int                     m_descriptionId;
   // encoder configuration
   TEncCfg*                m_pcCfg;                              ///< encoder configuration class
 
@@ -110,7 +111,7 @@ public:
 
   Void    create              ( Int iWidth, Int iHeight, ChromaFormat chromaFormat, UInt iMaxCUWidth, UInt iMaxCUHeight, UChar uhTotalDepth );
   Void    destroy             ();
-  Void    init                ( TEncTop* pcEncTop );
+  Void    init                ( TEncTop* pcEncTop, Int iEncoder );
   Void    resetEncoderDecisions() { m_encCABACTableIdx = I_SLICE; }
 
   /// preparation of slice encoding (reference marking, QP and lambda)
@@ -120,7 +121,7 @@ public:
   Void    setGopID( Int iGopID )      { m_gopID = iGopID; }
   Int     getGopID() const            { return m_gopID;   }
   Void    updateLambda(TComSlice* pSlice, Double dQP);
-
+  Int     getDescriptionId() {return this->m_descriptionId;}
   // compress and encode slice
   Void    precompressSlice    ( TComPic* pcPic                                     );      ///< precompress slice for multi-loop slice-level QP opt.
   Void    compressSlice       ( TComPic* pcPic, const Bool bCompressEntireSlice, const Bool bFastDeltaQP );      ///< analysis stage of slice

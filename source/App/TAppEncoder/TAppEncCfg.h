@@ -76,10 +76,13 @@ protected:
   std::string m_reconFileName1;                                ///< output reconstruction file
   std::string m_bitstreamFileName2;
   std::string m_reconFileName2;
+  std::string m_reconFileNameC;
+
   // tle
   // Multiple Description Coding
   std::string m_quadtreeFile;
-  std::string m_QPFile;
+  std::string m_QPFile1;
+  std::string m_QPFile2;
   std::string m_debugQtreeFile;
   std::string m_resiNoQuant;
   Int m_encodingMode;

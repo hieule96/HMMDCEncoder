@@ -93,10 +93,11 @@ Void TEncTop::create ()
   // initialize global variables
   initROM();
 
-  // create processing unit classes
+  // create unique GOP encoder for two descriptions
   m_cGOPEncoder.        create( );
-  m_cSliceEncoder.      create( getSourceWidth(), getSourceHeight(), m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth );
-  m_cCuEncoder.         create( m_maxTotalCUDepth, m_maxCUWidth, m_maxCUHeight, m_chromaFormatIDC );
+  for (int i=0;i<m_ArrSliceEncoder.size();i++) m_ArrSliceEncoder[i]. create( getSourceWidth(), getSourceHeight(), m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth );
+
+  for (int i=0;i<m_ArrCuEncoder.size();i++) m_ArrCuEncoder[i].create( m_maxTotalCUDepth, m_maxCUWidth, m_maxCUHeight, m_chromaFormatIDC );
   if (m_bUseSAO)
   {
     m_cEncSAO.create( getSourceWidth(), getSourceHeight(), m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth, m_log2SaoOffsetScale[CHANNEL_TYPE_LUMA], m_log2SaoOffsetScale[CHANNEL_TYPE_CHROMA] );
@@ -150,8 +151,9 @@ Void TEncTop::destroy ()
 {
   // destroy processing unit classes
   m_cGOPEncoder.        destroy();
-  m_cSliceEncoder.      destroy();
-  m_cCuEncoder.         destroy();
+  for (int i=0;i<m_ArrSliceEncoder.size();i++) m_ArrSliceEncoder[i].destroy();
+  for (int i=0;i<m_ArrCuEncoder.size();i++) m_ArrCuEncoder[i].destroy();
+
   m_cEncSAO.            destroyEncData();
   m_cEncSAO.            destroy();
   m_cLoopFilter.        destroy();
@@ -201,7 +203,8 @@ Void TEncTop::init(Bool isFieldCoding)
   xInitPPS(pps0, sps0);
   xInitRPS(sps0, isFieldCoding);
   xInitScalingLists(sps0, pps0);
-  TMDCQPTable::initInstance(1024, this->m_QPFile.c_str(),this->m_quadtreeFile.c_str());
+  // Only for this test, in the futur is the bi directional with python
+  TMDCQPTable::initInstance(1024, this->m_QPFile1.c_str(),this->m_QPFile2.c_str(),this->m_quadtreeFile.c_str());
   if (m_wcgChromaQpControl.isEnabled())
   {
     TComPPS &pps1=*(m_ppsMap.allocatePS(1));
@@ -211,10 +214,15 @@ Void TEncTop::init(Bool isFieldCoding)
   
   // initialize processing unit classes
   m_cGOPEncoder.  init( this );
-  m_cSliceEncoder.init( this );
-  m_cCuEncoder.   init( this );
-  m_cCuEncoder.setSliceEncoder(&m_cSliceEncoder);
-
+  Int count = 0;
+  for (std::pair<std::array<TEncSlice,2>::iterator,std::array<TEncCu,2>::iterator> 
+  i(m_ArrSliceEncoder.begin(),m_ArrCuEncoder.begin());
+  i.first!= m_ArrSliceEncoder.end();++i.first,++i.second,count++)
+  {
+    i.first->init(this,count);
+    i.second->init(this);
+    i.second->setSliceEncoder(i.first);
+  }
   // initialize transform & quantization class
   m_pcCavlcCoder = getCavlcCoder();
 
@@ -301,10 +309,14 @@ Void TEncTop::xInitScalingLists(TComSPS &sps, TComPPS &pps)
 // Public member functions
 // ====================================================================================================================
 
-Void TEncTop::deletePicBuffer()
+Void TEncTop::deletePicBuffer(){
+  deletePicBuffer(this->m_cListPic);
+}
+
+Void TEncTop::deletePicBuffer(TComList<TComPic*> & cListPic)
 {
-  TComList<TComPic*>::iterator iterPic = m_cListPic.begin();
-  Int iSize = Int( m_cListPic.size() );
+  TComList<TComPic*>::iterator iterPic = cListPic.begin();
+  Int iSize = Int( cListPic.size() );
 
   for ( Int i = 0; i < iSize; i++ )
   {
@@ -329,7 +341,14 @@ Void TEncTop::deletePicBuffer()
  \retval  accessUnitsOut      list of output access units
  \retval  iNumEncoded         number of encoded pictures
  */
-Void TEncTop::encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion ipCSC, const InputColourSpaceConversion snrCSC, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded )
+Void TEncTop::encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion ipCSC,
+    const InputColourSpaceConversion snrCSC,
+    TComList<TComPicYuv*>& rcListPicYuvRecOut1,
+    TComList<TComPicYuv*>& rcListPicYuvRecOut2,
+    TComList<TComPicYuv*>& rcListPicYuvRecOutC,
+    std::list<AccessUnit>& accessUnitsOut1,
+    std::list<AccessUnit>& accessUnitsOut2,
+    Int& iNumEncoded )
 {
   if (pcPicYuvOrg != NULL)
   {
@@ -341,7 +360,7 @@ Void TEncTop::encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvT
     {
       ppsID=getdQPs()[ m_iPOCLast+1 ];
     }
-    xGetNewPicBuffer( pcPicCurr, ppsID );
+    xGetNewPicBuffer( pcPicCurr, ppsID);
     pcPicYuvOrg->copyToPic( pcPicCurr->getPicYuvOrg() );
     pcPicYuvTrueOrg->copyToPic( pcPicCurr->getPicYuvTrueOrg() );
 
@@ -364,7 +383,10 @@ Void TEncTop::encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvT
   }
 
   // compress GOP
-  m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, false, false, ipCSC, snrCSC, getOutputLogControl());
+  m_cGOPEncoder.compressGOPMDC(m_iPOCLast, m_iNumPicRcvd,m_cListPic, 
+  rcListPicYuvRecOut1,rcListPicYuvRecOut2,rcListPicYuvRecOutC,
+  accessUnitsOut1,accessUnitsOut2,
+  false, false, ipCSC, snrCSC, getOutputLogControl());
 
   if ( m_RCEnableRateControl )
   {
@@ -399,8 +421,16 @@ Void separateFields(Pel* org, Pel* dstField, UInt stride, UInt width, UInt heigh
 }
 
 
-Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion ipCSC, const InputColourSpaceConversion snrCSC, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, Bool isTff)
+Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, 
+  const InputColourSpaceConversion ipCSC, const InputColourSpaceConversion snrCSC, 
+  TComList<TComPicYuv*>& rcListPicYuvRecOutC,
+  TComList<TComPicYuv*>& rcListPicYuvRecOut1,
+  TComList<TComPicYuv*>& rcListPicYuvRecOut2, 
+  std::list<AccessUnit>& accessUnitsOut1, 
+  std::list<AccessUnit>& accessUnitsOut2, 
+  Int& iNumEncoded, Bool isTff)
 {
+  assert(false);
   iNumEncoded = 0;
 
   for (Int fieldNum=0; fieldNum<2; fieldNum++)
@@ -412,7 +442,7 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTr
       const Bool isTopField=isTff==(fieldNum==0);
 
       TComPic *pcField;
-      xGetNewPicBuffer( pcField, -1 );
+      xGetNewPicBuffer( pcField, -1);
       pcField->setReconMark (false);                     // where is this normally?
 
       if (fieldNum==1)                                   // where is this normally?
@@ -420,16 +450,16 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTr
         TComPicYuv* rpcPicYuvRec;
 
         // org. buffer
-        if ( rcListPicYuvRecOut.size() >= (UInt)m_iGOPSize+1 ) // need to maintain field 0 in list of RecOuts while processing field 1. Hence +1 on m_iGOPSize.
+        if ( rcListPicYuvRecOutC.size() >= (UInt)m_iGOPSize+1 ) // need to maintain field 0 in list of RecOuts while processing field 1. Hence +1 on m_iGOPSize.
         {
-          rpcPicYuvRec = rcListPicYuvRecOut.popFront();
+          rpcPicYuvRec = rcListPicYuvRecOutC.popFront();
         }
         else
         {
           rpcPicYuvRec = new TComPicYuv;
           rpcPicYuvRec->create( m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, m_maxTotalCUDepth, true);
         }
-        rcListPicYuvRecOut.pushBack( rpcPicYuvRec );
+        rcListPicYuvRecOutC.pushBack( rpcPicYuvRec );
       }
 
       pcField->getSlice(0)->setPOC( m_iPOCLast );        // superfluous?
@@ -469,7 +499,14 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTr
     if ( m_iNumPicRcvd && ((flush&&fieldNum==1) || (m_iPOCLast/2)==0 || m_iNumPicRcvd==m_iGOPSize ) )
     {
       // compress GOP
-      m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, true, isTff, ipCSC, snrCSC, getOutputLogControl());
+      m_cGOPEncoder.compressGOPMDC(m_iPOCLast, m_iNumPicRcvd, 
+      m_cListPic,
+      rcListPicYuvRecOut1,
+      rcListPicYuvRecOut2,
+      rcListPicYuvRecOutC,
+      accessUnitsOut1,
+      accessUnitsOut2,
+      true, isTff, ipCSC, snrCSC, getOutputLogControl());
       iNumEncoded += m_iNumPicRcvd;
       m_uiNumAllPicCoded += m_iNumPicRcvd;
       m_iNumPicRcvd = 0;
@@ -488,7 +525,7 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTr
  .
  \retval rpcPic obtained picture buffer
  */
-Void TEncTop::xGetNewPicBuffer ( TComPic*& rpcPic, Int ppsId )
+Void TEncTop::xGetNewPicBuffer ( TComPic*& rpcPic, Int ppsId)
 {
   rpcPic=0;
 
@@ -501,13 +538,13 @@ Void TEncTop::xGetNewPicBuffer ( TComPic*& rpcPic, Int ppsId )
   assert (pSPS!=0);
   const TComSPS &sps=*pSPS;
 
-  TComSlice::sortPicList(m_cListPic);
+  TComSlice::sortPicList(this->m_cListPic);
 
   // use an entry in the buffered list if the maximum number that need buffering has been reached:
-  if (m_cListPic.size() >= (UInt)(m_iGOPSize + getMaxDecPicBuffering(MAX_TLAYER-1) + 2) )
+  if (this->m_cListPic.size() >= (UInt)(m_iGOPSize + getMaxDecPicBuffering(MAX_TLAYER-1) + 2) )
   {
-    TComList<TComPic*>::iterator iterPic  = m_cListPic.begin();
-    Int iSize = Int( m_cListPic.size() );
+    TComList<TComPic*>::iterator iterPic  = this->m_cListPic.begin();
+    Int iSize = Int( this->m_cListPic.size() );
     for ( Int i = 0; i < iSize; i++ )
     {
       rpcPic = *iterPic;
@@ -531,7 +568,7 @@ Void TEncTop::xGetNewPicBuffer ( TComPic*& rpcPic, Int ppsId )
     {
       // the IDs differ - free up an entry in the list, and then create a new one, as with the case where the max buffering state has not been reached.
       delete rpcPic;
-      m_cListPic.erase(iterPic);
+      this->m_cListPic.erase(iterPic);
       rpcPic=0;
     }
   }
@@ -558,14 +595,12 @@ Void TEncTop::xGetNewPicBuffer ( TComPic*& rpcPic, Int ppsId )
 #endif
     }
 
-    m_cListPic.pushBack( rpcPic );
+    this->m_cListPic.pushBack( rpcPic );
   }
   rpcPic->setReconMark (false);
-
   m_iPOCLast++;
   m_iNumPicRcvd++;
-
-  rpcPic->getSlice(0)->setPOC( m_iPOCLast );
+  rpcPic->getSlice(0)->setPOC( m_iPOCLast);
 #if !REDUCED_ENCODER_MEMORY
   // mark it should be extended
   rpcPic->getPicYuvRec()->setBorderExtension(false);

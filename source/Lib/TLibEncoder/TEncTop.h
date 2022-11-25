@@ -89,8 +89,8 @@ private:
 
   // processing unit
   TEncGOP                 m_cGOPEncoder;                  ///< GOP encoder
-  TEncSlice               m_cSliceEncoder;                ///< slice encoder
-  TEncCu                  m_cCuEncoder;                   ///< CU encoder
+  std::array <TEncSlice,2> m_ArrSliceEncoder;                ///< slice encoder
+  std::array <TEncCu,2>    m_ArrCuEncoder;                   ///< CU encoder
   // SPS
   ParameterSetMap<TComSPS> m_spsMap;                      ///< SPS. This is the base value. This is copied to TComPicSym
   ParameterSetMap<TComPPS> m_ppsMap;                      ///< PPS. This is the base value. This is copied to TComPicSym
@@ -112,7 +112,7 @@ private:
   TEncRateCtrl            m_cRateCtrl;                    ///< Rate control class
 
 protected:
-  Void  xGetNewPicBuffer  ( TComPic*& rpcPic, Int ppsId ); ///< get picture buffer which will be processed. If ppsId<0, then the ppsMap will be queried for the first match.
+  Void  xGetNewPicBuffer  ( TComPic*& rpcPic, Int ppsId); ///< get picture buffer which will be processed. If ppsId<0, then the ppsMap will be queried for the first match.
   Void  xInitVPS          (TComVPS &vps, const TComSPS &sps); ///< initialize VPS from encoder options
   Void  xInitSPS          (TComSPS &sps);                 ///< initialize SPS from encoder options
   Void  xInitPPS          (TComPPS &pps, const TComSPS &sps); ///< initialize PPS from encoder options
@@ -129,7 +129,8 @@ public:
   Void      create          ();
   Void      destroy         ();
   Void      init            (Bool isFieldCoding);
-  Void      deletePicBuffer ();
+  Void      deletePicBuffer(TComList<TComPic*> & cListPic);
+  Void      deletePicBuffer();
   Void      resetAllControlVar() {
       m_iPOCLast = -1;
       m_iNumPicRcvd = 0;
@@ -145,8 +146,8 @@ public:
   TComLoopFilter*         getLoopFilter         () { return  &m_cLoopFilter;          }
   TEncSampleAdaptiveOffset* getSAO              () { return  &m_cEncSAO;              }
   TEncGOP*                getGOPEncoder         () { return  &m_cGOPEncoder;          }
-  TEncSlice*              getSliceEncoder       () { return  &m_cSliceEncoder;        }
-  TEncCu*                 getCuEncoder          () { return  &m_cCuEncoder;           }
+  TEncSlice*              getSliceEncoder       (int pos) { assert (pos<m_ArrSliceEncoder.size());return  &m_ArrSliceEncoder[pos];}
+  TEncCu*                 getCuEncoder          (int pos) {assert(pos<m_ArrCuEncoder.size()); return  &m_ArrCuEncoder[pos];}
   TEncEntropy*            getEntropyCoder       () { return  &m_cEntropyCoder;        }
   TEncCavlc*              getCavlcCoder         () { return  &m_cCavlcCoder;          }
   TEncSbac*               getSbacCoder          () { return  &m_cSbacCoder;           }
@@ -168,19 +169,24 @@ public:
   // -------------------------------------------------------------------------------------------------------------------
 
   /// encode several number of pictures until end-of-sequence
-  Void encode( Bool bEos,
-               TComPicYuv* pcPicYuvOrg,
-               TComPicYuv* pcPicYuvTrueOrg,
-               const InputColourSpaceConversion ipCSC, const InputColourSpaceConversion snrCSC, // used for SNR calculations. Picture in original colour space.
-               TComList<TComPicYuv*>& rcListPicYuvRecOut,
-               std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded );
+  Void encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion ipCSC,
+    const InputColourSpaceConversion snrCSC,
+    TComList<TComPicYuv*>& rcListPicYuvRecOut1,
+    TComList<TComPicYuv*>& rcListPicYuvRecOut2,
+    TComList<TComPicYuv*>& rcListPicYuvRecOutC,
+    std::list<AccessUnit>& accessUnitsOut1,
+    std::list<AccessUnit>& accessUnitsOut2,
+    Int& iNumEncoded );
 
   /// encode several number of pictures until end-of-sequence
-  Void encode( Bool bEos, TComPicYuv* pcPicYuvOrg,
-               TComPicYuv* pcPicYuvTrueOrg,
-               const InputColourSpaceConversion ipCSC, const InputColourSpaceConversion snrCSC, // used for SNR calculations. Picture in original colour space.
-               TComList<TComPicYuv*>& rcListPicYuvRecOut,
-               std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded, Bool isTff);
+  Void encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, 
+  const InputColourSpaceConversion ipCSC, const InputColourSpaceConversion snrCSC, 
+  TComList<TComPicYuv*>& rcListPicYuvRecOutC,
+  TComList<TComPicYuv*>& rcListPicYuvRecOut1,
+  TComList<TComPicYuv*>& rcListPicYuvRecOut2, 
+  std::list<AccessUnit>& accessUnitsOut1, 
+  std::list<AccessUnit>& accessUnitsOut2, 
+  Int& iNumEncoded, Bool isTff);
 
   TEncAnalyze::OutputLogControl getOutputLogControl() const
   {
