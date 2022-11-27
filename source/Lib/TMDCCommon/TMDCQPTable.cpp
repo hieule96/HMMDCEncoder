@@ -1,34 +1,29 @@
 #include "TMDCQPTable.hpp"
 #include <stdexcept>
-
+#include <cstring>
 #define BUFFER_READ_SIZE 1024
 TMDCQPTable* TMDCQPTable::m_instance = NULL;
-
-TMDCQPTable::TMDCQPTable(Int nbElementReadLine,const char * QPFileName1,const char *QPFileName2,const char * QtreeFileName){
-        qpArray = new Int [nbElementReadLine];
-        qtreeArray = new UInt[nbElementReadLine];
-        this->m_cturs = 0;
-        this->m_countQPArr = 0;
-        this->m_countQtreeArr = 0;
-        memset(qpArray, 0, nbElementReadLine * sizeof(Int));
-        memset(qtreeArray, 0, nbElementReadLine * sizeof(UInt));
-        fpQtreeFile.open(QtreeFileName);
-        if (fpQtreeFile.fail()) {
-            std::cerr << "Cannot open file : " << QtreeFileName << std::endl;
-            exit(EXIT_FAILURE);
-        }
-        fpQPFile1.open(QPFileName1);
-        if (fpQPFile1.fail()){
-            std::cerr << "Cannot open file : " << QPFileName1 <<std::endl;
-            exit(EXIT_FAILURE);
-        }
-        fpQPFile2.open(QPFileName1);
-        if (fpQPFile2.fail()){
-            std::cerr << "Cannot open file : " << QPFileName1 <<std::endl;
-            exit(EXIT_FAILURE);
-        }
+Void TMDCQPTable::init(Int nbElementReadLine,const char * QPFileName1,
+const char *QPFileName2,const char * QtreeFileName){
+    qpArray = new Int [nbElementReadLine];
+    qtreeArray = new Int[nbElementReadLine];
+    memset(qpArray, 0, nbElementReadLine * sizeof(Int));
+    memset(qtreeArray, 0, nbElementReadLine * sizeof(Int));
+    m_filename[QTREE]=QtreeFileName;
+    m_filename[DESCRIPTION1] = QPFileName1;
+    m_filename[DESCRIPTION2] = QPFileName2;
 }
 
+Void TMDCQPTable::openFile(FileType description, std::ios::openmode openmode){
+    m_ios[description].open(m_filename[description],openmode);
+    if (m_ios[description].fail()){
+        std::cerr << "Cannot open file : " << m_filename[description] <<std::endl;
+        throw std::runtime_error("");
+    }
+}
+Void TMDCQPTable::closeFile(FileType description){
+    m_ios[description].close();
+}
 
 Int TMDCQPTable::convertStringToIntArrayQP(Int *bufferDest, char *str,int nbElement){
     int j = 0;
@@ -49,7 +44,7 @@ Int TMDCQPTable::convertStringToIntArrayQP(Int *bufferDest, char *str,int nbElem
 }
 
 // TODO: See if there's a better way to organize this file
-Int TMDCQPTable::convertStringtoIntArrayQtree(UInt *bufferDest, char *str,int nbElement){
+Int TMDCQPTable::convertStringtoIntArrayQtree(Int *bufferDest, char *str,int nbElement){
     int j = -1;
     bool skip = false;
     for (int i = 0; i < nbElement; i++) {
@@ -80,59 +75,115 @@ Int TMDCQPTable::convertStringtoIntArrayQtree(UInt *bufferDest, char *str,int nb
     return j;
 }
 
-// read a buffer of 1024 of a line
-Int TMDCQPTable::readALineQtree(){
-    this->m_cturs++;
-    char* buffer = new char[BUFFER_READ_SIZE];
-    if (fpQtreeFile.is_open()){
-        fpQtreeFile.getline(buffer, BUFFER_READ_SIZE);
-    }
-    else
-    {
-        throw std::runtime_error("readALineQtree: Unexpected closed file");
-    }
-    // parse String Int
-    this->m_countQtreeArr = convertStringtoIntArrayQtree(qtreeArray,buffer, BUFFER_READ_SIZE);
-    delete[] buffer;
-    return this->m_countQtreeArr;
-}
-
-Int TMDCQPTable::readALineQp(Int iQPFile){
+Int TMDCQPTable::readALine(FileType description){
     char* buffer = new char[BUFFER_READ_SIZE];
     // get the buffer from the file
-    switch (iQPFile)
-    {
-        case 1:
-            if(fpQPFile1.is_open()){
-                fpQPFile1.getline(buffer, BUFFER_READ_SIZE);
-            }
-            else
-            {
-                throw std::runtime_error("readALineQp: Unexpected closed file");
-            }
-            break;
-        case 2:
-            if(fpQPFile2.is_open()){
-                fpQPFile2.getline(buffer, BUFFER_READ_SIZE);
-            }
-            else
-            {
-                throw std::runtime_error("readALineQp: Unexpected closed file");
-            }
-            break;
-    default:
-        throw std::runtime_error("Bad iQP");
-        break;
-    }
+    if (m_ios[description].is_open()) m_ios[description].getline(buffer, BUFFER_READ_SIZE);
+    else throw std::runtime_error("readALineQp: Unexpected closed file");
     //parsing this buffer
-    this->m_countQPArr = convertStringToIntArrayQP(qpArray,buffer,BUFFER_READ_SIZE);
+    if (description==QTREE){
+        m_counters[description] = convertStringtoIntArrayQtree(qtreeArray,buffer, BUFFER_READ_SIZE);
+    }else{
+        m_counters[description] = convertStringToIntArrayQP(qpArray,buffer,BUFFER_READ_SIZE);
+    }
     delete[] buffer;
-    return this->m_countQPArr;
+    return m_counters[description];
 }
+void TMDCQPTable::writeOutCUInfo   ( TComDataCU* pcCU )
+{
+  if (m_ios[QTREE].is_open()){
+  Int iPoc = pcCU->getSlice()->getPOC();
+  Int iAddr = pcCU->getCtuRsAddr();
+  Int iTotalNumPart = pcCU->getTotalNumPart();
+  m_ios[QTREE] << "<" << iPoc << "," << iAddr << ">" << " ";  ///< Write out CU & PU splitting info
+  xWriteOutCUInfo  ( pcCU, iTotalNumPart, 0, 0 );   ///< Recursive write Prediction, CU, PU, Merge, Intra, ME
+  m_ios[QTREE] << std::endl;}
+  else throw std::runtime_error("writeOutCUInfo: Unexpected closed file");
+}
+
+
+void TMDCQPTable::xWriteOutCUInfo  ( TComDataCU* pcCU, Int iLength, Int iOffset, UInt iDepth )
+{
+  
+  UChar* puhDepth    = pcCU->getDepth();
+  SChar * puhPartSize = pcCU->getPartitionSize();
+  UChar * puhCbf = pcCU->getCbf(COMPONENT_Y);
+  SChar* puhQP = pcCU->getQP();
+  TComMv rcMV;
+
+  if( puhDepth[iOffset] <= iDepth )
+  {
+    ///< CU PU info
+    m_ios[QTREE] << (Int)(puhPartSize[iOffset]) << " "; 
+    ///< TU info
+    //xWriteOutTUInfo  ( pcCU, iLength, iOffset, 0 );   ///< Recursive write TU
+    /// PU number in this leaf CU
+    int iNumPart = 0;           
+
+    switch ( puhPartSize[iOffset] )
+    {
+    case SIZE_2Nx2N:    iNumPart = 1; break;
+    case SIZE_2NxN:     iNumPart = 2; break;
+    case SIZE_Nx2N:     iNumPart = 2; break;
+    case SIZE_NxN:      iNumPart = 4; break;
+    case SIZE_2NxnU:    iNumPart = 2; break;
+    case SIZE_2NxnD:    iNumPart = 2; break;
+    case SIZE_nLx2N:    iNumPart = 2; break;
+    case SIZE_nRx2N:    iNumPart = 2; break;
+    default:    iNumPart = 0;  /*assert(0);*/  break;  ///< out of boundery
+    }
+
+    /// Traverse every PU
+    int iPartAddOffset = 0;   ///< PU offset
+    for( int i = 0; i < iNumPart; i++ )
+    {
+
+      switch ( puhPartSize[iOffset] )
+      {
+      case SIZE_2NxN:
+        iPartAddOffset = ( i == 0 )? 0 : iLength >> 1;
+        break;
+      case SIZE_Nx2N:
+        iPartAddOffset = ( i == 0 )? 0 : iLength >> 2;
+        break;
+      case SIZE_NxN:
+        iPartAddOffset = ( iLength >> 2 ) * i;
+        break;
+      case SIZE_2NxnU:    
+        iPartAddOffset = ( i == 0 ) ? 0 : iLength >> 3;
+        break;
+      case SIZE_2NxnD:    
+        iPartAddOffset = ( i == 0 ) ? 0 : (iLength >> 1) + (iLength >> 3);
+        break;
+      case SIZE_nLx2N:    
+        iPartAddOffset = ( i == 0 ) ? 0 : iLength >> 4;
+        break;
+      case SIZE_nRx2N:   
+        iPartAddOffset = ( i == 0 ) ? 0 : (iLength >> 2) + (iLength >> 4);
+        break;
+      default:
+        assert ( puhPartSize[iOffset] == SIZE_2Nx2N );
+        iPartAddOffset = 0;
+        break;
+      }
+
+    } /// PU end
+  }
+  else
+  {
+    m_ios[QTREE] << "99" << " ";     ///< CU info
+    for( UInt i = 0; i < 4; i++ )
+    {
+      xWriteOutCUInfo  ( pcCU, iLength/4, iOffset+iLength/4*i, iDepth+1);
+    }
+  }
+}
+
+
 TMDCQPTable::~TMDCQPTable(){
     delete [] qpArray;
     delete [] qtreeArray;
-    fpQtreeFile.close();
-    fpQPFile1.close();
-    fpQPFile2.close();
+    for (auto &i:m_ios){
+        i.close();
+    }
 }

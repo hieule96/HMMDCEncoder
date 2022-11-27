@@ -144,7 +144,7 @@ protected:
 #endif
 
   Void xCompressCUFromQtree ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU,
-                              UInt uiDepth DEBUG_STRING_FN_DECLARE(sDebug_),UInt* QtreeTable, Int* QP_array,UInt* dArray,UInt &CU_index,UInt &QP_index, PartSize eParentPartSize = NUMBER_OF_PART_SIZES);
+                              UInt uiDepth DEBUG_STRING_FN_DECLARE(sDebug_),Int* QtreeTable, Int* QP_array,UInt* dArray,UInt &CU_index,UInt &QP_index, PartSize eParentPartSize = NUMBER_OF_PART_SIZES);
 
 
   Void  xEncodeCU            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth,Int *debug_array,Int *count);

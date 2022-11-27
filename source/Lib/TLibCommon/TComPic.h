@@ -133,6 +133,7 @@ public:
   Void setLamdaForcing(Double* lambda) { m_lamdaForcing = lambda; }
   Double getLamdaForcing() { return *m_lamdaForcing; }
   Int             getDescriptionId              () const                                                            {return m_descriptionId;}
+  FileType        getFileType() const {return FileType(m_descriptionId);}
   Void           setDescriptionId              (Int iDescription)                                            {
     m_descriptionId = iDescription;
     switch (m_descriptionId)

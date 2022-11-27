@@ -106,7 +106,6 @@ TEncGOP::TEncGOP()
   m_associatedIRAPType = NAL_UNIT_CODED_SLICE_IDR_N_LP;
   m_associatedIRAPPOC  = 0;
   m_pcDeblockingTempPicYuv = NULL;
-  ExecutePythonOptimizer();
 }
 
 TEncGOP::~TEncGOP()
@@ -156,11 +155,14 @@ Void TEncGOP::init ( TEncTop* pcTEncTop)
 }
 
 Void TEncGOP::ExecutePythonOptimizer(){
-  std::cout << "Python" << std::endl;
-	PyObject* pInt;
-	Py_Initialize();
-	PyRun_SimpleString("print('Hello World from Embedded Python!!!')");
+  std::cout << "Execute Optimizer in python" <<std::endl;
+  char filename[]="App/Optimize_sequence.py";
+  FILE* fp;
+  Py_Initialize();
+  fp = fopen(filename, "r");
+	PyRun_SimpleFile(fp, filename);
 	Py_Finalize();
+  fclose(fp);
 }
 
 #if MCTS_EXTRACTION
@@ -1841,11 +1843,22 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       
       
       duData1.clear();
+      // run tried mode to create the quadtree
+      pcPic->setRunMode(0);
+      TMDCQPTable::getInstance()->openFile(QTREE,std::ios::trunc|std::ios::out);
+      xCompressPicDescription(pcSlice1,pcPic,iGOPid,iPOCLast,pocCurr,isField,control1,rcListPic,m_pcArrSliceEncoder[0]);
+      TMDCQPTable::getInstance()->closeFile(QTREE);
+
+      // launch the Python optimizer
+      ExecutePythonOptimizer();
 
       pcPic->setRunMode(m_pcCfg->getEncodingMode());
       // Description 1
       pcPic->setDescriptionId(1);
-      TMDCQPTable::getInstance()->resetCturs();
+      TMDCQPTable::getInstance()->resetCount(QTREE);
+      TMDCQPTable::getInstance()->openFile(QTREE,std::ios::in);
+      TMDCQPTable::getInstance()->openFile(DESCRIPTION1,std::ios::in);
+
       xCompressPicDescription(pcSlice1,pcPic,iGOPid,iPOCLast,pocCurr,isField,control1,rcListPic,m_pcArrSliceEncoder[0]);
       std::vector<TComOutputBitstream> substreamsOut1(control1.numSubstreams);
       m_pcEntropyCoder->setEntropyCoder   ( m_pcCavlcCoder );
@@ -1855,11 +1868,16 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       // cabac_zero_words processing
       cabac_zero_word_padding(pcSlice1, pcPic, control1.binCountsInNalUnits, control1.numBytesInVclNalUnits, accessUnit1.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
       pcPic->compressMotion();
+      TMDCQPTable::getInstance()->closeFile(QTREE);
+      TMDCQPTable::getInstance()->closeFile(DESCRIPTION1);
+
 
       duData2.clear();
       // Description 2
       pcPic->setDescriptionId(2);
-      TMDCQPTable::getInstance()->resetCturs();
+      TMDCQPTable::getInstance()->resetCount(QTREE);
+      TMDCQPTable::getInstance()->openFile(QTREE,std::ios::in);
+      TMDCQPTable::getInstance()->openFile(DESCRIPTION2,std::ios::in);
       xCompressPicDescription(pcSlice2,pcPic,iGOPid,iPOCLast,pocCurr,isField,control2,rcListPic,m_pcArrSliceEncoder[1]);
       std::vector<TComOutputBitstream> substreamsOut2(control2.numSubstreams);
       // Set entropy coder
@@ -1873,7 +1891,8 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       // cabac_zero_words processing
       cabac_zero_word_padding(pcSlice2, pcPic, control2.binCountsInNalUnits, control2.numBytesInVclNalUnits, accessUnit2.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
       pcPic->compressMotion();
-
+      TMDCQPTable::getInstance()->closeFile(QTREE);
+      TMDCQPTable::getInstance()->closeFile(DESCRIPTION2);
       centralConstruction(*pcPic);
       //where we need to pay attention to have the central before the compression
       //@tle: add function to build the best quality image

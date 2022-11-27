@@ -542,9 +542,6 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setEncodingMode                                      (m_encodingMode);
   m_cTEncTop.setLambdaForcing                                     (std::stod(m_lamdaForcing));
   m_cTEncTop.setResiNoQuant                                     (m_resiNoQuant);
-  if (m_cTEncTop.getEncodingMode() == 0) {
-      TSysuAnalyzerOutput::initInstanceEncoder(m_quadtreeFile.c_str());
-  }
   // Test new function
 }
 

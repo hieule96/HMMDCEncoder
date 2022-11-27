@@ -309,12 +309,12 @@ Void TEncCu::compressCtu( TComDataCU* pCtu, UInt iRunMode )
       UInt debug_array [1024];
       memset(debug_array,0,1024*sizeof(UInt));
       TMDCQPTable *table = TMDCQPTable::getInstance();
-      if (pCtu->getCtuRsAddr()==table->getCturs()){
-          table->readALineQtree();
-          table->readALineQp(pcPic->getDescriptionId());
+      if (pCtu->getCtuRsAddr()==table->getCount(QTREE)){
+          table->readALine(QTREE);
+          table->readALine(pcPic->getFileType());
       }
       Int *QP_array = table->getQPArray();
-      UInt *Qtree_array = table->getQtreeArray();
+      Int *Qtree_array = table->getQtreeArray();
       UInt CU_index = 0;
       UInt QP_index = 0;
       xCompressCUFromQtree(m_ppcBestCU[0], m_ppcTempCU[0], 0 DEBUG_STRING_PASS_INTO(sDebug),&Qtree_array[0],&QP_array[0],&debug_array[0],CU_index,QP_index);
@@ -329,7 +329,9 @@ Void TEncCu::compressCtu( TComDataCU* pCtu, UInt iRunMode )
       // std::cout << pCtu->getCtuRsAddr() << std::endl;
       }
   else{
+      TMDCQPTable *table = TMDCQPTable::getInstance();
       xCompressCU( m_ppcBestCU[0], m_ppcTempCU[0], 0 DEBUG_STRING_PASS_INTO(sDebug) );
+      table->writeOutCUInfo(pCtu);
   }
 
   DEBUG_STRING_OUTPUT(std::cout, sDebug)
@@ -368,9 +370,6 @@ Void TEncCu::encodeCtu(TComDataCU* pCtu, bool writeQtreeOption)
     // }
     // std::cout << std::endl;
     // If preencoding export quadtree structure
-    if (writeQtreeOption) {
-        TSysuAnalyzerOutput::getInstance()->writeOutCUInfo(pCtu);
-    }
 }
 
 // ====================================================================================================================
@@ -1213,7 +1212,7 @@ Void TEncCu::xCompressCU( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const 
 #if AMP_ENC_SPEEDUP
 Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU,
 UInt uiDepth DEBUG_STRING_FN_DECLARE(sDebug_),
-UInt* QtreeTable, Int* QP_array,UInt* dArray,UInt &CU_index,UInt &QP_index,PartSize eParentPartSize)
+Int* QtreeTable, Int* QP_array,UInt* dArray,UInt &CU_index,UInt &QP_index,PartSize eParentPartSize)
 #else
 Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth )
 #endif

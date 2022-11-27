@@ -370,6 +370,17 @@ enum RefPicList
   REF_PIC_LIST_X               = 100  ///< special mark
 };
 
+// @tle : Support type of file
+enum FileType{
+    // QTree Line
+    QTREE = 0,
+    // Description Line
+    DESCRIPTION1 = 1,
+    // Description Line
+    DESCRIPTION2 = 2,
+    NUM_FILE =3
+};
+
 /// distortion function index
 enum DFunc
 {

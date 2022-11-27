@@ -4,42 +4,44 @@
 
 #include <string>
 #include <fstream>
-#include "TLibCommon/TComDataCU.h"
-#include "TLibCommon/TComSlice.h"
-
+#include <array>
+#include <iostream>
+#include <TLibCommon/CommonDef.h>
+#include <TLibCommon/TComDataCU.h>
 class TMDCQPTable{
+
     public:
-        TMDCQPTable(Int nbElementReadLine,const char* QPFileName1,const char* QPFileName2,const char* QtreeFileName);
-        TMDCQPTable(Int nbElementReadLine,const char * QPFileName);
-        Int readALineQp(Int iQPFile);
+        TMDCQPTable():qpArray(NULL),qtreeArray(NULL),m_counters({0,0,0}){};
+        void init(Int nbElementReadLine,const char * QPFileName1,const char *QPFileName2,const char * QtreeFileName);
+        Int readALine(FileType description);
         Int* getQPArray(){return qpArray;}
-        Int readALineQtree();
-        Int readStdIn();
-        UInt* getQtreeArray(){return qtreeArray;}
+        Int* getQtreeArray(){return qtreeArray;}
         Int convertStringToIntArrayQP(Int *bufferDest, char *str,int nbElement);
-        Int convertStringtoIntArrayQtree(UInt *bufferDest, char *str,int nbElement);
-        Int getCturs() {return this->m_cturs;};
-        Void resetCturs() {this->m_cturs=0;};
-        Int getCountQP() {return this->m_countQPArr;};
-        Int getCountQtree(){return this->m_countQtreeArr;};
-        void appendQPArray(Int QP);
+        Int convertStringtoIntArrayQtree(Int *bufferDest, char *str,int nbElement);
+        Int getCount(FileType description) {return this->m_counters[description];};
+        Void resetCount(FileType description) {
+            m_counters[description] = 0;
+            m_ios[QTREE].seekg(ios::beg);
+        }
         ~TMDCQPTable();
         static TMDCQPTable* getInstance() {return m_instance;}
         static TMDCQPTable* initInstance(Int nbElementReadLine,const char* QPFileName1,const char* QPFileName2, const char* QtreeFileName){
             if (m_instance==NULL){
-                m_instance = new TMDCQPTable(nbElementReadLine,QPFileName1,QPFileName2,QtreeFileName); 
+                m_instance = new TMDCQPTable();
+                m_instance->init(nbElementReadLine,QPFileName1,QPFileName2,QtreeFileName);
             }
             return m_instance;
         }
+        Void closeFile(FileType description);
+        Void openFile(FileType description, std::ios::openmode openmode);
+        Void writeOutCUInfo   ( TComDataCU* pcCU );
     private:
+        Void xWriteOutCUInfo  ( TComDataCU* pcCU, Int iLength, Int iOffset, UInt iDepth );
         Int* qpArray;
-        UInt* qtreeArray;
-        Int m_cturs;
-        Int m_countQPArr;
-        Int m_countQtreeArr;
-        std::ifstream fpQPFile1;
-        std::ifstream fpQPFile2;
-        std::ifstream fpQtreeFile;
+        Int* qtreeArray;
+        std::array<const char *,3> m_filename;
+        std::array<Int,3> m_counters;
+        std::array<std::fstream,3> m_ios;
         static TMDCQPTable* m_instance;
 };
 
