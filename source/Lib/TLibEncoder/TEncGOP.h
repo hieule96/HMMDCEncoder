@@ -183,7 +183,7 @@ public:
 
   Void create      ();
   Void destroy     ();
-  Void ExecutePythonOptimizer();
+  Void ExecutePythonOptimizer(Double Rt, Double rN, Int POC, int frametype);
   Void init        ( TEncTop* pcTEncTop);
   Void compressGOPMDC(Int iPOCLast, Int iNumPicRcvd, 
   TComList <TComPic*> &rcListPic,

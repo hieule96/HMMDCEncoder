@@ -103,6 +103,8 @@ Void TComPic::create( const TComSPS &sps, const TComPPS &pps, const Bool bIsVirt
   {
 #endif
     m_apcPicYuv[PIC_YUV_REC]  = new TComPicYuv;  m_apcPicYuv[PIC_YUV_REC]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
+    m_apcPicYuv[PIC_YUV_REC1]  = new TComPicYuv;  m_apcPicYuv[PIC_YUV_REC1]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
+    m_apcPicYuv[PIC_YUV_REC2]  = new TComPicYuv;  m_apcPicYuv[PIC_YUV_REC2]->create( iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true );
 #if REDUCED_ENCODER_MEMORY
   }
 #endif

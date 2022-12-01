@@ -82,6 +82,7 @@ Int TMDCQPTable::readALine(FileType description){
     else throw std::runtime_error("readALineQp: Unexpected closed file");
     //parsing this buffer
     if (description==QTREE){
+        m_counter_rs++;
         m_counters[description] = convertStringtoIntArrayQtree(qtreeArray,buffer, BUFFER_READ_SIZE);
     }else{
         m_counters[description] = convertStringToIntArrayQP(qpArray,buffer,BUFFER_READ_SIZE);
@@ -122,52 +123,52 @@ void TMDCQPTable::xWriteOutCUInfo  ( TComDataCU* pcCU, Int iLength, Int iOffset,
 
     switch ( puhPartSize[iOffset] )
     {
-    case SIZE_2Nx2N:    iNumPart = 1; break;
-    case SIZE_2NxN:     iNumPart = 2; break;
-    case SIZE_Nx2N:     iNumPart = 2; break;
-    case SIZE_NxN:      iNumPart = 4; break;
-    case SIZE_2NxnU:    iNumPart = 2; break;
-    case SIZE_2NxnD:    iNumPart = 2; break;
-    case SIZE_nLx2N:    iNumPart = 2; break;
-    case SIZE_nRx2N:    iNumPart = 2; break;
-    default:    iNumPart = 0;  /*assert(0);*/  break;  ///< out of boundery
-    }
-
-    /// Traverse every PU
-    int iPartAddOffset = 0;   ///< PU offset
-    for( int i = 0; i < iNumPart; i++ )
-    {
-
-      switch ( puhPartSize[iOffset] )
-      {
-      case SIZE_2NxN:
-        iPartAddOffset = ( i == 0 )? 0 : iLength >> 1;
-        break;
-      case SIZE_Nx2N:
-        iPartAddOffset = ( i == 0 )? 0 : iLength >> 2;
-        break;
-      case SIZE_NxN:
-        iPartAddOffset = ( iLength >> 2 ) * i;
-        break;
-      case SIZE_2NxnU:    
-        iPartAddOffset = ( i == 0 ) ? 0 : iLength >> 3;
-        break;
-      case SIZE_2NxnD:    
-        iPartAddOffset = ( i == 0 ) ? 0 : (iLength >> 1) + (iLength >> 3);
-        break;
-      case SIZE_nLx2N:    
-        iPartAddOffset = ( i == 0 ) ? 0 : iLength >> 4;
-        break;
-      case SIZE_nRx2N:   
-        iPartAddOffset = ( i == 0 ) ? 0 : (iLength >> 2) + (iLength >> 4);
-        break;
-      default:
-        assert ( puhPartSize[iOffset] == SIZE_2Nx2N );
-        iPartAddOffset = 0;
-        break;
+      case SIZE_2Nx2N:    iNumPart = 1; break;
+      case SIZE_2NxN:     iNumPart = 2; break;
+      case SIZE_Nx2N:     iNumPart = 2; break;
+      case SIZE_NxN:      iNumPart = 4; break;
+      case SIZE_2NxnU:    iNumPart = 2; break;
+      case SIZE_2NxnD:    iNumPart = 2; break;
+      case SIZE_nLx2N:    iNumPart = 2; break;
+      case SIZE_nRx2N:    iNumPart = 2; break;
+      default:    iNumPart = 0;  /*assert(0);*/  break;  ///< out of boundery
       }
 
-    } /// PU end
+      /// Traverse every PU
+      int iPartAddOffset = 0;   ///< PU offset
+      for( int i = 0; i < iNumPart; i++ )
+      {
+
+        switch ( puhPartSize[iOffset] )
+        {
+        case SIZE_2NxN:
+          iPartAddOffset = ( i == 0 )? 0 : iLength >> 1;
+          break;
+        case SIZE_Nx2N:
+          iPartAddOffset = ( i == 0 )? 0 : iLength >> 2;
+          break;
+        case SIZE_NxN:
+          iPartAddOffset = ( iLength >> 2 ) * i;
+          break;
+        case SIZE_2NxnU:    
+          iPartAddOffset = ( i == 0 ) ? 0 : iLength >> 3;
+          break;
+        case SIZE_2NxnD:    
+          iPartAddOffset = ( i == 0 ) ? 0 : (iLength >> 1) + (iLength >> 3);
+          break;
+        case SIZE_nLx2N:    
+          iPartAddOffset = ( i == 0 ) ? 0 : iLength >> 4;
+          break;
+        case SIZE_nRx2N:   
+          iPartAddOffset = ( i == 0 ) ? 0 : (iLength >> 2) + (iLength >> 4);
+          break;
+        default:
+          assert ( puhPartSize[iOffset] == SIZE_2Nx2N );
+          iPartAddOffset = 0;
+          break;
+        }
+
+      } /// PU end
   }
   else
   {

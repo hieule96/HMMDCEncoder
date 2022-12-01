@@ -128,6 +128,7 @@ Void  TEncGOP::destroy()
     delete m_pcDeblockingTempPicYuv;
     m_pcDeblockingTempPicYuv = NULL;
   }
+	Py_Finalize();
 }
 
 Void TEncGOP::init ( TEncTop* pcTEncTop)
@@ -151,18 +152,28 @@ Void TEncGOP::init ( TEncTop* pcTEncTop)
   m_pcRateCtrl           = pcTEncTop->getRateCtrl();
   m_lastBPSEI          = 0;
   m_totalCoded         = 0;
+  Py_Initialize();
 
 }
 
-Void TEncGOP::ExecutePythonOptimizer(){
+
+Void TEncGOP::ExecutePythonOptimizer(Double Rt, Double rN, Int POC, Int frametype){
   std::cout << "Execute Optimizer in python" <<std::endl;
-  char filename[]="App/Optimize_sequence.py";
+  const char filename[]="App/OptimizePic.py";
+  wchar_t *argv[5];
+  for (int i=0;i<5;i++) argv[i] = new wchar_t[128];
+  int argc = 5;
+  swprintf(argv[0],128,L"App/OptimizePic.py");
+  swprintf(argv[1],128,L"%.3f",Rt);
+  swprintf(argv[2],128,L"%.3f",rN);
+  swprintf(argv[3],128,L"%d",POC);
+  swprintf(argv[4],128,L"%d",frametype);
   FILE* fp;
-  Py_Initialize();
+  PySys_SetArgv(argc, argv);
   fp = fopen(filename, "r");
 	PyRun_SimpleFile(fp, filename);
-	Py_Finalize();
   fclose(fp);
+  for (int i=0;i<5;i++) delete[] argv[i];
 }
 
 #if MCTS_EXTRACTION
@@ -1444,10 +1455,6 @@ Void TEncGOP::xCompressPicDescription(TComSlice* &rpcSlice,
 TComPic* &rpcPic, Int iGOPid, Int iPOCLast, Int pocCurr, Bool isField, 
 ControlParameterForMDC &rControl,
 TComList <TComPic*> &rcListPic, TEncSlice* &rcSliceEncoder){
-      #if REDUCED_ENCODER_MEMORY
-          // allocation the processing pic, in our case, two pcPic and the Pic central for the P-frame after
-          rpcPic->prepareForReconstruction();
-      #endif
         rpcPic->clearSliceBuffer();
         rpcPic->allocateNewSlice();
         rpcPic->setCurrSliceIdx(0);
@@ -1515,14 +1522,14 @@ TComList <TComPic*> &rcListPic, TEncSlice* &rcSliceEncoder){
         // get slice already encoded from the beginning
         rpcSlice = rpcPic->getSlice(0);
         // SAO parameter estimation using non-deblocked pixels for CTU bottom and right boundary areas
-        if( rpcSlice->getSPS()->getUseSAO() && m_pcCfg->getSaoCtuBoundary() )
+        if( rpcSlice->getSPS()->getUseSAO() && m_pcCfg->getSaoCtuBoundary() && (rpcSlice->isInterP()||rpcSlice->isInterB()) )
         {
           m_pcSAO->getPreDBFStatistics(rpcPic);
         }
-        //-- Loop filter
+        //-- Loop filter @tle apply only on Predicted Frame not useful with I Frame
         Bool bLFCrossTileBoundary = rpcSlice->getPPS()->getLoopFilterAcrossTilesEnabledFlag();
         m_pcLoopFilter->setCfg(bLFCrossTileBoundary);
-        if ( m_pcCfg->getDeblockingFilterMetric() )
+        if ( m_pcCfg->getDeblockingFilterMetric() &&(rpcSlice->isInterP()||rpcSlice->isInterB()))
         {
           if ( m_pcCfg->getDeblockingFilterMetric()==2 )
           {
@@ -1533,7 +1540,7 @@ TComList <TComPic*> &rcListPic, TEncSlice* &rcSliceEncoder){
             applyDeblockingFilterMetric(rpcPic, rControl.uiNumSliceSegments);
           }
         }
-        m_pcLoopFilter->loopFilterPic( rpcPic );
+        if ((rpcSlice->isInterP()||rpcSlice->isInterB())) m_pcLoopFilter->loopFilterPic( rpcPic );
 }
 
 
@@ -1846,14 +1853,33 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       // run tried mode to create the quadtree
       pcPic->setRunMode(0);
       TMDCQPTable::getInstance()->openFile(QTREE,std::ios::trunc|std::ios::out);
+      #if REDUCED_ENCODER_MEMORY
+          // allocation the processing pic, in our case, two pcPic and the Pic central for the P-frame after
+          pcPic->prepareForReconstruction();
+      #endif
       xCompressPicDescription(pcSlice1,pcPic,iGOPid,iPOCLast,pocCurr,isField,control1,rcListPic,m_pcArrSliceEncoder[0]);
       TMDCQPTable::getInstance()->closeFile(QTREE);
+      pcSlice1 = pcPic->getSlice(0);
+      pcPic->getPicYuvResi()->dumpResiTo8bit("resi.yuv",false);
+      pcPic->releaseReconstructionIntermediateData();
+      // pcPic->getPicYuvPred() ->dump("pred.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);
+      // pcPic->getPicYuvRec() ->dump("rec.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);
+
 
       // launch the Python optimizer
-      ExecutePythonOptimizer();
-
+      if (pcSlice1->isIntra()){
+        ExecutePythonOptimizer(1.5,0.0,pocCurr,0);
+      }
+      else
+      {
+        ExecutePythonOptimizer(1.5,0.0,pocCurr,1);
+      }
       pcPic->setRunMode(m_pcCfg->getEncodingMode());
       // Description 1
+      #if REDUCED_ENCODER_MEMORY
+          // allocation the processing pic, in our case, two pcPic and the Pic central for the P-frame after
+          pcPic->prepareForReconstruction();
+      #endif
       pcPic->setDescriptionId(1);
       TMDCQPTable::getInstance()->resetCount(QTREE);
       TMDCQPTable::getInstance()->openFile(QTREE,std::ios::in);
@@ -1870,7 +1896,6 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       pcPic->compressMotion();
       TMDCQPTable::getInstance()->closeFile(QTREE);
       TMDCQPTable::getInstance()->closeFile(DESCRIPTION1);
-
 
       duData2.clear();
       // Description 2
@@ -1987,13 +2012,35 @@ Void TEncGOP::xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, 
   // Check if two Pic has the same structure
   assert(pcCU1->getHeight(uiAbsPartIdx)==pcCU2->getHeight(uiAbsPartIdx));
   assert(pcCU1->getHeight(uiAbsPartIdx)==pcCU2->getHeight(uiAbsPartIdx));
-  // for each CU in the quadtree, perform the merging process
+  //for each CU in the quadtree, perform the merging process
+  if (pcCU1->getCbf(uiAbsPartIdx,COMPONENT_Y)&&!pcCU2->getCbf(uiAbsPartIdx,COMPONENT_Y)){
+    pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
+    return;
+  }
+  else if(!pcCU1->getCbf(uiAbsPartIdx,COMPONENT_Y)&&pcCU2->getCbf(uiAbsPartIdx,COMPONENT_Y))
+  {
+    pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
+    return;
+  }
   if (pcCU1->getQP(uiAbsPartIdx)<pcCU2->getQP(uiAbsPartIdx)){
     pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
   }
-  else
+  else if(pcCU1->getQP(uiAbsPartIdx)>pcCU2->getQP(uiAbsPartIdx))
   {
     pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
+  }
+  else{
+    if (pcCU1->getRefQP(uiAbsPartIdx)<pcCU2->getRefQP(uiAbsPartIdx)){
+      pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
+    }
+    else if(pcCU1->getRefQP(uiAbsPartIdx)>pcCU2->getRefQP(uiAbsPartIdx))
+    {
+      pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
+    }
+    else{
+      // all information which serve to decide is over, select any between two
+      pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
+    }
   }
 }
 

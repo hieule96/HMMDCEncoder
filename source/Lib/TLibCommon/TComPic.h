@@ -175,7 +175,6 @@ public:
   TComPicYuv*   getPicYuvResi()       { return  m_pcPicYuvResi; }
   Void          setPicYuvPred( TComPicYuv* pcPicYuv )       { m_pcPicYuvPred = pcPicYuv; }
   Void          setPicYuvResi( TComPicYuv* pcPicYuv )       { m_pcPicYuvResi = pcPicYuv; }
-
   UInt          getNumberOfCtusInFrame() const     { return m_pcpicSym->getNumberOfCtusInFrame(); }
   UInt          getNumPartInCtuWidth() const       { return m_pcpicSym->getNumPartInCtuWidth();   }
   UInt          getNumPartInCtuHeight() const      { return m_pcpicSym->getNumPartInCtuHeight();  }

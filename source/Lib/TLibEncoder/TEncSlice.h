@@ -69,7 +69,7 @@ private:
   // pictures
   TComList<TComPic*>*     m_pcListPic;                          ///< list of pictures
   TComPicYuv              m_picYuvPred;                         ///< prediction picture buffer
-  TComPicYuv              m_picYuvResi;                         ///< residual picture buffer
+  TComPicYuv              m_picYuvResi;                         ///< Resi picture buffer(In decoder is for the reconstruction but in encoder is for exporting debug ) 
 
   // processing units
   TEncGOP*                m_pcGOPEncoder;                       ///< GOP encoder

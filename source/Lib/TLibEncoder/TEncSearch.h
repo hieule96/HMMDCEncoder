@@ -204,6 +204,7 @@ public:
                                   TComYuv*    pcYuvResi,
                                   TComYuv*    pcYuvResiBest,
                                   TComYuv*    pcYuvRec,
+                                  TComYuv*    pcYuvResi_VIS,
                                   Bool        bSkipResidual
                                   DEBUG_STRING_FN_DECLARE(sDebug) );
 

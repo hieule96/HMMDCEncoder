@@ -1310,7 +1310,8 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     );
 
   //--- inverse transform ---
-
+  // @tle: it work only when there is something in the residual 
+  // otherwize there's nothing in the residual
 #if DEBUG_STRING
   if ( (uiAbsSum > 0) || (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask) )
 #else
@@ -1537,7 +1538,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
 
         pcCU->setTransformSkipSubParts ( modeId, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv,pcResiYUV_nonQuantized,resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2 );
+        // pcResiYUV_nonQuantized is the pointer to structure not quantified
+        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv,pcResiYUV_nonQuantized,resiLumaSingle,
+         false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2 );
 
         singleCbfTmpLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
 
@@ -2750,96 +2753,6 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
   }
 
   m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[uiDepthCU][CI_CURR_BEST] );
-
-  // TComPic* pcPic = pcCU->getPic();
-
-  // Int iRunMode;
-  // iRunMode = pcPic->getRunMode();
-  // if (iRunMode==0){
-  // // 20170612 
-  //    static Int iAddr, iPOC;
-  //    static Int iPOCFinished = -1;
-  //    static unsigned char* pphInfo[MAX_NUM_COMPONENT];
-  //    // Point to the file of residual
-  //    static FILE* fpYuvResi;
-  //    static TComPicYuv* pcPicYuvOrg;
-  //    static UInt iWidth, iHeight;
-  //    static UInt iWidthInCTU, iHeightInCTU;
-  //    static UInt iLeftCurrCTU, iTopCurrCTU;
-  //    static UInt iWidthCTUList[MAX_NUM_COMPONENT];
-  //    static UInt iHeightCTUList[MAX_NUM_COMPONENT];
-  //    static UInt iWidthCurrCTUValid, iHeightCurrCTUValid;
-  //    static bool isValidProcess = false;
-  //    static bool oneTime = true;
-  //    static Pel sInfoCurrPixel;
-  //    static Int prev_iAdrr = 0;
-  //    iAddr = pcCU->getCtuRsAddr();
-  //    iPOC = pcCU->getPic()->getPOC();
-  //    isValidProcess = true;
-  //    if (isValidProcess)
-  //    {
-  //        for (int iCpnt = 0; iCpnt < MAX_NUM_COMPONENT; iCpnt++)
-  //        {
-  //            pcPicYuvOrg = pcCU->getPic()->getPicYuvOrg();
-  //            iWidth = pcPicYuvOrg->getWidth((ComponentID)iCpnt);
-  //            iHeight = pcPicYuvOrg->getHeight((ComponentID)iCpnt);
-  //            if (iPOC == 0 && iAddr == 0 && oneTime)
-  //            {
-  //                pphInfo[iCpnt] = new unsigned char[iWidth * iHeight];
-  //            }
-  //            // Processing just one time to prevent from having erronous dimension
-  //            if (oneTime)
-  //            {
-  //                iWidthCTUList[iCpnt] = pcResiYuv->getWidth((ComponentID)iCpnt);
-  //                iHeightCTUList[iCpnt] = pcResiYuv->getHeight((ComponentID)iCpnt);
-  //                if (iCpnt == MAX_NUM_COMPONENT - 1) {
-  //                    oneTime = false;
-  //                }
-  //            }
-  //            iLeftCurrCTU = pcCU->getCUPelX();
-  //            iTopCurrCTU = pcCU->getCUPelY();
-  //            if (iCpnt >= 1)
-  //            {
-  //                iLeftCurrCTU /= 2;
-  //                iTopCurrCTU /= 2;
-  //            }
-
-  //            iWidthInCTU = iWidth % iWidthCTUList[iCpnt] == 0 ? iWidth / iWidthCTUList[iCpnt] : iWidth / iWidthCTUList[iCpnt] + 1;
-  //            iHeightInCTU = iHeight % iHeightCTUList[iCpnt] == 0 ? iHeight / iHeightCTUList[iCpnt] : iHeight / iHeightCTUList[iCpnt] + 1;
-
-  //            iWidthCurrCTUValid = iLeftCurrCTU + iWidthCTUList[iCpnt] <= iWidth ? iWidthCTUList[iCpnt] : iWidth - iLeftCurrCTU;
-  //            iHeightCurrCTUValid = iTopCurrCTU + iHeightCTUList[iCpnt] <= iHeight ? iHeightCTUList[iCpnt] : iHeight - iTopCurrCTU;
-
-  //            for (int y = 0; y < iHeightCurrCTUValid; y++)
-  //                for (int x = 0; x < iWidthCurrCTUValid; x++)
-  //                {
-  //                    sInfoCurrPixel = *(pcResiYuv->getAddrPix((ComponentID)iCpnt, x, y)) + 128;
-  //                    if (sInfoCurrPixel > 255)
-  //                        sInfoCurrPixel = 255;
-  //                    if (sInfoCurrPixel < 0)
-  //                        sInfoCurrPixel = 0;
-  //                    pphInfo[iCpnt][(y + iTopCurrCTU) * iWidth + (x + iLeftCurrCTU)] = (unsigned char)sInfoCurrPixel;
-  //                }
-
-  //            if (iPOCFinished < iPOC && iAddr == iWidthInCTU * iHeightInCTU - 1 && pcCU->getCUPelX() + (UInt)pcCU->getWidth(0) == pcPicYuvOrg->getWidth(COMPONENT_Y) && pcCU->getCUPelY() + (UInt)pcCU->getHeight(0) == pcPicYuvOrg->getHeight(COMPONENT_Y))
-  //            {
-  //                if (iCpnt == 0&&iPOC==0)
-  //                {
-  //                    fpYuvResi = fopen("resi_rapide.yuv", "wb+");
-  //                }
-  //                else
-  //                {
-  //                    fpYuvResi = fopen("resi_rapide.yuv", "ab+");
-  //                }
-  //                fwrite(pphInfo[iCpnt], sizeof(unsigned char), iWidth * iHeight, fpYuvResi);
-  //                fclose(fpYuvResi);
-
-  //                if (iCpnt == MAX_NUM_COMPONENT - 1) // if the residue of last conponent is already saved
-  //                    iPOCFinished = iPOC;
-  //            }
-  //        }
-      // }
-  // }
 }
 
 
@@ -4691,11 +4604,10 @@ Void TEncSearch::xPatternSearchFracDIF(
 
 //! encode residual and calculate rate-distortion for a CU block
 Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg, TComYuv* pcYuvPred,
-                                            TComYuv* pcYuvResi, TComYuv* pcYuvResiBest, TComYuv* pcYuvRec,
+                                            TComYuv* pcYuvResi, TComYuv* pcYuvResiBest, TComYuv* pcYuvRec, TComYuv* pcYuvResi_VIS, 
                                             Bool bSkipResidual DEBUG_STRING_FN_DECLARE(sDebug) )
 {
   assert ( !pcCU->isIntra(0) );
-
   const UInt cuWidthPixels      = pcCU->getWidth ( 0 );
   const UInt cuHeightPixels     = pcCU->getHeight( 0 );
   const Int  numValidComponents = pcCU->getPic()->getNumberValidComponents();
@@ -4703,13 +4615,14 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 
   // The pcCU is not marked as skip-mode at this point, and its m_pcTrCoeff, m_pcArlCoeff, m_puhCbf, m_puhTrIdx will all be 0.
   // due to prior calls to TComDataCU::initEstData(  );
+  pcYuvResi_VIS->subtract( pcYuvOrg, pcYuvPred, 0, cuWidthPixels );
 
   if ( bSkipResidual ) //  No residual coding : SKIP mode
   {
     pcCU->setSkipFlagSubParts( true, 0, pcCU->getDepth(0) );
 
     pcYuvResi->clear();
-
+    pcYuvResi_VIS->clear();
     pcYuvPred->copyToPartYuv( pcYuvRec, 0 );
     Distortion distortion = 0;
 

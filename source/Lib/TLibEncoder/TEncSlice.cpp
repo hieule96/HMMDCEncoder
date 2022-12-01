@@ -63,6 +63,9 @@ Void TEncSlice::create(Int iWidth, Int iHeight, ChromaFormat chromaFormat, UInt 
 
     // create residual picture
     m_picYuvResi.create(iWidth, iHeight, chromaFormat, iMaxCUWidth, iMaxCUHeight, uhTotalDepth, true);
+
+    // // create residual for bit estimation
+    // m_picYuvResiNoQuant.create(iWidth, iHeight, chromaFormat, iMaxCUWidth, iMaxCUHeight, uhTotalDepth, true);
 }
 
 Void TEncSlice::destroy()
@@ -816,14 +819,7 @@ Void TEncSlice::compressSlice(TComPic* pcPic, const Bool bCompressEntireSlice, c
         }
         // run CTU the compression process to create the structure of images
         // Only apply the algorithm of only on I Slice
-        if (pcPic->getSlice(0)->getSliceType()==I_SLICE)
-        {
-            m_pcCuEncoder->compressCtu(pCtu,pcPic->getRunMode());
-        }
-        else
-        {
-            m_pcCuEncoder->compressCtu(pCtu,0);
-        }
+        m_pcCuEncoder->compressCtu(pCtu,pcPic->getRunMode());
         // m_pcCuEncoder->compressCtu(pCtu);
 
 
