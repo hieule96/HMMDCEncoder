@@ -1852,6 +1852,7 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       duData1.clear();
       // run tried mode to create the quadtree
       pcPic->setRunMode(0);
+      TMDCQPTable::getInstance()->resetCount();
       TMDCQPTable::getInstance()->openFile(QTREE,std::ios::trunc|std::ios::out);
       #if REDUCED_ENCODER_MEMORY
           // allocation the processing pic, in our case, two pcPic and the Pic central for the P-frame after
@@ -1868,11 +1869,11 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
 
       // launch the Python optimizer
       if (pcSlice1->isIntra()){
-        ExecutePythonOptimizer(1.5,0.0,pocCurr,0);
+        ExecutePythonOptimizer(1.40,0.01,pocCurr,0);
       }
       else
       {
-        ExecutePythonOptimizer(1.5,0.0,pocCurr,1);
+        ExecutePythonOptimizer(1.40,0.01,pocCurr,1);
       }
       pcPic->setRunMode(m_pcCfg->getEncodingMode());
       // Description 1
@@ -1881,7 +1882,7 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
           pcPic->prepareForReconstruction();
       #endif
       pcPic->setDescriptionId(1);
-      TMDCQPTable::getInstance()->resetCount(QTREE);
+      TMDCQPTable::getInstance()->resetCount();
       TMDCQPTable::getInstance()->openFile(QTREE,std::ios::in);
       TMDCQPTable::getInstance()->openFile(DESCRIPTION1,std::ios::in);
 
@@ -1900,7 +1901,7 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       duData2.clear();
       // Description 2
       pcPic->setDescriptionId(2);
-      TMDCQPTable::getInstance()->resetCount(QTREE);
+      TMDCQPTable::getInstance()->resetCount();
       TMDCQPTable::getInstance()->openFile(QTREE,std::ios::in);
       TMDCQPTable::getInstance()->openFile(DESCRIPTION2,std::ios::in);
       xCompressPicDescription(pcSlice2,pcPic,iGOPid,iPOCLast,pocCurr,isField,control2,rcListPic,m_pcArrSliceEncoder[1]);
@@ -1973,7 +1974,7 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
 }
 
 
-Void TEncGOP::xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, UInt uiDepth){
+Void TEncGOP::xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, UInt uiDepth, const Int *QPTable1, const Int *QPTable2, Int &index){
   TComPic   *const pcPic   = pcCU1->getPic();
 
   TComSlice *const pcSlice = pcCU1->getSlice();
@@ -2004,7 +2005,8 @@ Void TEncGOP::xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, 
       uiTPelY   = pcCU1->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
       if( ( uiLPelX < sps.getPicWidthInLumaSamples() ) && ( uiTPelY < sps.getPicHeightInLumaSamples() ) )
       {
-        xSelectCu( pcCU1,pcCU2, uiAbsPartIdx, uiDepth+1);
+        index++;
+        xSelectCu( pcCU1,pcCU2, uiAbsPartIdx, uiDepth+1,QPTable1,QPTable2,index);
       }
     }
     return;
@@ -2022,37 +2024,60 @@ Void TEncGOP::xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, 
     pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
     return;
   }
-  if (pcCU1->getQP(uiAbsPartIdx)<pcCU2->getQP(uiAbsPartIdx)){
-    pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
-  }
-  else if(pcCU1->getQP(uiAbsPartIdx)>pcCU2->getQP(uiAbsPartIdx))
+  if (QPTable1[index]<QPTable2[index]){
+      pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
+  }else
   {
-    pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
-  }
-  else{
-    if (pcCU1->getRefQP(uiAbsPartIdx)<pcCU2->getRefQP(uiAbsPartIdx)){
-      pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
-    }
-    else if(pcCU1->getRefQP(uiAbsPartIdx)>pcCU2->getRefQP(uiAbsPartIdx))
-    {
       pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
-    }
-    else{
-      // all information which serve to decide is over, select any between two
-      pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
-    }
   }
+  // if (pcCU1->getQP(uiAbsPartIdx)<pcCU2->getQP(uiAbsPartIdx)&&pcCU1->getQP(uiAbsPartIdx)!=pcCU1->getRefQP(uiAbsPartIdx)){
+  //   pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
+  // }
+  // else if(pcCU1->getQP(uiAbsPartIdx)>pcCU2->getQP(uiAbsPartIdx)&&pcCU2->getQP(uiAbsPartIdx)!=pcCU2->getRefQP(uiAbsPartIdx))
+  // {
+  //   pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
+  // }
+  // else{
+  //   if (pcCU1->getRefQP(uiAbsPartIdx)<pcCU2->getRefQP(uiAbsPartIdx)){
+  //     pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
+  //   }
+  //   else if(pcCU1->getRefQP(uiAbsPartIdx)>pcCU2->getRefQP(uiAbsPartIdx))
+  //   {
+  //     pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
+  //   }
+  //   else{
+  //     // all information which serve to decide is over, select any between two
+  //     pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
+  //   }
+  // }
 }
 
 
 // this function fusion two description to have one
 Void TEncGOP::centralConstruction(TComPic &rPic){
     const UInt numberOfCtusInFrame = rPic.getNumberOfCtusInFrame();
+    TMDCQPTable *pqptable = TMDCQPTable::getInstance();
+    pqptable->openFile(DESCRIPTION1,ios::in);
+    pqptable->openFile(DESCRIPTION2,ios::in);
+    Int *QPTable1 = new Int[1024];
+    Int *QPTable2 = new Int[1024];
+    Int index = 0;
     for (int i=0;i<numberOfCtusInFrame;i++){
+        index = 0;
         TComDataCU* pCtuD1 = rPic.getPicSym(1)->getCtu(i);
         TComDataCU* pCtuD2 = rPic.getPicSym(2)->getCtu(i);
-        xSelectCu(pCtuD1,pCtuD2,0,0);
+        Int countQP1 = pqptable->readALine(DESCRIPTION1);
+        memcpy(QPTable1,pqptable->getQPArray(),countQP1*sizeof(Int));
+        Int countQP2 = pqptable->readALine(DESCRIPTION2);
+        memcpy(QPTable2,pqptable->getQPArray(),countQP2*sizeof(Int));
+
+        xSelectCu(pCtuD1,pCtuD2,0,0,QPTable1,QPTable2,index);
     }
+    pqptable->closeFile(DESCRIPTION1);
+    pqptable->closeFile(DESCRIPTION2);
+    pqptable->resetCount();
+    delete [] QPTable1;
+    delete [] QPTable2;
 }
 
 

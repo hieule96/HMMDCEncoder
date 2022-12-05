@@ -3,7 +3,7 @@
  * and contributor rights, including patent rights, and no such rights are
  * granted under this license.
  *
- * Copyright (c) 2010-2020, ITU/ISO/IEC
+ * Copyright (c) 2010-2022, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -67,6 +67,11 @@ TDecTop::TDecTop()
   , m_prevPOC(MAX_INT)
   , m_prevTid0POC(0)
   , m_bFirstSliceInPicture(true)
+#if FGS_RDD5_ENABLE
+  , m_bFirstPictureInSequence(true)
+  , m_grainCharacteristic()
+  , m_grainBuf()
+#endif
   , m_bFirstSliceInSequence(true)
   , m_prevSliceSkipped(false)
   , m_skippedPOC(0)
@@ -169,9 +174,17 @@ Void TDecTop::xGetNewPicBuffer ( const TComSPS &sps, const TComPPS &pps, TComPic
     rpcPic = new TComPic();
 
 #if REDUCED_ENCODER_MEMORY
+#if SHUTTER_INTERVAL_SEI_PROCESSING
+    rpcPic->create ( sps, pps, false, true, getShutterFilterFlag() );
+#else
     rpcPic->create ( sps, pps, false, true);
+#endif
+#else
+#if SHUTTER_INTERVAL_SEI_PROCESSING
+    rpcPic->create ( sps, pps, true, getShutterFilterFlag());
 #else
     rpcPic->create ( sps, pps, true);
+#endif
 #endif
 
     m_cListPic.pushBack( rpcPic );
@@ -210,9 +223,17 @@ Void TDecTop::xGetNewPicBuffer ( const TComSPS &sps, const TComPPS &pps, TComPic
   }
   rpcPic->destroy();
 #if REDUCED_ENCODER_MEMORY
+#if SHUTTER_INTERVAL_SEI_PROCESSING
+  rpcPic->create ( sps, pps, false, true, getShutterFilterFlag() );
+#else
   rpcPic->create ( sps, pps, false, true);
+#endif
+#else
+#if SHUTTER_INTERVAL_SEI_PROCESSING
+  rpcPic->create ( sps, pps, true, getShutterFilterFlag() );
 #else
   rpcPic->create ( sps, pps, true);
+#endif
 #endif
 }
 
@@ -346,7 +367,11 @@ Void TDecTop::xActivateParameterSets()
     //  Get a new picture buffer. This will also set up m_pcPic, and therefore give us a SPS and PPS pointer that we can use.
     xGetNewPicBuffer (*(sps), *(pps), m_pcPic, m_apcSlicePilot->getTLayer());
     m_apcSlicePilot->applyReferencePictureSet(m_cListPic, m_apcSlicePilot->getRPS());
-
+#if FGS_RDD5_ENABLE
+    // Initialization of film grain synthesizer 
+    m_pcPic->createGrainSynthesizer(m_bFirstPictureInSequence, &m_grainCharacteristic, &m_grainBuf, sps);
+    m_bFirstPictureInSequence = false;
+#endif
     // make the slice-pilot a real slice, and set up the slice-pilot for the next slice
     assert(m_pcPic->getNumAllocatedSlice() == (m_uiSliceIdx + 1));
     m_apcSlicePilot = m_pcPic->getPicSym()->swapSliceObject(m_apcSlicePilot, m_uiSliceIdx);

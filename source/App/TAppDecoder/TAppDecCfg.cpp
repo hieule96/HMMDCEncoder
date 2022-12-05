@@ -70,9 +70,12 @@ Bool TAppDecCfg::parseCfg( Int argc, TChar* argv[] )
 
 
       ("help", do_help, false, "this help text")
-      ("BitstreamFile,b", m_bitstreamFileName, string(""), "bitstream input file name")
-      ("ReconFile,o", m_reconFileName, string(""), "reconstructed YUV output file name\n"
-          "YUV writing is skipped if omitted")
+      ("BitstreamFile1,a", m_bitstreamFileName1, string(""), "bitstream input file name")
+      ("BitstreamFile2,b", m_bitstreamFileName2, string(""), "bitstream input file name")
+      ("ReconFile1,x", m_reconFileName1, string(""), "reconstructed YUV output file name\n""YUV writing is skipped if omitted")
+      ("ReconFile2,z", m_reconFileName2, string(""), "reconstructed YUV output file name\n""YUV writing is skipped if omitted")
+      ("ReconFileC,r", m_reconFileNameC, string(""), "reconstructed YUV output file name\n""YUV writing is skipped if omitted")
+
       ("WarnUnknowParameter,w", warnUnknowParameter, 0, "warn for unknown configuration parameters instead of failing")
       ("SkipFrames,s", m_iSkipFrame, 0, "number of frames to skip before random access")
       ("OutputBitDepth,d", m_outputBitDepth[CHANNEL_TYPE_LUMA], 0, "bit depth of YUV output luma component (default: use 0 for native depth)")
@@ -87,9 +90,6 @@ Bool TAppDecCfg::parseCfg( Int argc, TChar* argv[] )
       ("RespectDefDispWindow,w", m_respectDefDispWindow, 0, "Only output content inside the default display window\n")
       ("SEIColourRemappingInfoFilename", m_colourRemapSEIFileName, string(""), "Colour Remapping YUV output file name. If empty, no remapping is applied (ignore SEI message)\n")
       ("SEIAnnotatedRegionsInfoFilename", m_annotatedRegionsSEIFileName, string(""), "Annotated regions output file name. If empty, no object information will be saved (ignore SEI message)\n")
-      ("MDC_mode,mdc", m_MDC_mode, 0, "MDC mode active or not")
-      ("QPOutFile,qpf", m_QPDecFile, std::string(""), "Qp structure output to join")
-      ("QtreeDecFile,qtf", m_QtreeDecFile, std::string(""), "Qtree structure from output")
 #if O0043_BEST_EFFORT_DECODING
       ("ForceDecodeBitDepth", m_forceDecodeBitDepth, 0U, "Force the decoder to operate at a particular bit-depth (best effort decoding)")
 #endif
@@ -131,7 +131,7 @@ Bool TAppDecCfg::parseCfg( Int argc, TChar* argv[] )
     return false;
   }
 
-  if (m_bitstreamFileName.empty())
+  if (m_bitstreamFileName1.empty())
   {
     fprintf(stderr, "No input file specified, aborting\n");
     return false;

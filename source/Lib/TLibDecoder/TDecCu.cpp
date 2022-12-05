@@ -3,7 +3,7 @@
  * and contributor rights, including patent rights, and no such rights are
  * granted under this license.
  *
- * Copyright (c) 2010-2020, ITU/ISO/IEC
+ * Copyright (c) 2010-2022, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,7 +38,7 @@
 #include "TDecCu.h"
 #include "TLibCommon/TComTU.h"
 #include "TLibCommon/TComPrediction.h"
-#include "TLibSysuAnalyzer/TSysuAnalyzerOutput.h"
+
 //! \ingroup TLibDecoder
 //! \{
 
@@ -139,8 +139,6 @@ Void TDecCu::destroy()
  \param    pCtu                      [in/out] pointer to CTU data structure
  \param    isLastCtuOfSliceSegment   [out]    true, if last CTU of the slice segment
  */
-static int CTU_pos = 0;
-
 Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
 {
   if ( pCtu->getSlice()->getPPS()->getUseDQP() )
@@ -152,12 +150,9 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
   {
     setIsChromaQpAdjCoded(true);
   }
-  //printf("CTU#%d\n", CTU_pos++);
-  xDecodeCU( pCtu, 0, 0, isLastCtuOfSliceSegment);
-  TSysuAnalyzerOutput::getInstance()->writeOutCUInfo(pCtu);
-  TSysuAnalyzerOutput::getInstance()->writeNewLineQP();
 
-  
+  // start from the top level CU
+  xDecodeCU( pCtu, 0, 0, isLastCtuOfSliceSegment);
 }
 
 /** 
@@ -243,6 +238,7 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
       {
         pcCU->setOutsideCUPart( uiIdx, uiDepth+1 );
       }
+
       uiIdx += uiQNumParts;
     }
     if( uiDepth == pps.getMaxCuDQPDepth() && pps.getUseDQP())
@@ -343,8 +339,6 @@ Void TDecCu::xDecodeCU( TComDataCU*const pcCU, const UInt uiAbsPartIdx, const UI
   setIsChromaQpAdjCoded( isChromaQpAdjCoded );
   setdQPFlag( bCodeDQP );
   xFinishDecodeCU( pcCU, uiAbsPartIdx, uiDepth, isLastCtuOfSliceSegment );
-  //printf("X: [%d,%d) Y: [%d,%d) QP#%d : %d\n", uiLPelX, uiRPelX, uiTPelY, uiBPelY,uiAbsPartIdx, getdQPFlag() ? pcCU->getRefQP(uiAbsPartIdx) : pcCU->getCodedQP());
-  TSysuAnalyzerOutput::getInstance()->writeQP(getdQPFlag(),",");
 }
 
 Void TDecCu::xFinishDecodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool &isLastCtuOfSliceSegment)
@@ -373,6 +367,7 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
   UInt uiRPelX   = uiLPelX + (sps.getMaxCUWidth()>>uiDepth)  - 1;
   UInt uiTPelY   = pCtu->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
   UInt uiBPelY   = uiTPelY + (sps.getMaxCUHeight()>>uiDepth) - 1;
+
   if( ( uiRPelX >= sps.getPicWidthInLumaSamples() ) || ( uiBPelY >= sps.getPicHeightInLumaSamples() ) )
   {
     bBoundary = true;

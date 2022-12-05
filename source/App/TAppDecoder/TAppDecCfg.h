@@ -56,8 +56,12 @@
 class TAppDecCfg
 {
 protected:
-  std::string   m_bitstreamFileName;                    ///< input bitstream file name
-  std::string   m_reconFileName;                        ///< output reconstruction file name
+  std::string   m_bitstreamFileName1;                    ///< input bitstream file name
+  std::string   m_bitstreamFileName2;                    ///< input bitstream file name
+  std::string   m_reconFileName1;                        ///< output reconstruction file name
+  std::string   m_reconFileName2;                        ///< output reconstruction file name
+  std::string   m_reconFileNameC;                        ///< output reconstruction file name
+
   Int           m_iSkipFrame;                           ///< counter for frames prior to the random access point to skip
   Int           m_outputBitDepth[MAX_NUM_CHANNEL_TYPE]; ///< bit depth used for writing output
   InputColourSpaceConversion m_outputColourSpaceConvert;
@@ -83,8 +87,10 @@ protected:
 
 public:
   TAppDecCfg()
-  : m_bitstreamFileName()
-  , m_reconFileName()
+  :m_bitstreamFileName1()
+  ,m_bitstreamFileName2()
+  ,m_reconFileName1()
+  ,m_reconFileName2()
   , m_iSkipFrame(0)
   // m_outputBitDepth array initialised below
   , m_outputColourSpaceConvert(IPCOLOURSPACE_UNCHANGED)

@@ -292,7 +292,10 @@ Void TEncCu::compressCtu( TComDataCU* pCtu, UInt iRunMode )
   else{
       TMDCQPTable *table = TMDCQPTable::getInstance();
       xCompressCU( m_ppcBestCU[0], m_ppcTempCU[0], 0 DEBUG_STRING_PASS_INTO(sDebug) );
-      table->writeOutCUInfo(pCtu);
+      if (pCtu->getCtuRsAddr()==table->getCount(QTREE)) {
+        table->writeOutCUInfo(pCtu);
+        table->incrementCounterRs();
+      }
   }
 
   DEBUG_STRING_OUTPUT(std::cout, sDebug)

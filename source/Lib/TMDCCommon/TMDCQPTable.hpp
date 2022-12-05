@@ -19,9 +19,10 @@ class TMDCQPTable{
         Int convertStringToIntArrayQP(Int *bufferDest, char *str,int nbElement);
         Int convertStringtoIntArrayQtree(Int *bufferDest, char *str,int nbElement);
         Int getCount(FileType description) {return m_counter_rs;};
-        Void resetCount(FileType description) {
+        Void resetCount() {
             m_counter_rs = 0;
-            m_counters[description] = 0;
+            m_counters[DESCRIPTION1] = 0;
+            m_counters[DESCRIPTION2] = 0;
             m_ios[QTREE].seekg(ios::beg);
             m_ios[DESCRIPTION1].seekg(ios::beg);
             m_ios[DESCRIPTION2].seekg(ios::beg);
@@ -37,6 +38,7 @@ class TMDCQPTable{
             return m_instance;
         }
         Void closeFile(FileType description);
+        Void incrementCounterRs(){m_counter_rs++;};
         Void openFile(FileType description, std::ios::openmode openmode);
         Void writeOutCUInfo   ( TComDataCU* pcCU );
     private:

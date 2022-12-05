@@ -77,18 +77,21 @@ Int TMDCQPTable::convertStringtoIntArrayQtree(Int *bufferDest, char *str,int nbE
 
 Int TMDCQPTable::readALine(FileType description){
     char* buffer = new char[BUFFER_READ_SIZE];
+    Int count = 0;
     // get the buffer from the file
     if (m_ios[description].is_open()) m_ios[description].getline(buffer, BUFFER_READ_SIZE);
     else throw std::runtime_error("readALineQp: Unexpected closed file");
     //parsing this buffer
+    m_counters[description]++;
+
     if (description==QTREE){
         m_counter_rs++;
-        m_counters[description] = convertStringtoIntArrayQtree(qtreeArray,buffer, BUFFER_READ_SIZE);
+        count = convertStringtoIntArrayQtree(qtreeArray,buffer, BUFFER_READ_SIZE);
     }else{
-        m_counters[description] = convertStringToIntArrayQP(qpArray,buffer,BUFFER_READ_SIZE);
+        count =  convertStringToIntArrayQP(qpArray,buffer,BUFFER_READ_SIZE);
     }
     delete[] buffer;
-    return m_counters[description];
+    return count;
 }
 void TMDCQPTable::writeOutCUInfo   ( TComDataCU* pcCU )
 {

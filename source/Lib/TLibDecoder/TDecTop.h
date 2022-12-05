@@ -3,7 +3,7 @@
  * and contributor rights, including patent rights, and no such rights are
  * granted under this license.
  *
- * Copyright (c) 2010-2020, ITU/ISO/IEC
+ * Copyright (c) 2010-2022, ITU/ISO/IEC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -100,6 +100,11 @@ private:
   Int                     m_prevPOC;
   Int                     m_prevTid0POC;
   Bool                    m_bFirstSliceInPicture;
+#if FGS_RDD5_ENABLE
+  Bool                    m_bFirstPictureInSequence;
+  SEIFilmGrainSynthesizer m_grainCharacteristic;
+  TComPicYuv              m_grainBuf;
+#endif
   Bool                    m_bFirstSliceInSequence;
   Bool                    m_prevSliceSkipped;
   Int                     m_skippedPOC;
@@ -107,6 +112,9 @@ private:
   Int                     m_lastPOCNoOutputPriorPics;
   Bool                    m_isNoOutputPriorPics;
   Bool                    m_craNoRaslOutputFlag;    //value of variable NoRaslOutputFlag of the last CRA pic
+#if SHUTTER_INTERVAL_SEI_PROCESSING
+  Bool                    m_ShutterFilterEnable;    // Shutter Interval SEI Processing
+#endif
 #if O0043_BEST_EFFORT_DECODING
   UInt                    m_forceDecodeBitDepth;
 #endif
@@ -151,6 +159,10 @@ public:
   Void  setFirstSliceInPicture (bool val)  { m_bFirstSliceInPicture = val; }
   Bool  getFirstSliceInSequence ()         { return m_bFirstSliceInSequence; }
   Void  setFirstSliceInSequence (bool val) { m_bFirstSliceInSequence = val; }
+#if SHUTTER_INTERVAL_SEI_PROCESSING
+  Bool  getShutterFilterFlag () const     { return m_ShutterFilterEnable; }
+  Void  setShutterFilterFlag (Bool value) { m_ShutterFilterEnable = value; }
+#endif
 #if O0043_BEST_EFFORT_DECODING
   Void  setForceDecodeBitDepth(UInt bitDepth) { m_forceDecodeBitDepth = bitDepth; }
 #endif

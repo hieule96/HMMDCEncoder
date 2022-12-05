@@ -61,8 +61,8 @@ class TAppDecTop : public TAppDecCfg
 private:
   // class interface
   TDecTop                         m_cTDecTop;                     ///< decoder class
-  TVideoIOYuv                     m_cTVideoIOYuvReconFile;        ///< reconstruction YUV class
-  TVideoIOYuv                     m_cTVideoIOYuvResiFile;        ///< reconstruction YUV class
+  TVideoIOYuv       m_cTVideoIOYuvReconFileC,m_cTVideoIOYuvReconFile1,m_cTVideoIOYuvReconFile2;
+  TVideoIOYuv       m_cTVideoIOYuvResiFile1,m_cTVideoIOYuvResiFile2;        ///< reconstruction YUV class
 
   // for output control
   Int                             m_iPOCLastDisplay;              ///< last POC in display order

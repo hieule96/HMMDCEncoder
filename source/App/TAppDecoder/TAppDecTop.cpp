@@ -67,8 +67,12 @@ Void TAppDecTop::create()
 
 Void TAppDecTop::destroy()
 {
-  m_bitstreamFileName.clear();
-  m_reconFileName.clear();
+  m_bitstreamFileName1.clear();
+  m_bitstreamFileName2.clear();
+  m_reconFileName1.clear();
+  m_reconFileName2.clear();
+  m_reconFileNameC.clear();
+
 }
 
 // ====================================================================================================================
@@ -88,14 +92,18 @@ Void TAppDecTop::decode()
   Int                 poc;
   TComList<TComPic*>* pcListPic = NULL;
 
-  ifstream bitstreamFile(m_bitstreamFileName.c_str(), ifstream::in | ifstream::binary);
-  if (!bitstreamFile)
+  ifstream bitstreamFile1(m_bitstreamFileName1.c_str(), ifstream::in | ifstream::binary), 
+  bitstreamFile2(m_bitstreamFileName2.c_str(), ifstream::in | ifstream::binary);
+  if (!bitstreamFile1)
   {
-    fprintf(stderr, "\nfailed to open bitstream file `%s' for reading\n", m_bitstreamFileName.c_str());
+    fprintf(stderr, "\nfailed to open bitstream file `%s' for reading\n", m_bitstreamFileName1.c_str());
     exit(EXIT_FAILURE);
   }
-  TSysuAnalyzerOutput::initInstanceDecoder(m_QtreeDecFile.c_str(), m_QPDecFile.c_str());
-  InputByteStream bytestream(bitstreamFile);
+  if (!bitstreamFile2){
+    fprintf(stderr, "\nfailed to open bitstream file `%s' for reading\n", m_bitstreamFileName1.c_str());
+    exit(EXIT_FAILURE);
+  }
+  InputByteStream bytestream1(bitstreamFile1),bytestream2(bitstreamFile2);
   if (!m_outputDecodedSEIMessagesFilename.empty() && m_outputDecodedSEIMessagesFilename!="-")
   {
     m_seiMessageFileStream.open(m_outputDecodedSEIMessagesFilename.c_str(), std::ios::out);
@@ -137,7 +145,9 @@ Void TAppDecTop::decode()
   Bool openedReconFile = false; // reconstruction file not yet opened. (must be performed after SPS is seen)
   Bool loopFiltered = false;
 
-  while (!!bitstreamFile)
+
+
+  while (!!bitstreamFile1)
   {
     /* location serves to work around a design fault in the decoder, whereby
      * the process of reading a new slice that is the first slice of a new frame
@@ -145,14 +155,14 @@ Void TAppDecTop::decode()
      * nal unit. */
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
     TComCodingStatistics::TComCodingStatisticsData backupStats(TComCodingStatistics::GetStatistics());
-    streampos location = bitstreamFile.tellg() - streampos(bytestream.GetNumBufferedBytes());
+    streampos location = bitstreamFile1.tellg() - streampos(bytestream1.GetNumBufferedBytes());
 #else
     streampos location = bitstreamFile.tellg();
 #endif
     AnnexBStats stats = AnnexBStats();
 
     InputNALUnit nalu;
-    byteStreamNALUnit(bytestream, nalu.getBitstream().getFifo(), stats);
+    byteStreamNALUnit(bytestream1, nalu.getBitstream().getFifo(), stats);
 
     // call actual decoding function
     Bool bNewPicture = false;
@@ -177,14 +187,14 @@ Void TAppDecTop::decode()
         bNewPicture = m_cTDecTop.decode(nalu, m_iSkipFrame, m_iPOCLastDisplay);
         if (bNewPicture)
         {
-          bitstreamFile.clear();
+          bitstreamFile1.clear();
           /* location points to the current nalunit payload[1] due to the
            * need for the annexB parser to read three extra bytes.
            * [1] except for the first NAL unit in the file
            *     (but bNewPicture doesn't happen then) */
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
-          bitstreamFile.seekg(location);
-          bytestream.reset();
+          bitstreamFile1.seekg(location);
+          bytestream1.reset();
           TComCodingStatistics::SetStatistics(backupStats);
 #else
           bitstreamFile.seekg(location-streamoff(3));
@@ -194,10 +204,10 @@ Void TAppDecTop::decode()
       }
     }
 
-    if ( (bNewPicture || !bitstreamFile || nalu.m_nalUnitType == NAL_UNIT_EOS) &&
+    if ( (bNewPicture || !bitstreamFile1 || nalu.m_nalUnitType == NAL_UNIT_EOS) &&
         !m_cTDecTop.getFirstSliceInSequence () )
     {
-      if (!loopFiltered || bitstreamFile)
+      if (!loopFiltered || bitstreamFile1)
       {
         m_cTDecTop.executeLoopFilters(poc, pcListPic);
       }
@@ -207,7 +217,7 @@ Void TAppDecTop::decode()
         m_cTDecTop.setFirstSliceInSequence(true);
       }
     }
-    else if ( (bNewPicture || !bitstreamFile || nalu.m_nalUnitType == NAL_UNIT_EOS ) &&
+    else if ( (bNewPicture || !bitstreamFile1 || nalu.m_nalUnitType == NAL_UNIT_EOS ) &&
               m_cTDecTop.getFirstSliceInSequence () ) 
     {
       m_cTDecTop.setFirstSliceInPicture (true);
@@ -215,7 +225,7 @@ Void TAppDecTop::decode()
 
     if( pcListPic )
     {
-      if ( (!m_reconFileName.empty()) && (!openedReconFile) )
+      if ( (!m_reconFileName1.empty()) && (!openedReconFile) )
       {
         const BitDepths &bitDepths=pcListPic->front()->getPicSym()->getSPS().getBitDepths(); // use bit depths of first reconstructed picture.
         for (UInt channelType = 0; channelType < MAX_NUM_CHANNEL_TYPE; channelType++)
@@ -226,7 +236,7 @@ Void TAppDecTop::decode()
           }
         }
 
-        m_cTVideoIOYuvReconFile.open( m_reconFileName, true, m_outputBitDepth, m_outputBitDepth, bitDepths.recon ); // write mode
+        m_cTVideoIOYuvReconFile1.open( m_reconFileName1, true, m_outputBitDepth, m_outputBitDepth, bitDepths.recon ); // write mode
         openedReconFile = true;
       }
       // write reconstruction to file
@@ -281,10 +291,14 @@ Void TAppDecTop::xCreateDecLib()
 
 Void TAppDecTop::xDestroyDecLib()
 {
-  if ( !m_reconFileName.empty() )
+  if ( !m_reconFileName1.empty() )
   {
-    m_cTVideoIOYuvReconFile.close();
-    m_cTVideoIOYuvResiFile.close();
+    m_cTVideoIOYuvReconFileC.close();
+    m_cTVideoIOYuvReconFile1.close();
+    m_cTVideoIOYuvReconFile2.close();
+    m_cTVideoIOYuvResiFile1.close();
+    m_cTVideoIOYuvResiFile2.close();
+
   }
 
   // destroy decoder class
@@ -394,7 +408,7 @@ Void TAppDecTop::xWriteOutput( TComList<TComPic*>* pcListPic, UInt tId )
       {
         // write to file
         numPicsNotYetDisplayed = numPicsNotYetDisplayed-2;
-        if ( !m_reconFileName.empty() )
+        if ( !m_reconFileName1.empty() )
         {
           const Window &conf = pcPicTop->getConformanceWindow();
           const Window  defDisp = m_respectDefDispWindow ? pcPicTop->getDefDisplayWindow() : Window();
@@ -413,7 +427,7 @@ Void TAppDecTop::xWriteOutput( TComList<TComPic*>* pcListPic, UInt tId )
 
           if (display)
           {
-            m_cTVideoIOYuvReconFile.write( pcPicTop->getPicYuvRec(), pcPicBottom->getPicYuvRec(),
+            m_cTVideoIOYuvReconFile1.write( pcPicTop->getPicYuvRec(), pcPicBottom->getPicYuvRec(),
                                            m_outputColourSpaceConvert,
                                            conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
                                            conf.getWindowRightOffset() + defDisp.getWindowRightOffset(),
@@ -463,12 +477,12 @@ Void TAppDecTop::xWriteOutput( TComList<TComPic*>* pcListPic, UInt tId )
           dpbFullness--;
         }
 
-        if ( !m_reconFileName.empty() )
+        if ( !m_reconFileName1.empty() )
         {
           const Window &conf    = pcPic->getConformanceWindow();
           const Window  defDisp = m_respectDefDispWindow ? pcPic->getDefDisplayWindow() : Window();
 
-          m_cTVideoIOYuvReconFile.write( pcPic->getPicYuvRec(),
+          m_cTVideoIOYuvReconFile1.write( pcPic->getPicYuvRec(),
                                          m_outputColourSpaceConvert,
                                          conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
                                          conf.getWindowRightOffset() + defDisp.getWindowRightOffset(),
@@ -533,12 +547,12 @@ Void TAppDecTop::xFlushOutput( TComList<TComPic*>* pcListPic )
       if ( pcPicTop->getOutputMark() && pcPicBottom->getOutputMark() && !(pcPicTop->getPOC()%2) && (pcPicBottom->getPOC() == pcPicTop->getPOC()+1) )
       {
         // write to file
-        if ( !m_reconFileName.empty() )
+        if ( !m_reconFileName1.empty() )
         {
           const Window &conf = pcPicTop->getConformanceWindow();
           const Window  defDisp = m_respectDefDispWindow ? pcPicTop->getDefDisplayWindow() : Window();
           const Bool isTff = pcPicTop->isTopField();
-          m_cTVideoIOYuvReconFile.write( pcPicTop->getPicYuvRec(), pcPicBottom->getPicYuvRec(),
+          m_cTVideoIOYuvReconFile1.write( pcPicTop->getPicYuvRec(), pcPicBottom->getPicYuvRec(),
                                          m_outputColourSpaceConvert,
                                          conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
                                          conf.getWindowRightOffset() + defDisp.getWindowRightOffset(),
@@ -591,12 +605,12 @@ Void TAppDecTop::xFlushOutput( TComList<TComPic*>* pcListPic )
       if ( pcPic->getOutputMark() )
       {
         // write to file
-        if ( !m_reconFileName.empty() )
+        if ( !m_reconFileName1.empty() )
         {
           const Window &conf    = pcPic->getConformanceWindow();
           const Window  defDisp = m_respectDefDispWindow ? pcPic->getDefDisplayWindow() : Window();
 
-          m_cTVideoIOYuvReconFile.write( pcPic->getPicYuvRec(),
+          m_cTVideoIOYuvReconFile1.write( pcPic->getPicYuvRec(),
                                          m_outputColourSpaceConvert,
                                          conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
                                          conf.getWindowRightOffset() + defDisp.getWindowRightOffset(),

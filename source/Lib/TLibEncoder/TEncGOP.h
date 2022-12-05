@@ -168,7 +168,7 @@ private:
   TComPicYuv*             m_pcDeblockingTempPicYuv;
   Int                     m_DBParam[MAX_ENCODER_DEBLOCKING_QUALITY_LAYERS][4];   //[layer_id][0: available; 1: bDBDisabled; 2: Beta Offset Div2; 3: Tc Offset Div2;]
   Void xConfigSliceGOP(TComSlice *pcSlice,Int iGOPid, Int pocCurr, Bool isField, TComList <TComPic*> &rcListPic, TEncSlice* &pcSliceEncoder);
-  Void xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, UInt uiDepth);
+  Void xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, UInt uiDepth, const Int *QPTable1, const Int *QPTable2, Int &index);
   Void centralConstruction(TComPic &rPic);
   Void xCompressPicDescription(TComSlice* &rpcSlice,
   TComPic* &rpcPic, Int iGOPid, Int iPOCLast, Int pocCurr, Bool isField, 
