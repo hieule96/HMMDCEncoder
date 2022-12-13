@@ -188,6 +188,7 @@ public:
   Void        read            ( UInt uiNumberOfBits, UInt& ruiBits );
   Void        readByte        ( UInt &ruiBits )
   {
+    // need to handle this exception such as skipping and give all other CTUs to 0
     assert(m_fifo_idx < m_fifo.size());
     ruiBits = m_fifo[m_fifo_idx++];
   }

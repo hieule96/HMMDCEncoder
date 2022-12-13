@@ -60,6 +60,7 @@ private:
   UInt                m_uiMaxDepth;       ///< max. number of depth
   TComYuv**           m_ppcYuvResi;       ///< array of residual buffer
   TComYuv**           m_ppcYuvReco;       ///< array of prediction & reconstruction buffer
+  TComYuv**           m_ppcYuvPred;       ///< array of prediction & reconstruction buffer
   TComDataCU**        m_ppcCU;            ///< CU data array
 
   // access channel

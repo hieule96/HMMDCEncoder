@@ -227,7 +227,7 @@ Void TAppMctsExtTop::extract()
 Void TAppMctsExtTop::xCreateMctsExtLib()
 {
   // create decoder class
-  m_cTDecTop.create();
+  m_cTDecTop.create(1);
 }
 
 Void TAppMctsExtTop::xDestroyMctsExtLib()

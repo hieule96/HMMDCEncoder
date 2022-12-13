@@ -196,6 +196,18 @@ Void TComPic::releaseAllReconstructionData()
     delete m_apcPicYuv[PIC_YUV_REC];
     m_apcPicYuv[PIC_YUV_REC] = NULL;
   }
+  if (m_apcPicYuv[PIC_YUV_REC1    ])
+  {
+    m_apcPicYuv[PIC_YUV_REC1]->destroy();
+    delete m_apcPicYuv[PIC_YUV_REC1];
+    m_apcPicYuv[PIC_YUV_REC1] = NULL;
+  }
+  if (m_apcPicYuv[PIC_YUV_REC2    ])
+  {
+    m_apcPicYuv[PIC_YUV_REC2]->destroy();
+    delete m_apcPicYuv[PIC_YUV_REC2];
+    m_apcPicYuv[PIC_YUV_REC2] = NULL;
+  }
   m_arrPicSym[0].releaseAllReconstructionData();
   m_arrPicSym[1].releaseAllReconstructionData();
 }
@@ -228,7 +240,6 @@ Void TComPic::compressMotion()
     pCtu->compressMV();
   }
 }
-
 Bool  TComPic::getSAOMergeAvailability(Int currAddr, Int mergeAddr)
 {
   Bool mergeCtbInSliceSeg = (mergeAddr >= getPicSym()->getCtuTsToRsAddrMap(getCtu(currAddr)->getSlice()->getSliceCurStartCtuTsAddr()));

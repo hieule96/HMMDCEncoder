@@ -1178,7 +1178,8 @@ Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempC
 UInt uiDepth DEBUG_STRING_FN_DECLARE(sDebug_),
 Int* QtreeTable, Int* QP_array,UInt* dArray,UInt &CU_index,UInt &QP_index,PartSize eParentPartSize)
 #else
-Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth )
+Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU,
+                              UInt uiDepth,Int* QtreeTable, Int* QP_array,UInt* dArray,UInt &CU_index,UInt &QP_index)
 #endif
 {
   TComPic* pcPic = rpcBestCU->getPic();
@@ -1607,7 +1608,7 @@ Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempC
 		    }
           DEBUG_STRING_APPEND(sTempDebug, sChild)
 #else
-          xCompressCU( pcSubBestPartCU, pcSubTempPartCU, uhNextDepth );
+          xCompressCUFromQtree( pcSubBestPartCU, pcSubTempPartCU, uhNextDepth,QtreeTable,QP_array,dArray,CU_index,QP_index );
 #endif
 
           rpcTempCU->copyPartFrom( pcSubBestPartCU, uiPartUnitIdx, uhNextDepth );         // Keep best part data to current temporary data.

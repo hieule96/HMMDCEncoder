@@ -143,10 +143,15 @@ protected:
   Void  xCompressCU         ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, const UInt uiDepth        );
 #endif
 
+
+#if AMP_ENC_SPEEDUP
+
   Void xCompressCUFromQtree ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU,
                               UInt uiDepth DEBUG_STRING_FN_DECLARE(sDebug_),Int* QtreeTable, Int* QP_array,UInt* dArray,UInt &CU_index,UInt &QP_index, PartSize eParentPartSize = NUMBER_OF_PART_SIZES);
-
-
+#else
+  Void xCompressCUFromQtree ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU,
+                              UInt uiDepth,Int* QtreeTable, Int* QP_array,UInt* dArray,UInt &CU_index,UInt &QP_index);
+#endif
   Void  xEncodeCU            ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth,Int *debug_array,Int *count);
   Int   xComputeQP          ( TComDataCU* pcCU, UInt uiDepth );
   Void  xCheckBestMode      ( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempCU, UInt uiDepth DEBUG_STRING_FN_DECLARE(sParent) DEBUG_STRING_FN_DECLARE(sTest) DEBUG_STRING_PASS_INTO(Bool bAddSizeInfo=true));

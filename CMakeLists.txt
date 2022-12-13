@@ -38,6 +38,8 @@ endif()
 set( CMAKE_CXX_STANDARD 11 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 
+
+
 # compile everything position independent (even static libraries)
 set( CMAKE_POSITION_INDEPENDENT_CODE TRUE )
 
@@ -54,7 +56,6 @@ include( ${CMAKE_SOURCE_DIR}/cmake/CMakeBuild/cmake/modules/BBuildEnv.cmake )
 bb_multithreading()
 
 find_package(OpenMP)
-
 if( OpenMP_FOUND )
   set( CMAKE_C_FLAGS          "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}" )
   set( CMAKE_CXX_FLAGS        "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}" )

@@ -83,6 +83,8 @@ Void TDecCu::create( UInt uiMaxDepth, UInt uiMaxWidth, UInt uiMaxHeight, ChromaF
 
   m_ppcYuvResi = new TComYuv*[m_uiMaxDepth-1];
   m_ppcYuvReco = new TComYuv*[m_uiMaxDepth-1];
+  m_ppcYuvPred = new TComYuv*[m_uiMaxDepth-1];
+
   m_ppcCU      = new TComDataCU*[m_uiMaxDepth-1];
 
   for ( UInt ui = 0; ui < m_uiMaxDepth-1; ui++ )
@@ -101,6 +103,8 @@ Void TDecCu::create( UInt uiMaxDepth, UInt uiMaxWidth, UInt uiMaxHeight, ChromaF
 
     m_ppcYuvResi[ui] = new TComYuv;    m_ppcYuvResi[ui]->create( uiWidth, uiHeight, chromaFormatIDC );
     m_ppcYuvReco[ui] = new TComYuv;    m_ppcYuvReco[ui]->create( uiWidth, uiHeight, chromaFormatIDC );
+    m_ppcYuvPred[ui] = new TComYuv;    m_ppcYuvPred[ui]->create( uiWidth, uiHeight, chromaFormatIDC );
+
     m_ppcCU     [ui] = new TComDataCU; m_ppcCU     [ui]->create( chromaFormatIDC, uiNumPartitions, uiWidth, uiHeight, true, uiMaxWidth >> (m_uiMaxDepth - 1) );
   }
 
@@ -127,6 +131,8 @@ Void TDecCu::destroy()
 
   delete [] m_ppcYuvResi; m_ppcYuvResi = NULL;
   delete [] m_ppcYuvReco; m_ppcYuvReco = NULL;
+  delete [] m_ppcYuvPred; m_ppcYuvPred = NULL;
+
   delete [] m_ppcCU     ; m_ppcCU      = NULL;
 }
 
@@ -395,7 +401,6 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
 
   // Residual reconstruction
   m_ppcYuvResi[uiDepth]->clear();
-
   m_ppcCU[uiDepth]->copySubCU( pCtu, uiAbsPartIdx );
 
   switch( m_ppcCU[uiDepth]->getPredictionMode(0) )

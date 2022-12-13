@@ -67,7 +67,7 @@ class TDecTop
 {
 private:
   Int                     m_iMaxRefPicNum;
-
+  Int                     m_DecoderDescriptionId;
   NalUnitType             m_associatedIRAPType; ///< NAL unit type of the associated IRAP picture
   Int                     m_pocCRA;            ///< POC number of the latest CRA picture
   Int                     m_pocRandomAccess;   ///< POC number of the random access point (the first IDR or CRA picture)
@@ -131,7 +131,7 @@ public:
   TDecTop();
   virtual ~TDecTop();
 
-  Void  create  ();
+  Void  create  (Int DescriptionId);
   Void  destroy ();
 
   Void setDecodedPictureHashSEIEnabled(Int enabled) { m_cGopDecoder.setDecodedPictureHashSEIEnabled(enabled); }
@@ -143,14 +143,14 @@ public:
 #if MCTS_EXTRACTION
   SEIMessages& getSEIs() { return m_SEIs; }
   TComSlice* getApcSlicePilot() { return m_apcSlicePilot; }
-  TComPic* getPcPic() const { return m_pcPic; }
   Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay, Bool bSkipCabacAndReconstruction=false);
 #else
   Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay);
 #endif
   Void  deletePicBuffer();
+  TComPic* getPcPic() const { return m_pcPic; }
 
-  
+  Void  mergingMDC(TDecTop &rTdec);
   Void  executeLoopFilters(Int& poc, TComList<TComPic*>*& rpcListPic);
   Void  checkNoOutputPriorPics (TComList<TComPic*>* rpcListPic);
 
@@ -180,6 +180,7 @@ protected:
   Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay);
   Void      xActivateParameterSets();
 #endif
+  Void      xSelectCu(TComDataCU* &pcCU1,TComDataCU *&pcCU2, UInt uiAbsPartIdx, UInt uiDepth, const Int *QPTable1, const Int *QPTable2, Int &index);
   Void      xDecodeVPS(const std::vector<UChar> &naluData);
   Void      xDecodeSPS(const std::vector<UChar> &naluData);
   Void      xDecodePPS(const std::vector<UChar> &naluData);

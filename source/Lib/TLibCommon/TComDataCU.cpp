@@ -421,7 +421,6 @@ Bool TComDataCU::isLastSubCUOfCtu(const UInt absPartIdx) const
  */
 Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 {
-
   const UInt maxCUWidth = pcPic->getPicSym()->getSPS().getMaxCUWidth();
   const UInt maxCUHeight= pcPic->getPicSym()->getSPS().getMaxCUHeight();
   m_pcPic              = pcPic;

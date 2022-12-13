@@ -1562,7 +1562,7 @@ Void TEncGOP::xWriteSPSPPSVPS(TComSlice* &rpcSlice,const TComPic *pcPic,AccessUn
 #if MCTS_EXTRACTION
       xCreateIRAPLeadingSEIMessages(leadingSeiMessages, m_pcEncTop->getVPS(),  rpcSlice->getSPS(), rpcSlice->getPPS());
 #else
-      xCreateIRAPLeadingSEIMessages(leadingSeiMessages, pcSlice->getSPS(), pcSlice->getPPS());
+      xCreateIRAPLeadingSEIMessages(leadingSeiMessages, rpcSlice->getSPS(), rpcSlice->getPPS());
 #endif
       // only change if second description
       if (pcPic->getDescriptionId()==2) rbSeqFirst = false;
@@ -1852,6 +1852,7 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       duData1.clear();
       // run tried mode to create the quadtree
       pcPic->setRunMode(0);
+      pcPic->setDescriptionId(1);
       TMDCQPTable::getInstance()->resetCount();
       TMDCQPTable::getInstance()->openFile(QTREE,std::ios::trunc|std::ios::out);
       #if REDUCED_ENCODER_MEMORY
@@ -1862,11 +1863,9 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       TMDCQPTable::getInstance()->closeFile(QTREE);
       pcSlice1 = pcPic->getSlice(0);
       pcPic->getPicYuvResi()->dumpResiTo8bit("resi.yuv",false);
-      pcPic->releaseReconstructionIntermediateData();
+      pcPic->releaseAllReconstructionData();
       // pcPic->getPicYuvPred() ->dump("pred.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);
       // pcPic->getPicYuvRec() ->dump("rec.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);
-
-
       // launch the Python optimizer
       if (pcSlice1->isIntra()){
         ExecutePythonOptimizer(1.40,0.01,pocCurr,0);
@@ -1875,6 +1874,13 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       {
         ExecutePythonOptimizer(1.40,0.01,pocCurr,1);
       }
+      pcSlice1 = NULL;
+      pcSlice2 = NULL;
+
+      pcPic->releaseReconstructionIntermediateData();
+
+
+
       pcPic->setRunMode(m_pcCfg->getEncodingMode());
       // Description 1
       #if REDUCED_ENCODER_MEMORY
@@ -1920,6 +1926,9 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       TMDCQPTable::getInstance()->closeFile(QTREE);
       TMDCQPTable::getInstance()->closeFile(DESCRIPTION2);
       centralConstruction(*pcPic);
+      pcPic->getPicYUVRec1()->dump("debugEncD1.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);
+      pcPic->getPicYUVRec2()->dump("debugEncD2.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);
+
       //where we need to pay attention to have the central before the compression
       //@tle: add function to build the best quality image
 
@@ -2014,16 +2023,17 @@ Void TEncGOP::xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, 
   // Check if two Pic has the same structure
   assert(pcCU1->getHeight(uiAbsPartIdx)==pcCU2->getHeight(uiAbsPartIdx));
   assert(pcCU1->getHeight(uiAbsPartIdx)==pcCU2->getHeight(uiAbsPartIdx));
-  //for each CU in the quadtree, perform the merging process
-  if (pcCU1->getCbf(uiAbsPartIdx,COMPONENT_Y)&&!pcCU2->getCbf(uiAbsPartIdx,COMPONENT_Y)){
-    pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
-    return;
-  }
-  else if(!pcCU1->getCbf(uiAbsPartIdx,COMPONENT_Y)&&pcCU2->getCbf(uiAbsPartIdx,COMPONENT_Y))
-  {
-    pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
-    return;
-  }
+  // //for each CU in the quadtree, perform the merging process
+  // if (pcCU1->getCbf(uiAbsPartIdx,COMPONENT_Y)&&!pcCU2->getCbf(uiAbsPartIdx,COMPONENT_Y)){
+  //   pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
+  //   return;
+  // }
+  // else if(!pcCU1->getCbf(uiAbsPartIdx,COMPONENT_Y)&&pcCU2->getCbf(uiAbsPartIdx,COMPONENT_Y))
+  // {
+  //   pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
+  //   return;
+  // }
+  // Table based method
   if (QPTable1[index]<QPTable2[index]){
       pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
   }else

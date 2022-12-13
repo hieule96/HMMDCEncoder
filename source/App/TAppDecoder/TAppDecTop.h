@@ -47,7 +47,8 @@
 #include "TLibCommon/TComPicYuv.h"
 #include "TLibDecoder/TDecTop.h"
 #include "TAppDecCfg.h"
-
+#include "TLibDecoder/AnnexBread.h"
+#include "TLibDecoder/NALread.h"
 //! \ingroup TAppDecoder
 //! \{
 
@@ -60,12 +61,10 @@ class TAppDecTop : public TAppDecCfg
 {
 private:
   // class interface
-  TDecTop                         m_cTDecTop;                     ///< decoder class
+  TDecTop                         m_cTDecTop1,m_cTDecTop2;                     ///< decoder class
   TVideoIOYuv       m_cTVideoIOYuvReconFileC,m_cTVideoIOYuvReconFile1,m_cTVideoIOYuvReconFile2;
-  TVideoIOYuv       m_cTVideoIOYuvResiFile1,m_cTVideoIOYuvResiFile2;        ///< reconstruction YUV class
-
   // for output control
-  Int                             m_iPOCLastDisplay;              ///< last POC in display order
+  Int                             m_iPOCLastDisplay1,m_iPOCLastDisplay2;              ///< last POC in display order
   std::ofstream                   m_seiMessageFileStream;         ///< Used for outputing SEI messages.
 
   SEIColourRemappingInfo*         m_pcSeiColourRemappingInfoPrevious;
@@ -81,18 +80,19 @@ public:
   Void  create            (); ///< create internal members
   Void  destroy           (); ///< destroy internal members
   Void  decode            (); ///< main decoding function
-  UInt  getNumberOfChecksumErrorsDetected() const { return m_cTDecTop.getNumberOfChecksumErrorsDetected(); }
-
+  UInt  getNumberOfChecksumErrorsDetected() const { return m_cTDecTop1.getNumberOfChecksumErrorsDetected(); }
 protected:
   Void  xCreateDecLib     (); ///< create internal classes
   Void  xDestroyDecLib    (); ///< destroy internal classes
   Void  xInitDecLib       (); ///< initialize decoder class
 
-  Void  xWriteOutput      ( TComList<TComPic*>* pcListPic , UInt tId); ///< write YUV to file
-  Void  xFlushOutput      ( TComList<TComPic*>* pcListPic ); ///< flush all remaining decoded pictures to file
+  Void  xWriteOutput      ( TComList<TComPic*>* pcListPic, UInt tId,Int &iPOCLastDisplay, TVideoIOYuv &TVideoIOYuvReconFile, const std::string &reconFileName); ///< write YUV to file
+  Void  xFlushOutput      ( TComList<TComPic*>* pcListPic,Int &iPOCLastDisplay, const std::string &reconFileName,TVideoIOYuv &TVideoIOYuvReconFile); ///< flush all remaining decoded pictures to file
   Bool  isNaluWithinTargetDecLayerIdSet ( InputNALUnit* nalu ); ///< check whether given Nalu is within targetDecLayerIdSet
 
 private:
+  Void decodeAPic(InputNALUnit &rnalu,Bool &rbNewPicture,TDecTop &rTDecTop,
+  ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,streampos &rlocation);
   Void applyColourRemapping(const TComPicYuv& pic, SEIColourRemappingInfo& pCriSEI, const TComSPS &activeSPS);
   Void xOutputColourRemapPic(TComPic* pcPic);
   Void xOutputAnnotatedRegions(TComPic* pcPic);

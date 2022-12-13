@@ -76,7 +76,7 @@
 
 #define PRINT_RPS_INFO                                    0 ///< Enable/disable the printing of bits used to send the RPS.
 
-#define MCTS_EXTRACTION                                   1 ///< Additional project for MCTS Extraction as in JCTVC-AC1005
+#define MCTS_EXTRACTION                                   0 ///< Additional project for MCTS Extraction as in JCTVC-AC1005
 
 // ====================================================================================================================
 // Tool Switches - transitory (these macros are likely to be removed in future revisions)
@@ -108,7 +108,7 @@
 
 #define AMP_ENC_SPEEDUP                                   1 ///< encoder only speed-up by AMP mode skipping
 #if AMP_ENC_SPEEDUP
-#define AMP_MRG                                           1 ///< encoder only force merge for AMP partition (no motion search for AMP)
+#define AMP_MRG                                           0 ///< encoder only force merge for AMP partition (no motion search for AMP)
 #endif
 
 #define FAST_BIT_EST                                      1 ///< G763: Table-based bit estimation for CABAC
@@ -122,7 +122,7 @@
 
 #define MATRIX_MULT                                       1 ///< Brute force matrix multiplication instead of partial butterfly
 
-#define O0043_BEST_EFFORT_DECODING                        0 ///< 0 (default) = disable code related to best effort decoding, 1 = enable code relating to best effort decoding [ decode-side only ].
+#define O0043_BEST_EFFORT_DECODING                        1 ///< 0 (default) = disable code related to best effort decoding, 1 = enable code relating to best effort decoding [ decode-side only ].
 
 #define ME_ENABLE_ROUNDING_OF_MVS                         1 ///< 0 (default) = disables rounding of motion vectors when right shifted,  1 = enables rounding
 

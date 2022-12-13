@@ -345,7 +345,9 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
     {
       pcRefPic = xGetRefPic(rcListPic, getPOC()+m_pRPS->getDeltaPOC(i));
       pcRefPic->setIsLongTerm(0);
-      pcRefPic->getPicYuvRec()->extendPicBorder();
+      pcRefPic->getPicYUVRecC()->extendPicBorder();
+      pcRefPic->getPicYUVRec1()->extendPicBorder();
+      pcRefPic->getPicYUVRec2()->extendPicBorder();
       RefPicSetStCurr0[NumPicStCurr0] = pcRefPic;
       NumPicStCurr0++;
       pcRefPic->setCheckLTMSBPresent(false);
@@ -358,7 +360,10 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
     {
       pcRefPic = xGetRefPic(rcListPic, getPOC()+m_pRPS->getDeltaPOC(i));
       pcRefPic->setIsLongTerm(0);
-      pcRefPic->getPicYuvRec()->extendPicBorder();
+      pcRefPic->getPicYUVRecC()->extendPicBorder();
+      pcRefPic->getPicYUVRec1()->extendPicBorder();
+      pcRefPic->getPicYUVRec2()->extendPicBorder();
+
       RefPicSetStCurr1[NumPicStCurr1] = pcRefPic;
       NumPicStCurr1++;
       pcRefPic->setCheckLTMSBPresent(false);
@@ -371,7 +376,9 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
     {
       pcRefPic = xGetLongTermRefPic(rcListPic, m_pRPS->getPOC(i), m_pRPS->getCheckLTMSBPresent(i));
       pcRefPic->setIsLongTerm(1);
-      pcRefPic->getPicYuvRec()->extendPicBorder();
+      pcRefPic->getPicYUVRecC()->extendPicBorder();
+      pcRefPic->getPicYUVRec1()->extendPicBorder();
+      pcRefPic->getPicYUVRec2()->extendPicBorder();
       RefPicSetLtCurr[NumPicLtCurr] = pcRefPic;
       NumPicLtCurr++;
     }

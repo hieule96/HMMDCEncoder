@@ -115,7 +115,6 @@ public:
   Void          setIsLongTerm( Bool lt ) { m_bIsLongTerm = lt; }
   Void          setCheckLTMSBPresent     (Bool b ) {m_bCheckLTMSB=b;}
   Bool          getCheckLTMSBPresent     () { return m_bCheckLTMSB;}
-
   TComPicSym*   getPicSym()                        { return  m_pcpicSym;    }
   const TComPicSym* getPicSym() const              { return  m_pcpicSym;    }
   TComSlice*    getSlice(Int i)                    { return  m_pcpicSym->getSlice(i);  }
