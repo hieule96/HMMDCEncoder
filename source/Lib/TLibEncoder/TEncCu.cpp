@@ -271,7 +271,7 @@ Void TEncCu::compressCtu( TComDataCU* pCtu, UInt iRunMode )
   DEBUG_STRING_NEW(sDebug)
   if (iRunMode == 1) {
       UInt debug_array [1024];
-      memset(debug_array,0,1024*sizeof(UInt));
+      memset(debug_array,0,1024*sizeof(Int));
       TMDCQPTable *table = TMDCQPTable::getInstance();
       if (pCtu->getCtuRsAddr()==table->getCount(QTREE)){
           table->readALine(QTREE);
@@ -283,12 +283,7 @@ Void TEncCu::compressCtu( TComDataCU* pCtu, UInt iRunMode )
       UInt QP_index = 0;
       xCompressCUFromQtree(m_ppcBestCU[0], m_ppcTempCU[0], 0 DEBUG_STRING_PASS_INTO(sDebug),&Qtree_array[0],&QP_array[0],&debug_array[0],CU_index,QP_index);
       assert(CU_index<1024);
-      // printf("QP array[%d,%d]:",pCtu->getCtuRsAddr(),CU_index);
-      // for (int i =0;i<CU_index;i++){
-      //   printf("%d ",QP_array[i]);
-      // }
-      // std::cout<<std::endl;
-      }
+  }
   else{
       TMDCQPTable *table = TMDCQPTable::getInstance();
       xCompressCU( m_ppcBestCU[0], m_ppcTempCU[0], 0 DEBUG_STRING_PASS_INTO(sDebug) );
@@ -328,11 +323,11 @@ Void TEncCu::encodeCtu(TComDataCU* pCtu, bool writeQtreeOption)
     Int count = 0;
     // Encode CU data
     xEncodeCU( pCtu, 0, 0,debug_array,&count);
-    printf("QP array[%d,%d]:",pCtu->getCtuRsAddr(),count);
-    for (int i =0;i<count;i++){
-      printf("%d ",debug_array[i]);
-    }
-    std::cout << std::endl;
+    // printf("QP array[%d,%d]:",pCtu->getCtuRsAddr(),count);
+    // for (int i =0;i<count;i++){
+    //   printf("%d ",debug_array[i]);
+    // }
+    // std::cout << std::endl;
     // If preencoding export quadtree structure
 }
 
@@ -2441,7 +2436,7 @@ Void TEncCu::xCopyYuv2Tmp( UInt uiPartUnitIdx, UInt uiNextDepth )
 {
   UInt uiCurrDepth = uiNextDepth - 1;
   m_ppcRecoYuvBest[uiNextDepth]->copyToPartYuv( m_ppcRecoYuvTemp[uiCurrDepth], uiPartUnitIdx );
-  m_ppcPredYuvBest[uiNextDepth]->copyToPartYuv( m_ppcPredYuvTemp[uiCurrDepth], uiPartUnitIdx );
+  m_ppcPredYuvBest[uiNextDepth]->copyToPartYuv( m_ppcPredYuvBest[uiCurrDepth], uiPartUnitIdx );
   m_ppcResiYuvBest_VIS[uiNextDepth]->copyToPartYuv( m_ppcResiYuvTemp_VIS[uiCurrDepth], uiPartUnitIdx );
 
 }

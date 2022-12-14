@@ -117,7 +117,21 @@ Void TComPicYuv::createWithoutCUInfo ( const Int picWidth,                 ///< 
 }
 
 
+Void TComPicYuv::clear(){
+  for(Int comp=0; comp<getNumberValidComponents(); comp++)
+  {
+    const ComponentID compId=ComponentID(comp);
+    const Int width     = getWidth(compId);
+    const Int height    = getHeight(compId);
+    const Int strideSrc = getStride(compId);
+    Pel *pSrc       = getAddr(compId);
 
+    for(Int y=0; y<height; y++, pSrc+=strideSrc)
+    {
+      ::memset(pSrc,0, width*sizeof(Pel));
+    }
+  }
+}
 Void TComPicYuv::create ( const Int picWidth,                 ///< picture width
                           const Int picHeight,                ///< picture height
                           const ChromaFormat chromaFormatIDC, ///< chroma format

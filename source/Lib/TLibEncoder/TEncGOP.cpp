@@ -1455,6 +1455,7 @@ Void TEncGOP::xCompressPicDescription(TComSlice* &rpcSlice,
 TComPic* &rpcPic, Int iGOPid, Int iPOCLast, Int pocCurr, Bool isField, 
 ControlParameterForMDC &rControl,
 TComList <TComPic*> &rcListPic, TEncSlice* &rcSliceEncoder){
+
         rpcPic->clearSliceBuffer();
         rpcPic->allocateNewSlice();
         rpcPic->setCurrSliceIdx(0);
@@ -1462,6 +1463,9 @@ TComList <TComPic*> &rcListPic, TEncSlice* &rcSliceEncoder){
         rcSliceEncoder->setSliceIdx(0);
         rpcSlice->setLastIDR(m_iLastIDR);
         rpcSlice->setSliceIdx(0);
+        rpcPic->getPicYuvPred()->clear();
+        rpcPic->getPicYuvResi()->clear();
+
         //set default slice level flag to the same as SPS level flag
         rpcSlice->setLFCrossSliceBoundaryFlag(  rpcSlice->getPPS()->getLoopFilterAcrossSlicesEnabledFlag()  );
         xConfigSliceGOP(rpcSlice,iGOPid,pocCurr,isField,rcListPic,rcSliceEncoder);
@@ -1851,6 +1855,7 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       
       duData1.clear();
       // run tried mode to create the quadtree
+
       pcPic->setRunMode(0);
       pcPic->setDescriptionId(1);
       TMDCQPTable::getInstance()->resetCount();
@@ -1860,19 +1865,21 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
           pcPic->prepareForReconstruction();
       #endif
       xCompressPicDescription(pcSlice1,pcPic,iGOPid,iPOCLast,pocCurr,isField,control1,rcListPic,m_pcArrSliceEncoder[0]);
+      pcPic->compressMotion();
       TMDCQPTable::getInstance()->closeFile(QTREE);
       pcSlice1 = pcPic->getSlice(0);
       pcPic->getPicYuvResi()->dumpResiTo8bit("resi.yuv",false);
+      pcPic->getPicYuvPred() ->dump("predRef.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
       pcPic->releaseAllReconstructionData();
-      // pcPic->getPicYuvPred() ->dump("pred.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);
-      // pcPic->getPicYuvRec() ->dump("rec.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);
+
+      
       // launch the Python optimizer
       if (pcSlice1->isIntra()){
         ExecutePythonOptimizer(1.40,0.01,pocCurr,0);
       }
       else
       {
-        ExecutePythonOptimizer(1.40,0.01,pocCurr,1);
+        ExecutePythonOptimizer(1.40,0.2,pocCurr,1);
       }
       pcSlice1 = NULL;
       pcSlice2 = NULL;
@@ -1880,14 +1887,13 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       pcPic->releaseReconstructionIntermediateData();
 
 
-
       pcPic->setRunMode(m_pcCfg->getEncodingMode());
+      pcPic->setDescriptionId(1);
       // Description 1
       #if REDUCED_ENCODER_MEMORY
           // allocation the processing pic, in our case, two pcPic and the Pic central for the P-frame after
           pcPic->prepareForReconstruction();
       #endif
-      pcPic->setDescriptionId(1);
       TMDCQPTable::getInstance()->resetCount();
       TMDCQPTable::getInstance()->openFile(QTREE,std::ios::in);
       TMDCQPTable::getInstance()->openFile(DESCRIPTION1,std::ios::in);
@@ -1903,8 +1909,9 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       pcPic->compressMotion();
       TMDCQPTable::getInstance()->closeFile(QTREE);
       TMDCQPTable::getInstance()->closeFile(DESCRIPTION1);
-
+      pcPic->getPicYuvPred() ->dump("pred1.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
       duData2.clear();
+      
       // Description 2
       pcPic->setDescriptionId(2);
       TMDCQPTable::getInstance()->resetCount();
@@ -1926,8 +1933,10 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       TMDCQPTable::getInstance()->closeFile(QTREE);
       TMDCQPTable::getInstance()->closeFile(DESCRIPTION2);
       centralConstruction(*pcPic);
+      pcPic->getPicYuvPred() ->dump("pred2.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);
       pcPic->getPicYUVRec1()->dump("debugEncD1.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);
       pcPic->getPicYUVRec2()->dump("debugEncD2.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);
+      pcPic->releaseReconstructionIntermediateData();
 
       //where we need to pay attention to have the central before the compression
       //@tle: add function to build the best quality image

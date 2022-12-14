@@ -53,12 +53,26 @@ TDecSlice::~TDecSlice()
 {
 }
 
-Void TDecSlice::create()
+Void TDecSlice::create(const TComSPS *sps)
 {
+  
+    const ChromaFormat chromaFormatIDC = sps->getChromaFormatIdc();
+    const Int          iWidth          = sps->getPicWidthInLumaSamples();
+    const Int          iHeight         = sps->getPicHeightInLumaSamples();
+    const UInt         uiMaxCuWidth    = sps->getMaxCUWidth();
+    const UInt         uiMaxCuHeight   = sps->getMaxCUHeight();
+    const UInt         uiMaxDepth      = sps->getMaxTotalCUDepth();
+    // create prediction picture
+    m_picYuvPred.create(iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true);
+    // create residual picture
+    m_picYuvResi.create(iWidth, iHeight, chromaFormatIDC, uiMaxCuWidth, uiMaxCuHeight, uiMaxDepth, true);
+
 }
 
 Void TDecSlice::destroy()
 {
+    m_picYuvPred.destroy();
+    m_picYuvResi.destroy();
 }
 
 Void TDecSlice::init(TDecEntropy* pcEntropyDecoder, TDecCu* pcCuDecoder, TDecConformanceCheck *pDecConformanceCheck)
@@ -85,8 +99,9 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
   m_pcEntropyDecoder->resetEntropy      (pcSlice);
 
   // decoder doesn't need prediction & residual frame buffer
-  pcPic->setPicYuvPred( 0 );
-  pcPic->setPicYuvResi( 0 );
+  // we need for debug !
+  pcPic->setPicYuvPred( &m_picYuvPred );
+  pcPic->setPicYuvResi( &m_picYuvResi );
 
 #if ENC_DEC_TRACE
   g_bJustDoIt = g_bEncDecTraceEnable;

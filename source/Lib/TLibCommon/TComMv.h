@@ -39,7 +39,7 @@
 #define __TCOMMV__
 
 #include "CommonDef.h"
-
+#include <iostream>
 //! \ingroup TLibCommon
 //! \{
 
@@ -163,7 +163,15 @@ public:
     Int mvy = Clip3( -32768, 32767, (iScale * getVer() + 127 + (iScale * getVer() < 0)) >> 8 );
     return TComMv( mvx, mvy );
   }
+  friend std::ostream& operator << (std::ostream& out, const TComMv& cmv);
+
 };// END CLASS DEFINITION TComMV
+
+
+inline std::ostream& operator << (std::ostream& out,const TComMv& cmv){
+      out << cmv.m_iHor<<","<< cmv.m_iVer<<std::endl;
+      return out;
+}
 
 //! \}
 

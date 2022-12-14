@@ -126,7 +126,7 @@ public:
 
   Int           getMarginX        (const ComponentID id) const { return m_marginX >> getComponentScaleX(id);  }
   Int           getMarginY        (const ComponentID id) const { return m_marginY >> getComponentScaleY(id);  }
-
+  Void          clear();
   // ------------------------------------------------------------------------------------------------
   //  Access function for picture buffer
   // ------------------------------------------------------------------------------------------------

@@ -70,12 +70,14 @@ private:
 
   TDecSbac        m_lastSliceSegmentEndContextState;    ///< context storage for state at the end of the previous slice-segment (used for dependent slices only).
   TDecSbac        m_entropyCodingSyncContextState;      ///< context storate for state of contexts at the wavefront/WPP/entropy-coding-sync second CTU of tile-row
+
+  TComPicYuv      m_picYuvPred,m_picYuvResi;
 public:
   TDecSlice();
   virtual ~TDecSlice();
 
   Void  init              ( TDecEntropy* pcEntropyDecoder, TDecCu* pcMbDecoder, TDecConformanceCheck *pDecConformanceCheck );
-  Void  create            ();
+  Void  create            (const TComSPS *sps);
   Void  destroy           ();
 
   Void  decompressSlice   ( TComInputBitstream** ppcSubstreams,   TComPic* pcPic, TDecSbac* pcSbacDecoder );

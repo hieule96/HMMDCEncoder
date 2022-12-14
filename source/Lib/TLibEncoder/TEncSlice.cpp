@@ -63,9 +63,6 @@ Void TEncSlice::create(Int iWidth, Int iHeight, ChromaFormat chromaFormat, UInt 
 
     // create residual picture
     m_picYuvResi.create(iWidth, iHeight, chromaFormat, iMaxCUWidth, iMaxCUHeight, uhTotalDepth, true);
-
-    // // create residual for bit estimation
-    // m_picYuvResiNoQuant.create(iWidth, iHeight, chromaFormat, iMaxCUWidth, iMaxCUHeight, uhTotalDepth, true);
 }
 
 Void TEncSlice::destroy()

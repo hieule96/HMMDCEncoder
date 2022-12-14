@@ -344,12 +344,19 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2)
     // }
     // std::cout << std::endl;
   }
-  if (POCD1!=0) pcPic1->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
-  else pcPic1->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+  if (POCD1!=0) {
+    pcPic1->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+    pcPic1->getPicYuvPred()->dump("Pred1Dec.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+    pcPic2->getPicYuvPred()->dump("Pred2Dec.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+
+  }
+  else {
+    pcPic1->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+    pcPic1->getPicYuvPred()->dump("Pred1Dec.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+    pcPic2->getPicYuvPred()->dump("Pred2Dec.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+  }
   pcPic1->getPicYUVRecC()->copyToPic(pcPic2->getPicYUVRecC());
 
-  if (POCD2!=0) pcPic2->getPicYUVRecC()->dump("debugQPCentral_copy.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
-  else pcPic2->getPicYUVRecC()->dump("debugQPCentral_copy.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
   // else
   // {
   //     pcPic1->getPicYUVRec1()->copyToPic(pcPic1->getPicYUVRecC());
@@ -545,7 +552,7 @@ Void TDecTop::xActivateParameterSets()
 #endif
       m_cTrQuant.init(sps->getMaxTrSize());
 
-      m_cSliceDecoder.create();
+      m_cSliceDecoder.create(sps);
     }
 #if MCTS_EXTRACTION
   }

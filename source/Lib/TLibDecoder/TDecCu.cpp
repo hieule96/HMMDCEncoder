@@ -401,6 +401,8 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
 
   // Residual reconstruction
   m_ppcYuvResi[uiDepth]->clear();
+  m_ppcYuvPred[uiDepth]->clear();
+
   m_ppcCU[uiDepth]->copySubCU( pCtu, uiAbsPartIdx );
 
   switch( m_ppcCU[uiDepth]->getPredictionMode(0) )
@@ -446,6 +448,7 @@ Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
   }
 #endif
   m_pcPrediction->motionCompensation( pcCU, m_ppcYuvReco[uiDepth] );
+  m_pcPrediction->motionCompensation( pcCU, m_ppcYuvPred[uiDepth] );
 
 #if DEBUG_STRING
   const Int debugPredModeMask=DebugStringGetPredModeMask(MODE_INTER);
@@ -758,6 +761,7 @@ Void TDecCu::xCopyToPic( TComDataCU* pcCU, TComPic* pcPic, UInt uiZorderIdx, UIn
   UInt uiCtuRsAddr = pcCU->getCtuRsAddr();
 
   m_ppcYuvReco[uiDepth]->copyToPicYuv  ( pcPic->getPicYuvRec (), uiCtuRsAddr, uiZorderIdx );
+  m_ppcYuvPred[uiDepth]->copyToPicYuv  ( pcPic->getPicYuvPred (), uiCtuRsAddr, uiZorderIdx );
 
   return;
 }
