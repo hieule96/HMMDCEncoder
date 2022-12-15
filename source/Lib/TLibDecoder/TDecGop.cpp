@@ -153,7 +153,7 @@ Void TDecGop::filterPicture(TComPic* pcPic)
     m_pcSAO->PCMLFDisableProcess(pcPic);
   }
 
-  pcPic->compressMotion();
+  // pcPic->compressMotion();
   TChar c = (pcSlice->isIntra() ? 'I' : pcSlice->isInterP() ? 'P' : 'B');
   if (!pcSlice->isReferenced())
   {

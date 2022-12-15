@@ -1865,7 +1865,6 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
           pcPic->prepareForReconstruction();
       #endif
       xCompressPicDescription(pcSlice1,pcPic,iGOPid,iPOCLast,pocCurr,isField,control1,rcListPic,m_pcArrSliceEncoder[0]);
-      pcPic->compressMotion();
       TMDCQPTable::getInstance()->closeFile(QTREE);
       pcSlice1 = pcPic->getSlice(0);
       pcPic->getPicYuvResi()->dumpResiTo8bit("resi.yuv",false);
@@ -1879,7 +1878,7 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       }
       else
       {
-        ExecutePythonOptimizer(1.40,0.2,pocCurr,1);
+        ExecutePythonOptimizer(1.0,0.01,pocCurr,1);
       }
       pcSlice1 = NULL;
       pcSlice2 = NULL;
@@ -1906,10 +1905,16 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       xLoopOverSliceToBs(pcPic,m_pcArrSliceEncoder[0],substreamsOut1,accessUnit1,duData1,control1);
       // cabac_zero_words processing
       cabac_zero_word_padding(pcSlice1, pcPic, control1.binCountsInNalUnits, control1.numBytesInVclNalUnits, accessUnit1.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
-      pcPic->compressMotion();
+      // pcPic->compressMotion();
       TMDCQPTable::getInstance()->closeFile(QTREE);
       TMDCQPTable::getInstance()->closeFile(DESCRIPTION1);
-      pcPic->getPicYuvPred() ->dump("pred1.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
+      if (pocCurr==0) 
+      {
+        pcPic->getPicYuvPred()->dump("pred1.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
+      }
+      else {
+        pcPic->getPicYuvPred() ->dump("pred1.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);        
+      }
       duData2.clear();
       
       // Description 2
@@ -1929,13 +1934,12 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       xLoopOverSliceToBs(pcPic,m_pcArrSliceEncoder[1],substreamsOut2,accessUnit2,duData2,control2);
       // cabac_zero_words processing
       cabac_zero_word_padding(pcSlice2, pcPic, control2.binCountsInNalUnits, control2.numBytesInVclNalUnits, accessUnit2.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
-      pcPic->compressMotion();
+      // pcPic->compressMotion();
       TMDCQPTable::getInstance()->closeFile(QTREE);
       TMDCQPTable::getInstance()->closeFile(DESCRIPTION2);
       centralConstruction(*pcPic);
-      pcPic->getPicYuvPred() ->dump("pred2.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);
-      pcPic->getPicYUVRec1()->dump("debugEncD1.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);
-      pcPic->getPicYUVRec2()->dump("debugEncD2.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);
+      if (pocCurr == 0) {pcPic->getPicYuvPred()->dump("pred2.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);}
+      else {pcPic->getPicYuvPred() ->dump("pred2.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);}
       pcPic->releaseReconstructionIntermediateData();
 
       //where we need to pay attention to have the central before the compression

@@ -347,13 +347,17 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2)
   if (POCD1!=0) {
     pcPic1->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
     pcPic1->getPicYuvPred()->dump("Pred1Dec.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+    pcPic1->getPicYuvResi()->dump("Pred1Resi.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
     pcPic2->getPicYuvPred()->dump("Pred2Dec.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+    pcPic1->getPicYuvResi()->dump("Pred1Resi.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
 
   }
   else {
     pcPic1->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
     pcPic1->getPicYuvPred()->dump("Pred1Dec.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+    pcPic1->getPicYuvResi()->dump("Pred1Resi.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
     pcPic2->getPicYuvPred()->dump("Pred2Dec.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+    pcPic1->getPicYuvResi()->dump("Pred2Resi.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
   }
   pcPic1->getPicYUVRecC()->copyToPic(pcPic2->getPicYUVRecC());
 

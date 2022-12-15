@@ -2436,7 +2436,7 @@ Void TEncCu::xCopyYuv2Tmp( UInt uiPartUnitIdx, UInt uiNextDepth )
 {
   UInt uiCurrDepth = uiNextDepth - 1;
   m_ppcRecoYuvBest[uiNextDepth]->copyToPartYuv( m_ppcRecoYuvTemp[uiCurrDepth], uiPartUnitIdx );
-  m_ppcPredYuvBest[uiNextDepth]->copyToPartYuv( m_ppcPredYuvBest[uiCurrDepth], uiPartUnitIdx );
+  m_ppcPredYuvBest[uiNextDepth]->copyToPartYuv( m_ppcPredYuvTemp[uiCurrDepth], uiPartUnitIdx );
   m_ppcResiYuvBest_VIS[uiNextDepth]->copyToPartYuv( m_ppcResiYuvTemp_VIS[uiCurrDepth], uiPartUnitIdx );
 
 }

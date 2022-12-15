@@ -3178,7 +3178,6 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
         pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllRefIdx( iRefIdxBi[1], ePartSize, uiPartAddr, 0, iPartIdx );
         TComYuv* pcYuvPred = &m_acYuvPred[REF_PIC_LIST_1];
         motionCompensation( pcCU, pcYuvPred, REF_PIC_LIST_1, iPartIdx );
-
         uiMotBits[0] = uiBits[0] - uiMbBits[0];
         uiMotBits[1] = uiMbBits[1];
 
