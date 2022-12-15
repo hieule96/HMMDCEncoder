@@ -152,7 +152,6 @@ private:
   UInt          m_uiTotalBins;                          ///< sum of partition bins
   SChar         m_codedQP;
   UChar*        m_explicitRdpcmMode[MAX_NUM_COMPONENT]; ///< Stores the explicit RDPCM mode for all TUs belonging to this CU
-  Int           m_descriptionId; /// @tle add to distinguish between two description
 protected:
 
   /// adds a single possible motion vector predictor candidate

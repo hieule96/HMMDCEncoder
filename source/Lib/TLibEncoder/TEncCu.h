@@ -51,7 +51,6 @@
 #include "TEncEntropy.h"
 #include "TEncSearch.h"
 #include "TEncRateCtrl.h"
-#include "TLibIPC/TEncIPC.h"
 //! \ingroup TLibEncoder
 //! \{
 

@@ -34,7 +34,7 @@ if( SET_ENABLE_TRACING )
 endif()
 
 target_include_directories( ${LIB_NAME} PUBLIC . ${PYTHON_INCLUDE_DIRS} )
-target_link_libraries( ${LIB_NAME} TLibCommon TLibSysuAnalyzer TLibMDCCommon Utilities TLibIPC Threads::Threads ${PYTHON_LIBRARIES}/libpython3.8.so )
+target_link_libraries( ${LIB_NAME} TLibCommon TLibMDCCommon Utilities Threads::Threads ${PYTHON_LIBRARIES} )
 message(${PYTHON_LIBRARIES})
 if( CMAKE_COMPILER_IS_GNUCC )
   # this is quite certainly a compiler problem

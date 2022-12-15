@@ -41,7 +41,6 @@
 #include <list>
 
 #include <stdlib.h>
-#include <python3.10/Python.h>
 #include "TLibCommon/TComList.h"
 #include "TLibCommon/TComPic.h"
 #include "TLibCommon/TComBitCounter.h"

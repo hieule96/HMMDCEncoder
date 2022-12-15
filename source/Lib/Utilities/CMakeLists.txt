@@ -33,7 +33,7 @@ if( SET_ENABLE_TRACING )
 endif()
 
 target_include_directories( ${LIB_NAME} PUBLIC . .. )
-target_link_libraries( ${LIB_NAME} Threads::Threads )
+target_link_libraries( ${LIB_NAME} Threads::Threads TLibCommon)
 
 # example: place header files in different folders
 source_group( "Natvis Files" FILES ${NATVIS_FILES} )

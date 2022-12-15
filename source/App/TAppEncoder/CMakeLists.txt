@@ -44,7 +44,7 @@ if( CMAKE_COMPILER_IS_GNUCC AND BUILD_STATIC )
   target_compile_definitions( ${EXE_NAME} PUBLIC ENABLE_WPP_STATIC_LINK=1 )
 endif()
 
-target_link_libraries( ${EXE_NAME} TLibCommon TLibEncoder TLibDecoder Utilities TLibSysuAnalyzer TLibMDCCommon Threads::Threads ${ADDITIONAL_LIBS} )
+target_link_libraries( ${EXE_NAME} TLibCommon TLibEncoder TLibDecoder Utilities TLibMDCCommon Threads::Threads ${ADDITIONAL_LIBS} )
 
 if( EXTENSION_360_VIDEO )
   target_link_libraries( ${EXE_NAME} Lib360 AppEncHelper360 )
