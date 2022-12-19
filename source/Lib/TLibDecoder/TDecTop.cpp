@@ -225,7 +225,17 @@ Void TDecTop::xSelectCu(TComDataCU* &pcCUA,TComDataCU *&pcCUB, UInt uiAbsPartIdx
   TComPic *pcPicA = pcCUA->getPic();
   TComPic *pcPicB = pcCUB->getPic();
 
-  TComSlice *const pcSlice = pcCUA->getSlice();
+  TComSlice *const pcSliceA = pcCUA->getSlice();
+  TComSlice *const pcSliceB = pcCUB->getSlice();
+  // pcPicA and pcPicB derive from a picture, but in two independent descriptions
+  // check if pcSliceA and pcSliceB are not null first, either pcSliceA or pcSliceB is null pcSlice will be the other one
+  // if both are null, then pcSlice will be null and exit the function
+  TComSlice *const pcSlice = pcSliceA ? pcSliceA : pcSliceB;
+  const TComDataCU *pcCU = pcSliceA ? pcCUA : pcCUB;
+  if (pcSlice == NULL)
+  {
+    return;
+  }
   const TComSPS &sps = *(pcSlice->getSPS());
   const TComPPS &pps = *(pcSlice->getPPS());
 
@@ -233,19 +243,19 @@ Void TDecTop::xSelectCu(TComDataCU* &pcCUA,TComDataCU *&pcCUB, UInt uiAbsPartIdx
   const UInt maxCUHeight = sps.getMaxCUHeight();
 
   Bool bBoundary = false;
-  UInt uiLPelX = pcCUA->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
+  UInt uiLPelX = pcCU->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
   const UInt uiRPelX = uiLPelX + (maxCUWidth >> uiDepth) - 1;
-  UInt uiTPelY = pcCUA->getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]];
+  UInt uiTPelY = pcCU->getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]];
   const UInt uiBPelY = uiTPelY + (maxCUHeight >> uiDepth) - 1;
 
   // quadtree
-  if (((uiDepth < pcCUA->getDepth(uiAbsPartIdx)) && (uiDepth < sps.getLog2DiffMaxMinCodingBlockSize())) || bBoundary)
+  if (((uiDepth < pcCU->getDepth(uiAbsPartIdx)) && (uiDepth < sps.getLog2DiffMaxMinCodingBlockSize())) || bBoundary)
   {
     UInt uiQNumParts = (pcPicA->getNumPartitionsInCtu() >> (uiDepth << 1)) >> 2;
     for (UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++, uiAbsPartIdx += uiQNumParts)
     {
-      uiLPelX = pcCUA->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
-      uiTPelY = pcCUA->getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]];
+      uiLPelX = pcCU->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
+      uiTPelY = pcCU->getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]];
       if ((uiLPelX < sps.getPicWidthInLumaSamples()) && (uiTPelY < sps.getPicHeightInLumaSamples()))
       {
         index++;
@@ -255,29 +265,36 @@ Void TDecTop::xSelectCu(TComDataCU* &pcCUA,TComDataCU *&pcCUB, UInt uiAbsPartIdx
     return;
   }
   // Check if two Pic has the same structure
-  assert(pcCUA->getHeight(uiAbsPartIdx) == pcCUB->getHeight(uiAbsPartIdx));
-  assert(pcCUA->getHeight(uiAbsPartIdx) == pcCUB->getHeight(uiAbsPartIdx));
+  // assert(pcCUA->getHeight(uiAbsPartIdx) == pcCUB->getHeight(uiAbsPartIdx));
+  // assert(pcCUA->getHeight(uiAbsPartIdx) == pcCUB->getHeight(uiAbsPartIdx));
   // for each CU in the quadtree, perform the merging process
-  // if (pcCU1->getCbf(uiAbsPartIdx, COMPONENT_Y) && !pcCU2->getCbf(uiAbsPartIdx, COMPONENT_Y))
-  // {
-  //   pcPic1->getPicYUVRec1()->copyCUToPic(pcPic1->getPicYUVRecC(), pcCU1->getCtuRsAddr(), uiAbsPartIdx, pcCU1->getHeight(uiAbsPartIdx), pcCU1->getWidth(uiAbsPartIdx));
-  //   pcPic1->getPicYUVRec1()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU1->getCtuRsAddr(), uiAbsPartIdx, pcCU1->getHeight(uiAbsPartIdx), pcCU1->getWidth(uiAbsPartIdx));
-
-  //   return;
-  // }
-  // else if (!pcCU1->getCbf(uiAbsPartIdx, COMPONENT_Y) && pcCU2->getCbf(uiAbsPartIdx, COMPONENT_Y))
-  // {
-  //   pcPic2->getPicYUVRec2()->copyCUToPic(pcPic1->getPicYUVRecC(), pcCU2->getCtuRsAddr(), uiAbsPartIdx, pcCU2->getHeight(uiAbsPartIdx), pcCU2->getWidth(uiAbsPartIdx));
-  //   pcPic2->getPicYUVRec2()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU2->getCtuRsAddr(), uiAbsPartIdx, pcCU2->getHeight(uiAbsPartIdx), pcCU2->getWidth(uiAbsPartIdx));
-
-  //   return;
-  // }
+  if (pcPicA==NULL && pcPicB==NULL){
+    return;
+  }
+  else if(pcPicA==NULL){
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicB->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    return;
+  }
+  else if(pcPicB==NULL){
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    return;
+  }
+  if (pcCUA->getCbf(uiAbsPartIdx, COMPONENT_Y) && !pcCUB->getCbf(uiAbsPartIdx, COMPONENT_Y))
+  {
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    return;
+  }
+  else if (!pcCUA->getCbf(uiAbsPartIdx, COMPONENT_Y) && pcCUB->getCbf(uiAbsPartIdx, COMPONENT_Y))
+  {
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    return;
+  }
   if (QPTable1[index]<QPTable2[index]){
-    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, pcCUA->getHeight(uiAbsPartIdx), pcCUA->getWidth(uiAbsPartIdx));
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
     // pcPic1->getPicYUVRec1()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU1->getCtuRsAddr(), uiAbsPartIdx, pcCU1->getHeight(uiAbsPartIdx), pcCU1->getWidth(uiAbsPartIdx));
   }else
   {
-    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCUB->getCtuRsAddr(), uiAbsPartIdx, pcCUB->getHeight(uiAbsPartIdx), pcCUB->getWidth(uiAbsPartIdx));
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
     // pcPic2->getPicYUVRec2()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU2->getCtuRsAddr(), uiAbsPartIdx, pcCU2->getHeight(uiAbsPartIdx), pcCU2->getWidth(uiAbsPartIdx));
   }
   // if (pcCU1->getQP(uiAbsPartIdx) < pcCU2->getQP(uiAbsPartIdx) && pcCU1->getQP(uiAbsPartIdx) != pcCU1->getRefQP(uiAbsPartIdx))
@@ -772,7 +789,7 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
   // we should only get a different poc for a new picture (with CTU address==0)
   if (!m_apcSlicePilot->getDependentSliceSegmentFlag() && m_apcSlicePilot->getPOC() != m_prevPOC && !m_bFirstSliceInSequence && (m_apcSlicePilot->getSliceCurStartCtuTsAddr() != 0))
   {
-    printf("Warning, the first slice of a picture might have been lost!\n");
+    printf("[TDecTop %d] Warning, the first slice of a picture might have been lost!\n",m_DecoderDescriptionId);
   }
 
   // exit when a new picture is found

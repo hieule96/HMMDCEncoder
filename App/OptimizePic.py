@@ -58,6 +58,8 @@ CTU_path = "qtreeV.txt"
 yuv_files = "resi.yuv"
 Q1FileName = "QP1.csv"
 Q2FileName = "QP2.csv"
+Q1FileName_DecAssist = "QP1_dec.csv"
+Q2FileName_DecAssist = "QP2_dec.csv"
 
 
 bord_h = 288
@@ -118,7 +120,6 @@ if __name__=='__main__':
         print("Optimization Failed missing arg %d" %len(sys.argv))
         sys.exit()
     tf.initROM()
-    frameType = 0
     process_time_begin = time.time()
     optimizerInstanceTuple = buildModel(frame,frameType)
     listQP1_1 = []
@@ -126,6 +127,7 @@ if __name__=='__main__':
     lcu_o = worker_optimize(optimizerInstanceTuple,rN,Rt)
     listQP1_1+=lcu_o.Qi1
     listQP2_2+=lcu_o.Qi2
+    posCTUCount = 0
     if (frameType==0):
         with open(CTU_path,'r') as file:
             for lines in file:
@@ -149,7 +151,6 @@ if __name__=='__main__':
                             except IndexError:
                                 pdb.set_trace()
                         pos_QP+=1
-                    posCTU +=1
     else:
         with open(CTU_path,'r') as file:
             for lines in file:
@@ -167,13 +168,25 @@ if __name__=='__main__':
                     posCTU +=1
     print ("Optimization Terminated: D1 (%.3f) D2(%.3f) R1(%d) R2(%d)" %(mseToPSNR(lcu_o.D1est), mseToPSNR(lcu_o.D2est), lcu_o.R1est *bord_h * bord_w,  lcu_o.R2est *bord_h * bord_w))
     # open the file in the write mode
-    with open('QP1.csv', 'w') as f:
+    with open(Q1FileName, 'w') as f:
         for i in listQP1_1:
             for j in i:
                 f.write("%d," %(j))
             f.write("\n")
     # open the file in the write mode
-    with open('QP2.csv', 'w') as f:
+    with open(Q2FileName, 'w') as f:
+        for i in listQP2_2:
+            for j in i:
+                f.write("%d," %(j))
+            f.write("\n")
+    # open the file in the write mode
+    with open(Q1FileName_DecAssist, 'a') as f:
+        for i in listQP1_1:
+            for j in i:
+                f.write("%d," %(j))
+            f.write("\n")
+    # open the file in the write mode
+    with open(Q2FileName_DecAssist, 'a') as f:
         for i in listQP2_2:
             for j in i:
                 f.write("%d," %(j))

@@ -43,6 +43,8 @@
 #include "TAppDecTop.h"
 #include "TMDCCommon/TMDCQPTable.hpp"
 #include "TLibSysuAnalyzer/TSysuAnalyzerOutput.h"
+#include "TLibCommon/TComException.h"
+#include "TDecException.h"
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 #include "TLibCommon/TComCodingStatistics.h"
 #endif
@@ -97,7 +99,7 @@ ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,strea
        *  - two back-to-back start_code_prefixes
        *  - start_code_prefix immediately followed by EOF
        */
-      fprintf(stderr, "Warning: Attempt to decode an empty NAL unit\n");
+      fprintf(stderr, "Warning: Attempt to decode an empty NAL unit %d\n", rTDecTop.getDescriptionId());
     }
     else
     {
@@ -108,7 +110,20 @@ ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,strea
       }
       else
       {
-        rbNewPicture = rTDecTop.decode(rnalu, m_iSkipFrame, iPOCLastDisplay);
+        try{
+          rbNewPicture = rTDecTop.decode(rnalu, m_iSkipFrame, iPOCLastDisplay);
+        }
+        catch (BitstreamInputException e){
+          switch (e.getExceptionType())
+          {
+          case BS_BUFFER_OVERFLOW:
+            break;
+          
+          default:
+            break;
+          }
+          std::cerr << "Warning: Description Id " <<rTDecTop.getDescriptionId() << ": " << e.what() << std::endl;
+        };
         if (rbNewPicture)
         {
           rbitstreamFile.clear();
@@ -120,8 +135,8 @@ ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,strea
           rbitstreamFile.seekg(rlocation);
           rbytestream.reset();
 #else
-          bitstreamFile.seekg(location-streamoff(3));
-          bytestream.reset();
+          rbitstreamFile.seekg(rlocation-streamoff(3));
+          rbytestream.reset();
 #endif
         }
       }
@@ -214,7 +229,7 @@ Void TAppDecTop::decode()
   streampos location1;
   streampos location2;
 
-  while (!!bitstreamFile1&&!!bitstreamFile2)
+  while (!!bitstreamFile1||!!bitstreamFile2)
   {
     /* location serves to work around a design fault in the decoder, whereby
      * the process of reading a new slice that is the first slice of a new frame
@@ -226,25 +241,38 @@ Void TAppDecTop::decode()
     location2 = bitstreamFile2.tellg() - streampos(bytestream2.GetNumBufferedBytes());
 
 #else
-    streampos location = bitstreamFile.tellg();
+    if (!!bitstreamFile1) location1 = bitstreamFile1.tellg();
+    if (!!bitstreamFile2) location2 = bitstreamFile2.tellg();
 #endif
     AnnexBStats stats = AnnexBStats();
 
     InputNALUnit nalu1,nalu2;
-    byteStreamNALUnit(bytestream1, nalu1.getBitstream().getFifo(), stats);
-    byteStreamNALUnit(bytestream2, nalu2.getBitstream().getFifo(), stats);
+    if(!!bitstreamFile1) byteStreamNALUnit(bytestream1, nalu1.getBitstream().getFifo(), stats);
+    if(!!bitstreamFile2) byteStreamNALUnit(bytestream2, nalu2.getBitstream().getFifo(), stats);
     // run until two decoder reach a new pictures
-    if (bNewPicture1&&bNewPicture2||!bNewPicture1&&!bNewPicture2){
+    if (bNewPicture1&&bNewPicture2||!bNewPicture1&&!bNewPicture2||bitstreamFile1&&bitstreamFile2){
     // 4 cases are possibles:
       bNewPicture1 = false;
       bNewPicture2 = false;
-      decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1);
-      decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2);
+      if (nalu1.getBitstream().getFifo().empty()){
+        decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1);
+        decodeAPic(nalu1,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2);
+      }
+      else if(nalu2.getBitstream().getFifo().empty()){
+        decodeAPic(nalu2,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1);
+        decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2);
+      }
+      else{
+        decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1);
+        decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2);
+      }
     }
-    else if (!bNewPicture1&&bNewPicture2){
+    else if (!bNewPicture1&&bitstreamFile1){
+      bNewPicture1 = false;
       decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1);
     }
-    else if(bNewPicture1&&!bNewPicture2){
+    else if(!bNewPicture2&&bitstreamFile2){
+      bNewPicture2 = false;
       decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2);
     }
 
@@ -294,13 +322,10 @@ Void TAppDecTop::decode()
     {
       m_cTDecTop2.setFirstSliceInPicture (true);
     }
-    if (bNewPicture1&&bNewPicture2){
-      m_cTDecTop1.mergingMDC(m_cTDecTop2);
 
-    }
     if( pcListPic1&&pcListPic2 )
     {
-      if ( (!m_reconFileName1.empty())&&(!m_reconFileName2.empty()) && (!openedReconFile) )
+      if ( (!m_reconFileName1.empty())&&(!m_reconFileName2.empty()) &&(!m_reconFileNameC.empty()) && (!openedReconFile) )
       {
         const BitDepths &bitDepths=pcListPic2->front()->getPicSym()->getSPS().getBitDepths(); // use bit depths of first reconstructed picture.
         for (UInt channelType = 0; channelType < MAX_NUM_CHANNEL_TYPE; channelType++)
@@ -313,15 +338,24 @@ Void TAppDecTop::decode()
 
         m_cTVideoIOYuvReconFile1.open( m_reconFileName1, true, m_outputBitDepth, m_outputBitDepth, bitDepths.recon ); // write mode
         m_cTVideoIOYuvReconFile2.open( m_reconFileName2, true, m_outputBitDepth, m_outputBitDepth, bitDepths.recon ); // write mode
-
+        m_cTVideoIOYuvReconFileC.open( m_reconFileNameC, true, m_outputBitDepth, m_outputBitDepth, bitDepths.recon ); // write mode
         openedReconFile = true;
       }
       // write reconstruction to file
       if( bNewPicture1&&bNewPicture2 )
       {
+        m_cTDecTop1.mergingMDC(m_cTDecTop2);
         xWriteOutput( pcListPic1, nalu1.m_temporalId,m_iPOCLastDisplay1,m_cTVideoIOYuvReconFile1,m_reconFileName1);
         xWriteOutput( pcListPic2, nalu2.m_temporalId,m_iPOCLastDisplay2,m_cTVideoIOYuvReconFile2,m_reconFileName2);
-
+      }
+      else if(bNewPicture1&&!bitstreamFile2){
+        m_cTDecTop1.mergingMDC(m_cTDecTop2);
+        xWriteOutput( pcListPic1, nalu1.m_temporalId,m_iPOCLastDisplay1,m_cTVideoIOYuvReconFile1,m_reconFileName1);
+      }
+      else if(bNewPicture2&&!bitstreamFile1)
+      {        
+        m_cTDecTop1.mergingMDC(m_cTDecTop2);
+        xWriteOutput( pcListPic2, nalu2.m_temporalId,m_iPOCLastDisplay2,m_cTVideoIOYuvReconFile2,m_reconFileName2);
       }
       if ( (bNewPicture1 || nalu1.m_nalUnitType == NAL_UNIT_CODED_SLICE_CRA) && m_cTDecTop1.getNoOutputPriorPicsFlag() )
       {
@@ -371,7 +405,7 @@ Void TAppDecTop::decode()
       }
     }
   }
-
+  m_cTDecTop1.mergingMDC(m_cTDecTop2);
   xFlushOutput( pcListPic1,m_iPOCLastDisplay1, m_reconFileName1,m_cTVideoIOYuvReconFile1);
   xFlushOutput( pcListPic2,m_iPOCLastDisplay2, m_reconFileName2,m_cTVideoIOYuvReconFile2);
 

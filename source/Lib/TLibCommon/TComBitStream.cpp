@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include "TComException.h"
 #include "TComBitStream.h"
 #include <string.h>
 #include <memory.h>
@@ -253,7 +254,9 @@ Void TComInputBitstream::pseudoRead ( UInt uiNumberOfBits, UInt& ruiBits )
 
 Void TComInputBitstream::read (UInt uiNumberOfBits, UInt& ruiBits)
 {
-  assert( uiNumberOfBits <= 32 );
+  if ( uiNumberOfBits > 32 ){
+    throw BitstreamInputException(BS_READ_ERROR_OVER_32_BITS);
+  }
 
   m_numBitsRead += uiNumberOfBits;
 
@@ -290,7 +293,9 @@ Void TComInputBitstream::read (UInt uiNumberOfBits, UInt& ruiBits)
    */
   UInt aligned_word = 0;
   UInt num_bytes_to_load = (uiNumberOfBits - 1) >> 3;
-  assert(m_fifo_idx + num_bytes_to_load < m_fifo.size());
+  if (m_fifo_idx + num_bytes_to_load > m_fifo.size()){
+    throw BitstreamInputException(BS_BUFFER_OVERFLOW);
+  }
 
   switch (num_bytes_to_load)
   {
@@ -368,8 +373,6 @@ TComInputBitstream *TComInputBitstream::extractSubstream( UInt uiNumBits )
     std::size_t currentOutputBufferSize=buf.size();
     const UInt uiNumBytesToReadFromFifo = std::min<UInt>(uiNumBytes, (UInt)m_fifo.size() - m_fifo_idx);
     buf.resize(currentOutputBufferSize+uiNumBytes);
-    std::cout << currentOutputBufferSize << endl;
-    std::cout << uiNumBytes << endl;
     memcpy(&(buf[currentOutputBufferSize]), &(m_fifo[m_fifo_idx]), uiNumBytesToReadFromFifo);
     m_fifo_idx+=uiNumBytesToReadFromFifo;
     if (uiNumBytesToReadFromFifo != uiNumBytes)
@@ -400,14 +403,20 @@ UInt TComInputBitstream::readByteAlignment()
 {
   UInt code = 0;
   read( 1, code );
-  assert(code == 1);
+  if(code != 1){
+    throw BitstreamInputException(BS_READ_BYTE_ALIGN_ERROR);
+  }
 
   UInt numBits = getNumBitsUntilByteAligned();
   if(numBits)
   {
-    assert(numBits <= getNumBitsLeft());
+    if (numBits > getNumBitsLeft()){
+      throw BitstreamInputException(BS_READ_BYTE_ALIGN_ERROR);
+    }
     read( numBits, code );
-    assert(code == 0);
+    if (code != 0){
+      throw BitstreamInputException(BS_READ_BYTE_ALIGN_ERROR);
+    }
   }
   return numBits+1;
 }

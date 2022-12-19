@@ -65,7 +65,7 @@
 // TODO: rename this macro to DECODER_DEBUG_BIT_STATISTICS (may currently cause merge issues with other branches)
 // This can be enabled by the makefile
 #ifndef RExt__DECODER_DEBUG_BIT_STATISTICS
-#define RExt__DECODER_DEBUG_BIT_STATISTICS                1 ///< 0 (default) = decoder reports as normal, 1 = decoder produces bit usage statistics (will impact decoder run time by up to ~10%)
+#define RExt__DECODER_DEBUG_BIT_STATISTICS                0 ///< 0 (default) = decoder reports as normal, 1 = decoder produces bit usage statistics (will impact decoder run time by up to ~10%)
 #endif
 
 // This can be enabled by the makefile
@@ -108,7 +108,7 @@
 
 #define AMP_ENC_SPEEDUP                                   1 ///< encoder only speed-up by AMP mode skipping
 #if AMP_ENC_SPEEDUP
-#define AMP_MRG                                           0 ///< encoder only force merge for AMP partition (no motion search for AMP)
+#define AMP_MRG                                           1 ///< encoder only force merge for AMP partition (no motion search for AMP)
 #endif
 
 #define FAST_BIT_EST                                      1 ///< G763: Table-based bit estimation for CABAC

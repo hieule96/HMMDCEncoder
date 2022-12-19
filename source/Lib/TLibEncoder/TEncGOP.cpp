@@ -1868,7 +1868,7 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       TMDCQPTable::getInstance()->closeFile(QTREE);
       pcSlice1 = pcPic->getSlice(0);
       pcPic->getPicYuvResi()->dumpResiTo8bit("resi.yuv",false);
-      pcPic->getPicYuvPred() ->dump("predRef.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
+      // pcPic->getPicYuvPred() ->dump("predRef.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
       pcPic->releaseAllReconstructionData();
 
       
@@ -1905,16 +1905,17 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       xLoopOverSliceToBs(pcPic,m_pcArrSliceEncoder[0],substreamsOut1,accessUnit1,duData1,control1);
       // cabac_zero_words processing
       cabac_zero_word_padding(pcSlice1, pcPic, control1.binCountsInNalUnits, control1.numBytesInVclNalUnits, accessUnit1.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
+      // @tle: Compress Motion is great, but in our case this can cause the drift of the motion vector
       // pcPic->compressMotion();
       TMDCQPTable::getInstance()->closeFile(QTREE);
       TMDCQPTable::getInstance()->closeFile(DESCRIPTION1);
-      if (pocCurr==0) 
-      {
-        pcPic->getPicYuvPred()->dump("pred1.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
-      }
-      else {
-        pcPic->getPicYuvPred() ->dump("pred1.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);        
-      }
+      // if (pocCurr==0) 
+      // {
+      //   pcPic->getPicYuvPred()->dump("pred1.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
+      // }
+      // else {
+      //   pcPic->getPicYuvPred() ->dump("pred1.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);        
+      // }
       duData2.clear();
       
       // Description 2
@@ -1938,10 +1939,8 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       TMDCQPTable::getInstance()->closeFile(QTREE);
       TMDCQPTable::getInstance()->closeFile(DESCRIPTION2);
       centralConstruction(*pcPic);
-      if (pocCurr == 0) {pcPic->getPicYuvPred()->dump("pred2.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);}
-      else {pcPic->getPicYuvPred() ->dump("pred2.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);}
-      pcPic->releaseReconstructionIntermediateData();
-
+      // if (pocCurr == 0) {pcPic->getPicYuvPred()->dump("pred2.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);}
+      // else {pcPic->getPicYuvPred() ->dump("pred2.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);}
       //where we need to pay attention to have the central before the compression
       //@tle: add function to build the best quality image
 
@@ -2037,15 +2036,15 @@ Void TEncGOP::xSelectCu(TComDataCU* pcCU1,TComDataCU *pcCU2, UInt uiAbsPartIdx, 
   assert(pcCU1->getHeight(uiAbsPartIdx)==pcCU2->getHeight(uiAbsPartIdx));
   assert(pcCU1->getHeight(uiAbsPartIdx)==pcCU2->getHeight(uiAbsPartIdx));
   // //for each CU in the quadtree, perform the merging process
-  // if (pcCU1->getCbf(uiAbsPartIdx,COMPONENT_Y)&&!pcCU2->getCbf(uiAbsPartIdx,COMPONENT_Y)){
-  //   pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
-  //   return;
-  // }
-  // else if(!pcCU1->getCbf(uiAbsPartIdx,COMPONENT_Y)&&pcCU2->getCbf(uiAbsPartIdx,COMPONENT_Y))
-  // {
-  //   pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
-  //   return;
-  // }
+  if (pcCU1->getCbf(uiAbsPartIdx,COMPONENT_Y)&&!pcCU2->getCbf(uiAbsPartIdx,COMPONENT_Y)){
+    pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));
+    return;
+  }
+  else if(!pcCU1->getCbf(uiAbsPartIdx,COMPONENT_Y)&&pcCU2->getCbf(uiAbsPartIdx,COMPONENT_Y))
+  {
+    pcPic->getPicYUVRec2()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU2->getCtuRsAddr(),uiAbsPartIdx,pcCU2->getHeight(uiAbsPartIdx),pcCU2->getWidth(uiAbsPartIdx));
+    return;
+  }
   // Table based method
   if (QPTable1[index]<QPTable2[index]){
       pcPic->getPicYUVRec1()->copyCUToPic(pcPic->getPicYUVRecC(),pcCU1->getCtuRsAddr(),uiAbsPartIdx,pcCU1->getHeight(uiAbsPartIdx),pcCU1->getWidth(uiAbsPartIdx));

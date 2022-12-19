@@ -124,9 +124,9 @@ Void TDecCu::destroy()
 {
   for ( UInt ui = 0; ui < m_uiMaxDepth-1; ui++ )
   {
-    m_ppcYuvResi[ui]->destroy(); delete m_ppcYuvResi[ui]; m_ppcYuvResi[ui] = NULL;
-    m_ppcYuvReco[ui]->destroy(); delete m_ppcYuvReco[ui]; m_ppcYuvReco[ui] = NULL;
-    m_ppcCU     [ui]->destroy(); delete m_ppcCU     [ui]; m_ppcCU     [ui] = NULL;
+    if (m_ppcYuvResi) {m_ppcYuvResi[ui]->destroy(); delete m_ppcYuvResi[ui]; m_ppcYuvResi[ui] = NULL;}
+    if (m_ppcYuvReco) {m_ppcYuvReco[ui]->destroy(); delete m_ppcYuvReco[ui]; m_ppcYuvReco[ui] = NULL;}
+    if (m_ppcCU) {m_ppcCU     [ui]->destroy(); delete m_ppcCU     [ui]; m_ppcCU     [ui] = NULL;}
   }
 
   delete [] m_ppcYuvResi; m_ppcYuvResi = NULL;

@@ -161,7 +161,7 @@ Void TDecGop::filterPicture(TComPic* pcPic)
   }
 
   //-- For time output for each slice
-  printf("POC %4d TId: %1d ( %c-SLICE, QP%3d ) ", pcSlice->getPOC(),
+  printf("POC %4d/D %4d TId: %1d ( %c-SLICE, QP%3d ) ",pcSlice->getPOC(),pcPic->getDescriptionId(),
                                                   pcSlice->getTLayer(),
                                                   c,
                                                   pcSlice->getSliceQp() );

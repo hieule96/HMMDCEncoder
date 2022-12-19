@@ -41,6 +41,7 @@
 #include <cassert>
 #include <vector>
 #include "AnnexBread.h"
+#include "TDecException.h"
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 #include "TLibCommon/TComCodingStatistics.h"
 #endif
@@ -82,7 +83,9 @@ _byteStreamNALUnit(
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
     statBits.bits+=8; statBits.count++;
 #endif
-    assert(leading_zero_8bits == 0);
+    if (leading_zero_8bits != 0){
+      throw AnnexeBReadException(EXCEPTION_PREFIX_ERROR);
+    }
     stats.m_numLeadingZero8BitsBytes++;
   }
 
@@ -100,7 +103,9 @@ _byteStreamNALUnit(
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
     statBits.bits+=8; statBits.count++;
 #endif
-    assert(zero_byte == 0);
+    if (zero_byte != 0){
+      throw AnnexeBReadException(EXCEPTION_PREFIX_ERROR);
+    }
     stats.m_numZeroByteBytes++;
   }
 
@@ -114,7 +119,9 @@ _byteStreamNALUnit(
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
   statBits.bits+=24; statBits.count+=3;
 #endif
-  assert(start_code_prefix_one_3bytes == 0x000001);
+  if (start_code_prefix_one_3bytes != 0x000001){
+    throw AnnexeBReadException(EXCEPTION_PREFIX_ERROR);
+  };
   stats.m_numStartCodePrefixBytes += 3;
 
   /* 3. NumBytesInNALunit is set equal to the number of bytes starting with
@@ -159,6 +166,7 @@ _byteStreamNALUnit(
    *    unspecified means).
    */
   /* NB, (3) guarantees there are at least three bytes available or none */
+  // @tle: when error readbyte until it reach the zeros trailing bits
   while ((bs.eofBeforeNBytes(24/8) || bs.peekBytes(24/8) != 0x000001)
   &&     (bs.eofBeforeNBytes(32/8) || bs.peekBytes(32/8) != 0x00000001))
   {
@@ -166,7 +174,9 @@ _byteStreamNALUnit(
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
     statBits.bits+=8; statBits.count++;
 #endif
-    assert(trailing_zero_8bits == 0);
+    if(trailing_zero_8bits != 0){
+      throw AnnexeBReadException(EXCEPTION_TRAILING_ERROR);
+    }
     stats.m_numTrailingZero8BitsBytes++;
   }
 }
@@ -189,8 +199,29 @@ byteStreamNALUnit(
   {
     _byteStreamNALUnit(bs, nalUnit, stats);
   }
-  catch (...)
+  catch (AnnexeBReadException e)
   {
+    switch (e.getExceptionType())
+    {
+      case EXCEPTION_PREFIX_ERROR:
+        // nalUnit.clear();
+        // bs.reset();
+        break;
+      case EXCEPTION_TRAILING_ERROR:
+        // trailing error means that the reading pointer is somewhere in the middle of the nal unit
+        // in this case, we need to first move the reading pointer to the beginning of the next nal unit
+        // then we need to clear the nal unit data
+        UInt bytesRead = 0;
+        while ((bs.eofBeforeNBytes(24/8) || bs.peekBytes(24/8) != 0x000001)
+        &&(bs.eofBeforeNBytes(32/8) || bs.peekBytes(32/8) != 0x00000001))
+        {
+          bytesRead = bs.readByte();
+        }
+        break;
+    }
+    std::cerr << "Warning: " << e.what() << std::endl;
+  }
+  catch(...){
     eof = true;
   }
   stats.m_numBytesInNALUnit = UInt(nalUnit.size());
