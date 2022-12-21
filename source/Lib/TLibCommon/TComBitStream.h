@@ -46,7 +46,7 @@
 #include <vector>
 #include <stdio.h>
 #include "CommonDef.h"
-
+#include "TComException.h"
 //! \ingroup TLibCommon
 //! \{
 
@@ -189,13 +189,17 @@ public:
   Void        readByte        ( UInt &ruiBits )
   {
     // need to handle this exception such as skipping and give all other CTUs to 0
-    assert(m_fifo_idx < m_fifo.size());
+    if (m_fifo_idx >= m_fifo.size()){
+      throw BitstreamInputException(BS_BUFFER_OVERFLOW);
+    }
     ruiBits = m_fifo[m_fifo_idx++];
   }
 
   Void        peekPreviousByte( UInt &byte )
   {
-    assert(m_fifo_idx > 0);
+    if (m_fifo_idx <= 0){
+      throw BitstreamInputException(BS_BUFFER_UNDERFLOW);
+    }
     byte = m_fifo[m_fifo_idx - 1];
   }
 

@@ -220,11 +220,11 @@ Void TDecTop::xGetNewPicBuffer(const TComSPS &sps, const TComPPS &pps, TComPic *
 #endif
 }
 
-Void TDecTop::xSelectCu(TComDataCU* &pcCUA,TComDataCU *&pcCUB, UInt uiAbsPartIdx, UInt uiDepth, const Int *QPTable1, const Int *QPTable2, Int &index)
+Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB, UInt uiAbsPartIdx, UInt uiDepth, const Int *QPTable1, const Int *QPTable2, Int &index)
 {
   TComPic *pcPicA = pcCUA->getPic();
   TComPic *pcPicB = pcCUB->getPic();
-
+  TComPic *pcPic = pcPicA ? pcPicA : pcPicB;
   TComSlice *const pcSliceA = pcCUA->getSlice();
   TComSlice *const pcSliceB = pcCUB->getSlice();
   // pcPicA and pcPicB derive from a picture, but in two independent descriptions
@@ -234,6 +234,8 @@ Void TDecTop::xSelectCu(TComDataCU* &pcCUA,TComDataCU *&pcCUB, UInt uiAbsPartIdx
   const TComDataCU *pcCU = pcSliceA ? pcCUA : pcCUB;
   if (pcSlice == NULL)
   {
+    // in this case, pcCUA and pcCUB are both null, so pcCU is null
+    // we don't have any choice left but to replace theses CU with preceding ones
     return;
   }
   const TComSPS &sps = *(pcSlice->getSPS());
@@ -251,7 +253,7 @@ Void TDecTop::xSelectCu(TComDataCU* &pcCUA,TComDataCU *&pcCUB, UInt uiAbsPartIdx
   // quadtree
   if (((uiDepth < pcCU->getDepth(uiAbsPartIdx)) && (uiDepth < sps.getLog2DiffMaxMinCodingBlockSize())) || bBoundary)
   {
-    UInt uiQNumParts = (pcPicA->getNumPartitionsInCtu() >> (uiDepth << 1)) >> 2;
+    UInt uiQNumParts = (pcPic->getNumPartitionsInCtu() >> (uiDepth << 1)) >> 2;
     for (UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++, uiAbsPartIdx += uiQNumParts)
     {
       uiLPelX = pcCU->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
@@ -259,7 +261,7 @@ Void TDecTop::xSelectCu(TComDataCU* &pcCUA,TComDataCU *&pcCUB, UInt uiAbsPartIdx
       if ((uiLPelX < sps.getPicWidthInLumaSamples()) && (uiTPelY < sps.getPicHeightInLumaSamples()))
       {
         index++;
-        xSelectCu(pcCUA, pcCUB, uiAbsPartIdx, uiDepth + 1,QPTable1,QPTable2,index);
+        xSelectCu(pcPicRef,pcCUA, pcCUB, uiAbsPartIdx, uiDepth + 1,QPTable1,QPTable2,index);
       }
     }
     return;
@@ -271,31 +273,29 @@ Void TDecTop::xSelectCu(TComDataCU* &pcCUA,TComDataCU *&pcCUB, UInt uiAbsPartIdx
   if (pcPicA==NULL && pcPicB==NULL){
     return;
   }
-  else if(pcPicA==NULL){
-    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicB->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+  else if(pcCUA==NULL||pcPicA==NULL){
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
     return;
   }
-  else if(pcPicB==NULL){
-    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+  else if(pcCUB==NULL||pcPicB==NULL){
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
     return;
   }
   if (pcCUA->getCbf(uiAbsPartIdx, COMPONENT_Y) && !pcCUB->getCbf(uiAbsPartIdx, COMPONENT_Y))
   {
-    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
     return;
   }
   else if (!pcCUA->getCbf(uiAbsPartIdx, COMPONENT_Y) && pcCUB->getCbf(uiAbsPartIdx, COMPONENT_Y))
   {
-    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
     return;
   }
   if (QPTable1[index]<QPTable2[index]){
-    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
-    // pcPic1->getPicYUVRec1()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU1->getCtuRsAddr(), uiAbsPartIdx, pcCU1->getHeight(uiAbsPartIdx), pcCU1->getWidth(uiAbsPartIdx));
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
   }else
   {
-    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
-    // pcPic2->getPicYUVRec2()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU2->getCtuRsAddr(), uiAbsPartIdx, pcCU2->getHeight(uiAbsPartIdx), pcCU2->getWidth(uiAbsPartIdx));
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
   }
   // if (pcCU1->getQP(uiAbsPartIdx) < pcCU2->getQP(uiAbsPartIdx) && pcCU1->getQP(uiAbsPartIdx) != pcCU1->getRefQP(uiAbsPartIdx))
   // {
@@ -334,7 +334,9 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2)
   TComSlice *pcSlice = pcPic1->getSlice(0);
   UInt POCD1 = pcPic1->getPOC();
   UInt POCD2 = pcPic2->getPOC();
-  assert(POCD1==POCD2);
+  // prepare with previous frame in case of lost
+  m_cListPic.back()->getPicYUVRecC()->copyToPic(pcPic1->getPicYUVRecC());
+  // assert(POCD1==POCD2);
   Int index = 0;
   const UInt numberOfCtusInFrame = this->getPcPic()->getNumberOfCtusInFrame();
   TMDCQPTable *pqptable = TMDCQPTable::getInstance();
@@ -349,7 +351,7 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2)
     memcpy(QPTable2,pqptable->getQPArray(),countQP2*sizeof(Int));
     TComDataCU *pCtuD1 = pcPic1->getPicSym()->getCtu(i);
     TComDataCU *pCtuD2 = pcPic2->getPicSym()->getCtu(i);
-    xSelectCu(pCtuD1, pCtuD2, 0, 0, QPTable1,QPTable2,index);
+    xSelectCu(pcPic1,pCtuD1, pCtuD2, 0, 0, QPTable1,QPTable2,index);
     // printf("QP array1[%d,%d]:",pCtuD1->getCtuRsAddr(),countQP1);
     // for (int i =0;i<countQP1;i++){
     //   printf("%d ",QPTable1[i]);
@@ -363,28 +365,12 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2)
   }
   if (POCD1!=0) {
     pcPic1->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
-    pcPic1->getPicYuvPred()->dump("Pred1Dec.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
-    pcPic1->getPicYuvResi()->dump("Pred1Resi.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
-    pcPic2->getPicYuvPred()->dump("Pred2Dec.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
-    pcPic1->getPicYuvResi()->dump("Pred1Resi.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
-
   }
   else {
     pcPic1->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
-    pcPic1->getPicYuvPred()->dump("Pred1Dec.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
-    pcPic1->getPicYuvResi()->dump("Pred1Resi.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
-    pcPic2->getPicYuvPred()->dump("Pred2Dec.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
-    pcPic1->getPicYuvResi()->dump("Pred2Resi.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
   }
+  // unifying the best picture
   pcPic1->getPicYUVRecC()->copyToPic(pcPic2->getPicYUVRecC());
-
-  // else
-  // {
-  //     pcPic1->getPicYUVRec1()->copyToPic(pcPic1->getPicYUVRecC());
-  //     pcPic2->getPicYUVRec2()->copyToPic(pcPic2->getPicYUVRecC());
-  // }
-  // pcPic1->getPicYUVRecC()->copyToPic(pcPic1->getPicYUVRec1());
-
 }
 
 Void TDecTop::executeLoopFilters(Int &poc, TComList<TComPic *> *&rpcListPic)
@@ -402,7 +388,7 @@ Void TDecTop::executeLoopFilters(Int &poc, TComList<TComPic *> *&rpcListPic)
   m_cGopDecoder.filterPicture(pcPic);
 
   TComSlice::sortPicList(m_cListPic); // sorting for application output
-  poc = pcPic->getSlice(m_uiSliceIdx - 1)->getPOC();
+  poc = pcPic->getSlice((m_uiSliceIdx - 1) > 0 ? m_uiSliceIdx - 1:0)->getPOC();
   rpcListPic = &m_cListPic;
   m_cCuDecoder.destroy();
   m_bFirstSliceInPicture = true;
@@ -667,7 +653,7 @@ Void TDecTop::xAnalysePrefixSEImessages()
 #if MCTS_EXTRACTION
 Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay, Bool bSkipCabacAndReconstruction)
 #else
-Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay)
+Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay, TDecCtx *pDecCtx)
 #endif
 {
   m_apcSlicePilot->initSlice(); // the slice pilot is an object to prepare for a new slice
@@ -697,8 +683,13 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
   const UInt64 originalSymbolCount = g_nSymbolCounter;
 #endif
 
-  m_cEntropyDecoder.decodeSliceHeader(m_apcSlicePilot, &m_parameterSetManager, m_prevTid0POC);
-
+  // Step 1: Decode the header of the segment, if ok continue otherwise return false
+  try {m_cEntropyDecoder.decodeSliceHeader(m_apcSlicePilot, &m_parameterSetManager, m_prevTid0POC);}
+  catch (HeaderSyntaxException e)
+  {
+    std::cerr << e.what() << std::endl;
+    return false;
+  }
   // set POC for dependent slices in skipped pictures
   if (m_apcSlicePilot->getDependentSliceSegmentFlag() && m_prevSliceSkipped)
   {
@@ -785,11 +776,14 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
 
   // clear previous slice skipped flag
   m_prevSliceSkipped = false;
-
+  pDecCtx->PocofSlice = m_apcSlicePilot->getPOC();
   // we should only get a different poc for a new picture (with CTU address==0)
   if (!m_apcSlicePilot->getDependentSliceSegmentFlag() && m_apcSlicePilot->getPOC() != m_prevPOC && !m_bFirstSliceInSequence && (m_apcSlicePilot->getSliceCurStartCtuTsAddr() != 0))
   {
     printf("[TDecTop %d] Warning, the first slice of a picture might have been lost!\n",m_DecoderDescriptionId);
+    // it already error at the next slice, so we need at least to complete the merging of last POC
+    m_prevPOC = m_apcSlicePilot->getPOC();
+    return true;
   }
 
   // exit when a new picture is found
@@ -973,7 +967,7 @@ Void TDecTop::xDecodePPS(const std::vector<UChar> &naluData)
 #if MCTS_EXTRACTION
 Bool TDecTop::decode(InputNALUnit &nalu, Int &iSkipFrame, Int &iPOCLastDisplay, Bool bSkipCabacAndReconstruction)
 #else
-Bool TDecTop::decode(InputNALUnit &nalu, Int &iSkipFrame, Int &iPOCLastDisplay)
+Bool TDecTop::decode(InputNALUnit &nalu, Int &iSkipFrame, Int &iPOCLastDisplay,TDecCtx *pDecCtx)
 #endif
 {
   // ignore all NAL units of layers > 0
@@ -1035,7 +1029,7 @@ Bool TDecTop::decode(InputNALUnit &nalu, Int &iSkipFrame, Int &iPOCLastDisplay)
 #if MCTS_EXTRACTION
     return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay, bSkipCabacAndReconstruction);
 #else
-    return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay);
+    return xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay, pDecCtx);
 #endif
     break;
 

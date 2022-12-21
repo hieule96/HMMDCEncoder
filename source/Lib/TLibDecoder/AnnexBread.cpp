@@ -216,7 +216,8 @@ byteStreamNALUnit(
         &&(bs.eofBeforeNBytes(32/8) || bs.peekBytes(32/8) != 0x00000001))
         {
           bytesRead = bs.readByte();
-        }
+          nalUnit.push_back(bytesRead);
+        }        
         break;
     }
     std::cerr << "Warning: " << e.what() << std::endl;

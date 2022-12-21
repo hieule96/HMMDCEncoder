@@ -1012,6 +1012,10 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
   READ_UVLC (    uiCode, "slice_pic_parameter_set_id" );  pcSlice->setPPSId(uiCode);
   pps = parameterSetManager->getPPS(uiCode);
   //!KS: need to add error handling code here, if PPS is not available
+  if (pps == NULL)
+  {
+    throw HeaderSyntaxException(H_PPS_EXCEPTION);
+  }  
   assert(pps!=0);
   sps = parameterSetManager->getSPS(pps->getSPSId());
   //!KS: need to add error handling code here, if SPS is not available

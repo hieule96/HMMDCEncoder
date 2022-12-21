@@ -92,7 +92,7 @@ protected:
 
 private:
   Void decodeAPic(InputNALUnit &rnalu,Bool &rbNewPicture,TDecTop &rTDecTop,
-  ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,streampos &rlocation);
+  ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,streampos &rlocation,TDecCtx *pDecCtx);
   Void applyColourRemapping(const TComPicYuv& pic, SEIColourRemappingInfo& pCriSEI, const TComSPS &activeSPS);
   Void xOutputColourRemapPic(TComPic* pcPic);
   Void xOutputAnnotatedRegions(TComPic* pcPic);

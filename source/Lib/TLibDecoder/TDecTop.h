@@ -52,7 +52,7 @@
 #include "TDecCAVLC.h"
 #include "SEIread.h"
 #include "TDecConformance.h"
-
+#include "TDecCtx.h"
 class InputNALUnit;
 
 //! \ingroup TLibDecoder
@@ -95,7 +95,7 @@ private:
   Bool isSkipPictureForBLA(Int& iPOCLastDisplay);
   Bool isRandomAccessSkipPicture(Int& iSkipFrame,  Int& iPOCLastDisplay);
   TComPic*                m_pcPic;
-  UInt                    m_uiSliceIdx;
+  Int                     m_uiSliceIdx;
   Int                     m_prevPOC;
   Int                     m_prevTid0POC;
   Bool                    m_bFirstSliceInPicture;
@@ -144,7 +144,7 @@ public:
   TComSlice* getApcSlicePilot() { return m_apcSlicePilot; }
   Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay, Bool bSkipCabacAndReconstruction=false);
 #else
-  Bool  decode(InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay);
+  Bool  decode (InputNALUnit& nalu, Int& iSkipFrame, Int& iPOCLastDisplay, TDecCtx *pCtx);
 #endif
   Void  deletePicBuffer();
   TComPic* getPcPic() const { return m_pcPic; }
@@ -175,10 +175,11 @@ protected:
   Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay, Bool bSkipCabacAndReconstruction);
   Void      xActivateParameterSets(Bool bSkipCabacAndReconstruction);
 #else
-  Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay);
+  Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay, TDecCtx *pDecCtx);
   Void      xActivateParameterSets();
 #endif
-  Void      xSelectCu(TComDataCU* &pcCU1,TComDataCU *&pcCU2, UInt uiAbsPartIdx, UInt uiDepth, const Int *QPTable1, const Int *QPTable2, Int &index);
+  Void xSelectCu(TComPic *pcPicRef, TComDataCU* &pcCUA,TComDataCU *&pcCUB, 
+  UInt uiAbsPartIdx, UInt uiDepth, const Int *QPTable1, const Int *QPTable2, Int &index);
   Void      xDecodeVPS(const std::vector<UChar> &naluData);
   Void      xDecodeSPS(const std::vector<UChar> &naluData);
   Void      xDecodePPS(const std::vector<UChar> &naluData);

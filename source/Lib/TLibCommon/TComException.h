@@ -1,3 +1,6 @@
+#ifndef __TCOMEXCEPTION__
+#define __TCOMEXCEPTION__
+
 #include <exception>
 // now int the exception on parsing nal unit, after the 
 
@@ -40,3 +43,32 @@ private:
     const char* m_msg;
     BitstreamException m_exceptionType;
 };
+
+typedef enum HeaderException
+{
+    H_PPS_EXCEPTION = 0,
+
+} HeaderException;
+
+class HeaderSyntaxException : public std::exception
+{
+public:
+    HeaderSyntaxException(HeaderException exception) : m_exceptionType(exception) {
+        switch (m_exceptionType)
+        {
+        case H_PPS_EXCEPTION:
+            m_msg = "[HeaderSyntax] PPS exception";
+            break;
+        default:
+            m_msg = "[HeaderSyntax] Unhandle exception";
+            break;
+        }
+    }
+    virtual const char* what() const throw() { return m_msg; }
+    HeaderException getExceptionType() { return m_exceptionType; }
+private:
+    const char* m_msg;
+    HeaderException m_exceptionType;
+};
+
+#endif

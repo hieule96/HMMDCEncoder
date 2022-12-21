@@ -557,7 +557,7 @@ Void TComLoopFilter::xGetBoundaryStrengthSingle ( TComDataCU* pCtu, DeblockEdgeD
 Void TComLoopFilter::xEdgeFilterLuma( TComDataCU* const pcCU, const UInt uiAbsZorderIdx, const UInt uiDepth, const DeblockEdgeDir edgeDir, const Int iEdge  )
 {
   // @tle: edge filter recC ?
-        TComPicYuv *pcPicYuvRec                    = pcCU->getPic()->getPicYuvRec();
+        TComPicYuv *pcPicYuvRec                    = pcCU->getPic()->getPicYUVRecC();
         Pel        *piSrc                          = pcPicYuvRec->getAddr(COMPONENT_Y, pcCU->getCtuRsAddr(), uiAbsZorderIdx );
         Pel        *piTmpSrc                       = piSrc;
   const TComSPS    &sps                            = *(pcCU->getSlice()->getSPS());
@@ -678,7 +678,7 @@ Void TComLoopFilter::xEdgeFilterChroma( TComDataCU* const pcCU, const UInt uiAbs
 {
     // @tle: edge filter recC ?
 
-        TComPicYuv *pcPicYuvRec    = pcCU->getPic()->getPicYuvRec();
+        TComPicYuv *pcPicYuvRec    = pcCU->getPic()->getPicYUVRecC();
         Int         iStride        = pcPicYuvRec->getStride(COMPONENT_Cb);
         Pel        *piSrcCb        = pcPicYuvRec->getAddr( COMPONENT_Cb, pcCU->getCtuRsAddr(), uiAbsZorderIdx );
         Pel        *piSrcCr        = pcPicYuvRec->getAddr( COMPONENT_Cr, pcCU->getCtuRsAddr(), uiAbsZorderIdx );

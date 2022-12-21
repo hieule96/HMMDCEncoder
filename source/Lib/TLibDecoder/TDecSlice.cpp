@@ -139,6 +139,8 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
   // for every CTU in the slice segment...
 
   Bool isLastCtuOfSliceSegment = false;
+  // debug for decode CTU
+  std::cout << "startCtuTsAddr: " << startCtuTsAddr << "/"<< pcPic->getCurrSliceIdx() <<"/"<<pcPic->getDescriptionId()<<std::endl;
   for( UInt ctuTsAddr = startCtuTsAddr; !isLastCtuOfSliceSegment && ctuTsAddr < numCtusInFrame; ctuTsAddr++)
   {
     const UInt ctuRsAddr = pcPic->getPicSym()->getCtuTsToRsAddrMap(ctuTsAddr);

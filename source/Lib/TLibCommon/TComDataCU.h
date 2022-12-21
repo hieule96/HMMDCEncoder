@@ -399,7 +399,9 @@ public:
   TComDataCU*   getCtuAbove                   ( )                                                          { return m_pCtuAbove;                        }
   TComDataCU*   getCtuAboveLeft               ( )                                                          { return m_pCtuAboveLeft;                    }
   TComDataCU*   getCtuAboveRight              ( )                                                          { return m_pCtuAboveRight;                   }
-  Bool          CUIsFromSameSlice             ( const TComDataCU *pCU /* Can be NULL */ ) const            { return ( pCU!=NULL && pCU->getSlice()->getSliceCurStartCtuTsAddr() == getSlice()->getSliceCurStartCtuTsAddr() ); }
+  Bool          CUIsFromSameSlice             ( const TComDataCU *pCU /* Can be NULL */ ) const            { 
+      return  pCU!=NULL &&pCU->getSlice()!=NULL&&pCU->getSlice()->getSliceCurStartCtuTsAddr() == getSlice()->getSliceCurStartCtuTsAddr() ;
+  }
   Bool          CUIsFromSameTile              ( const TComDataCU *pCU /* Can be NULL */ ) const;
   Bool          CUIsFromSameSliceAndTile      ( const TComDataCU *pCU /* Can be NULL */ ) const;
   Bool          CUIsFromSameSliceTileAndWavefrontRow( const TComDataCU *pCU /* Can be NULL */ ) const;

@@ -1874,11 +1874,11 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       
       // launch the Python optimizer
       if (pcSlice1->isIntra()){
-        ExecutePythonOptimizer(1.40,0.01,pocCurr,0);
+        ExecutePythonOptimizer(1.35,0.0,pocCurr,1);
       }
       else
       {
-        ExecutePythonOptimizer(1.0,0.01,pocCurr,1);
+        ExecutePythonOptimizer(1.0,0.0,pocCurr,1);
       }
       pcSlice1 = NULL;
       pcSlice2 = NULL;

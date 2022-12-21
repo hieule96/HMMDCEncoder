@@ -55,7 +55,6 @@
 // ====================================================================================================================
 // Constructor / destructor / initialization / destroy
 // ====================================================================================================================
-
 TAppDecTop::TAppDecTop()
 : m_iPOCLastDisplay1(-MAX_INT)
  ,m_iPOCLastDisplay2(-MAX_INT)
@@ -91,7 +90,7 @@ Void TAppDecTop::destroy()
  */
 
 Void TAppDecTop::decodeAPic(InputNALUnit &rnalu,Bool &rbNewPicture,TDecTop &rTDecTop,
-ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,streampos &rlocation){
+ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,streampos &rlocation, TDecCtx *pDecCtx){
   if (rnalu.getBitstream().getFifo().empty())
     {
       /* this can happen if the following occur:
@@ -111,7 +110,7 @@ ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,strea
       else
       {
         try{
-          rbNewPicture = rTDecTop.decode(rnalu, m_iSkipFrame, iPOCLastDisplay);
+          rbNewPicture = rTDecTop.decode(rnalu, m_iSkipFrame, iPOCLastDisplay,pDecCtx);
         }
         catch (BitstreamInputException e){
           switch (e.getExceptionType())
@@ -122,7 +121,7 @@ ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,strea
           default:
             break;
           }
-          std::cerr << "Warning: Description Id " <<rTDecTop.getDescriptionId() << ": " << e.what() << std::endl;
+          std::cerr<< e.what() <<" of description "<< rTDecTop.getDescriptionId() <<std::endl;
         };
         if (rbNewPicture)
         {
@@ -228,8 +227,11 @@ Void TAppDecTop::decode()
   Bool bNewPicture2 = false;
   streampos location1;
   streampos location2;
-
-  while (!!bitstreamFile1||!!bitstreamFile2)
+  TDecCtx ctx1, ctx2;
+  InputNALUnit nalu1,nalu2;
+  ctx1.PocofSlice = 0;
+  ctx2.PocofSlice = 0;
+  while (!!bitstreamFile1&&!!bitstreamFile2)
   {
     /* location serves to work around a design fault in the decoder, whereby
      * the process of reading a new slice that is the first slice of a new frame
@@ -241,48 +243,46 @@ Void TAppDecTop::decode()
     location2 = bitstreamFile2.tellg() - streampos(bytestream2.GetNumBufferedBytes());
 
 #else
-    if (!!bitstreamFile1) location1 = bitstreamFile1.tellg();
-    if (!!bitstreamFile2) location2 = bitstreamFile2.tellg();
+    location1 = bitstreamFile1.tellg();
+    location2 = bitstreamFile2.tellg();
 #endif
     AnnexBStats stats = AnnexBStats();
-
-    InputNALUnit nalu1,nalu2;
-    if(!!bitstreamFile1) byteStreamNALUnit(bytestream1, nalu1.getBitstream().getFifo(), stats);
-    if(!!bitstreamFile2) byteStreamNALUnit(bytestream2, nalu2.getBitstream().getFifo(), stats);
+    // blocking the stream on the other side until the either of the two decoder reach a new picture
+    if (!bNewPicture1){
+      nalu1.getBitstream().getFifo().clear();
+      byteStreamNALUnit(bytestream1, nalu1.getBitstream().getFifo(), stats);
+    }
+    if (!bNewPicture2){
+      nalu2.getBitstream().getFifo().clear();
+      byteStreamNALUnit(bytestream2, nalu2.getBitstream().getFifo(), stats);
+    }
     // run until two decoder reach a new pictures
-    if (bNewPicture1&&bNewPicture2||!bNewPicture1&&!bNewPicture2||bitstreamFile1&&bitstreamFile2){
+    if (bNewPicture1&&bNewPicture2||!bNewPicture1&&!bNewPicture2){
     // 4 cases are possibles:
       bNewPicture1 = false;
       bNewPicture2 = false;
-      if (nalu1.getBitstream().getFifo().empty()){
-        decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1);
-        decodeAPic(nalu1,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2);
-      }
-      else if(nalu2.getBitstream().getFifo().empty()){
-        decodeAPic(nalu2,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1);
-        decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2);
-      }
-      else{
-        decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1);
-        decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2);
-      }
+      decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1,&ctx1);
+      decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2,&ctx2);
     }
-    else if (!bNewPicture1&&bitstreamFile1){
-      bNewPicture1 = false;
-      decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1);
+    else if (!bNewPicture1&&bNewPicture2){
+      decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1,&ctx1);
     }
-    else if(!bNewPicture2&&bitstreamFile2){
-      bNewPicture2 = false;
-      decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2);
+    else if(!bNewPicture2&&bNewPicture1){
+      decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2,&ctx2);
     }
 
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
     TComCodingStatistics::SetStatistics(backupStats);
 #endif
+    // write reconstruction to file either one of the two decoder reach a new picture and the other one is in error state.
 
+    if( bNewPicture1&&bNewPicture2)
+    {
+      m_cTDecTop1.mergingMDC(m_cTDecTop2);
+    }
     // this part will do the check and add image to the list
-    if ( (bNewPicture1 || !bitstreamFile1 || nalu1.m_nalUnitType == NAL_UNIT_EOS) &&
-        !m_cTDecTop1.getFirstSliceInSequence () )
+    if ( (bNewPicture1&&bNewPicture2 || !bitstreamFile1 || nalu1.m_nalUnitType == NAL_UNIT_EOS) &&
+        !m_cTDecTop1.getFirstSliceInSequence ()  )
     {
       if (!loopFiltered1 || bitstreamFile1)
       {
@@ -296,7 +296,7 @@ Void TAppDecTop::decode()
 
       }
     }
-    else if ( (bNewPicture1 || !bitstreamFile1 || nalu1.m_nalUnitType == NAL_UNIT_EOS ) &&
+    else if ( (bNewPicture1&&bNewPicture2 || !bitstreamFile1 || nalu1.m_nalUnitType == NAL_UNIT_EOS ) &&
               m_cTDecTop1.getFirstSliceInSequence () ) 
     {
       m_cTDecTop1.setFirstSliceInPicture (true);
@@ -304,7 +304,7 @@ Void TAppDecTop::decode()
     }
 
 
-    if ( (bNewPicture2 || !bitstreamFile2 || nalu2.m_nalUnitType == NAL_UNIT_EOS) &&
+    if ( (bNewPicture1&&bNewPicture2 || !bitstreamFile2 || nalu2.m_nalUnitType == NAL_UNIT_EOS) &&
         !m_cTDecTop2.getFirstSliceInSequence () )
     {
       if (!loopFiltered2 || bitstreamFile2)
@@ -317,11 +317,12 @@ Void TAppDecTop::decode()
         m_cTDecTop2.setFirstSliceInSequence(true);
       }
     }
-    else if ( (bNewPicture2 || !bitstreamFile2 || nalu2.m_nalUnitType == NAL_UNIT_EOS ) &&
+    else if ( (bNewPicture1&&bNewPicture2 || !bitstreamFile2 || nalu2.m_nalUnitType == NAL_UNIT_EOS ) &&
               m_cTDecTop2.getFirstSliceInSequence () ) 
     {
       m_cTDecTop2.setFirstSliceInPicture (true);
     }
+
 
     if( pcListPic1&&pcListPic2 )
     {
@@ -340,22 +341,6 @@ Void TAppDecTop::decode()
         m_cTVideoIOYuvReconFile2.open( m_reconFileName2, true, m_outputBitDepth, m_outputBitDepth, bitDepths.recon ); // write mode
         m_cTVideoIOYuvReconFileC.open( m_reconFileNameC, true, m_outputBitDepth, m_outputBitDepth, bitDepths.recon ); // write mode
         openedReconFile = true;
-      }
-      // write reconstruction to file
-      if( bNewPicture1&&bNewPicture2 )
-      {
-        m_cTDecTop1.mergingMDC(m_cTDecTop2);
-        xWriteOutput( pcListPic1, nalu1.m_temporalId,m_iPOCLastDisplay1,m_cTVideoIOYuvReconFile1,m_reconFileName1);
-        xWriteOutput( pcListPic2, nalu2.m_temporalId,m_iPOCLastDisplay2,m_cTVideoIOYuvReconFile2,m_reconFileName2);
-      }
-      else if(bNewPicture1&&!bitstreamFile2){
-        m_cTDecTop1.mergingMDC(m_cTDecTop2);
-        xWriteOutput( pcListPic1, nalu1.m_temporalId,m_iPOCLastDisplay1,m_cTVideoIOYuvReconFile1,m_reconFileName1);
-      }
-      else if(bNewPicture2&&!bitstreamFile1)
-      {        
-        m_cTDecTop1.mergingMDC(m_cTDecTop2);
-        xWriteOutput( pcListPic2, nalu2.m_temporalId,m_iPOCLastDisplay2,m_cTVideoIOYuvReconFile2,m_reconFileName2);
       }
       if ( (bNewPicture1 || nalu1.m_nalUnitType == NAL_UNIT_CODED_SLICE_CRA) && m_cTDecTop1.getNoOutputPriorPicsFlag() )
       {
@@ -402,6 +387,11 @@ Void TAppDecTop::decode()
       if(!bNewPicture2 && nalu2.m_nalUnitType >= NAL_UNIT_CODED_SLICE_TRAIL_N && nalu2.m_nalUnitType <= NAL_UNIT_RESERVED_VCL31)
       {
         xWriteOutput( pcListPic2, nalu2.m_temporalId,m_iPOCLastDisplay2,m_cTVideoIOYuvReconFile2,m_reconFileName2);
+      }
+      /// After having preceding two pictures decoded properly, set the flag to false
+      if (bNewPicture1&&bNewPicture2){
+        bNewPicture1 = false;
+        bNewPicture2 = false;
       }
     }
   }

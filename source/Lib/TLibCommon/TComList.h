@@ -85,7 +85,6 @@ public:
     this->pop_front();
     return cT;
   }
-
   Void pushBack( const C& rcT )
   {
     /*assert( sizeof(C) == 4);*/
