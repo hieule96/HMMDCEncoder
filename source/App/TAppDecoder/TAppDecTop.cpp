@@ -122,7 +122,8 @@ ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,strea
             break;
           }
           std::cerr<< e.what() <<" of description "<< rTDecTop.getDescriptionId() <<std::endl;
-        };
+        }
+        catch(AnnexBException e){return;};
         if (rbNewPicture)
         {
           rbitstreamFile.clear();

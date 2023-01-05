@@ -1869,20 +1869,20 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       pcSlice1 = pcPic->getSlice(0);
       pcPic->getPicYuvResi()->dumpResiTo8bit("resi.yuv",false);
       // pcPic->getPicYuvPred() ->dump("predRef.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
-      pcPic->releaseAllReconstructionData();
 
       
       // launch the Python optimizer
       if (pcSlice1->isIntra()){
-        ExecutePythonOptimizer(1.35,0.0,pocCurr,1);
+        ExecutePythonOptimizer(0.8,0.01,pocCurr,0);
       }
       else
       {
-        ExecutePythonOptimizer(1.0,0.0,pocCurr,1);
+        ExecutePythonOptimizer(0.2,0.01,pocCurr,1);
       }
       pcSlice1 = NULL;
       pcSlice2 = NULL;
 
+      pcPic->releaseAllReconstructionData();
       pcPic->releaseReconstructionIntermediateData();
 
 
@@ -1906,18 +1906,11 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       // cabac_zero_words processing
       cabac_zero_word_padding(pcSlice1, pcPic, control1.binCountsInNalUnits, control1.numBytesInVclNalUnits, accessUnit1.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
       // @tle: Compress Motion is great, but in our case this can cause the drift of the motion vector
-      // pcPic->compressMotion();
       TMDCQPTable::getInstance()->closeFile(QTREE);
       TMDCQPTable::getInstance()->closeFile(DESCRIPTION1);
-      // if (pocCurr==0) 
-      // {
-      //   pcPic->getPicYuvPred()->dump("pred1.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
-      // }
-      // else {
-      //   pcPic->getPicYuvPred() ->dump("pred1.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);        
-      // }
       duData2.clear();
       
+
       // Description 2
       pcPic->setDescriptionId(2);
       TMDCQPTable::getInstance()->resetCount();
@@ -1935,10 +1928,12 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       xLoopOverSliceToBs(pcPic,m_pcArrSliceEncoder[1],substreamsOut2,accessUnit2,duData2,control2);
       // cabac_zero_words processing
       cabac_zero_word_padding(pcSlice2, pcPic, control2.binCountsInNalUnits, control2.numBytesInVclNalUnits, accessUnit2.back()->m_nalUnitData, m_pcCfg->getCabacZeroWordPaddingEnabled());
-      // pcPic->compressMotion();
       TMDCQPTable::getInstance()->closeFile(QTREE);
       TMDCQPTable::getInstance()->closeFile(DESCRIPTION2);
       centralConstruction(*pcPic);
+
+      // pcPic->compressMotionMDC();
+
       // if (pocCurr == 0) {pcPic->getPicYuvPred()->dump("pred2.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);}
       // else {pcPic->getPicYuvPred() ->dump("pred2.yuv",pcSlice1->getSPS()->getBitDepths(),true,true);}
       //where we need to pay attention to have the central before the compression

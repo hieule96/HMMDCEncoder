@@ -42,6 +42,7 @@
 #include "TLibCommon/TComRom.h"
 #include "TLibCommon/TComBitStream.h"
 #include "SyntaxElementParser.h"
+#include "TDecException.h"
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 #include "TLibCommon/TComCodingStatistics.h"
 #endif
@@ -268,6 +269,8 @@ Void SyntaxElementParser::xReadRbspTrailingBits()
   while (m_pcBitstream->getNumBitsUntilByteAligned())
   {
     READ_FLAG( bit, "rbsp_alignment_zero_bit");
+    if (bit!=0)     
+      throw AnnexeBReadException(EXCEPTION_PREFIX_ERROR);
     assert (bit==0);
     cnt++;
   }

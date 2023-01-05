@@ -271,8 +271,13 @@ Void TComLoopFilter::xSetEdgefilterMultiple( TComDataCU*    pcCU,
   }
 }
 
-Void TComLoopFilter::xSetEdgefilterTU(  TComTU &rTu )
+Void TComLoopFilter::xSetEdgefilterTU(  TComTU &rTu, Int depth )
 {
+  // prevent infinite recursion
+  if (depth > 8){ 
+    std::cerr << "Infinite recursion in TComLoopFilter::xSetEdgefilterTU stop at 8" << std::endl;
+    return;
+  }
   TComDataCU* pcCU  = rTu.getCU();
   UInt uiTransDepthTotal = rTu.GetTransformDepthTotal();
 
@@ -281,7 +286,7 @@ Void TComLoopFilter::xSetEdgefilterTU(  TComTU &rTu )
     TComTURecurse tuChild(rTu, false);
     do
     {
-      xSetEdgefilterTU( tuChild );
+      xSetEdgefilterTU( tuChild, depth+1 );
     } while (tuChild.nextSection(rTu));
     return;
   }

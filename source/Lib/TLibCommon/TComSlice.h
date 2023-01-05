@@ -1242,6 +1242,8 @@ private:
   SliceType                  m_eSliceType;
   Int                        m_iSliceQp;
   Bool                       m_dependentSliceSegmentFlag;
+  // @tle, add error indicator
+  Bool                       m_bIsCorrupted;
 #if ADAPTIVE_QP_SELECTION
   Int                        m_iSliceQpBase;
 #endif
@@ -1426,7 +1428,7 @@ public:
 
   Void                        setLambdas( const Double lambdas[MAX_NUM_COMPONENT] )  { for (Int component = 0; component < MAX_NUM_COMPONENT; component++) m_lambdas[component] = lambdas[component]; }
   const Double*               getLambdas() const                                     { return m_lambdas;                                             }
-
+  Void                        setIsCorrupted( Bool b )                               { m_bIsCorrupted = b;                                           }
   Void                        initEqualRef();
   Bool                        isEqualRef( RefPicList e, Int iRefIdx1, Int iRefIdx2 )
   {

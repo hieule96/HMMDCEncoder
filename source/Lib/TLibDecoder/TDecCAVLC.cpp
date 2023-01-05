@@ -1014,6 +1014,7 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
   //!KS: need to add error handling code here, if PPS is not available
   if (pps == NULL)
   {
+    pcSlice->setIsCorrupted(true);
     throw HeaderSyntaxException(H_PPS_EXCEPTION);
   }  
   assert(pps!=0);
@@ -1112,7 +1113,7 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
         iPOCmsb = 0;
       }
       pcSlice->setPOC              (iPOCmsb+iPOClsb);
-
+      std::cout << "[ParseHeader]POC: " << pcSlice->getPOC() <<"/"<<prevTid0POC<< std::endl;
       TComReferencePictureSet* rps;
       rps = pcSlice->getLocalRPS();
       (*rps)=TComReferencePictureSet();

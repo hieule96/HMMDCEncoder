@@ -34,7 +34,7 @@
 /** \file     CommonDef.h
     \brief    Defines version information, constants and small in-line functions
 */
-
+#define NDEBUG
 #ifndef __COMMONDEF__
 #define __COMMONDEF__
 

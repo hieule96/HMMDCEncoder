@@ -240,6 +240,22 @@ Void TComPic::compressMotion()
     pCtu->compressMV();
   }
 }
+
+Void TComPic::compressMotionMDC(){
+  TComPicSym* pPicSymD1 = &m_arrPicSym[0];
+  TComPicSym* pPicSymD2 = &m_arrPicSym[1];
+  for ( UInt uiCUAddr = 0; uiCUAddr < pPicSymD1->getNumberOfCtusInFrame(); uiCUAddr++ )
+  {
+    TComDataCU* pCtu = pPicSymD1->getCtu(uiCUAddr);
+    pCtu->compressMV();
+  }
+  for ( UInt uiCUAddr = 0; uiCUAddr < pPicSymD2->getNumberOfCtusInFrame(); uiCUAddr++ )
+  {
+    TComDataCU* pCtu = pPicSymD2->getCtu(uiCUAddr);
+    pCtu->compressMV();
+  }  
+}
+
 Bool  TComPic::getSAOMergeAvailability(Int currAddr, Int mergeAddr)
 {
   Bool mergeCtbInSliceSeg = (mergeAddr >= getPicSym()->getCtuTsToRsAddrMap(getCtu(currAddr)->getSlice()->getSliceCurStartCtuTsAddr()));

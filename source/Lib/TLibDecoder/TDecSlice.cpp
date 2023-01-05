@@ -227,9 +227,14 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
         pcSbacDecoder->parseSAOBlkParam( saoblkParam, sliceEnabled, leftMergeAvail, aboveMergeAvail, pcSlice->getSPS()->getBitDepths());
       }
     }
-
-    m_pcCuDecoder->decodeCtu     ( pCtu, isLastCtuOfSliceSegment );
-
+    try {m_pcCuDecoder->decodeCtu     ( pCtu, isLastCtuOfSliceSegment );}
+    catch (BitstreamInputException e){
+      // when the exception occur tries to decode at least this CTU and move to the next slice
+      std::cout << "[decodeCTU] Exception: Try to decompress this ctu and move on next slice:" << e.what() << std::endl;
+      m_pcCuDecoder->decompressCtu ( pCtu );
+      pcSlice->setIsCorrupted(true);
+      return;
+    }
 #if DECODER_PARTIAL_CONFORMANCE_CHECK != 0
     const UInt numRemainingBitsPostCtu=ppcSubstreams[uiSubStrm]->getNumBitsLeft(); // NOTE: Does not account for changes in buffered bits in CABAC decoder, although it's probably good enough.
     if (TDecConformanceCheck::doChecking() && m_pDecConformanceCheck)
@@ -269,7 +274,10 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
       // (end of slice-segment, end of tile, end of wavefront-CTU-row)
       UInt binVal;
       pcSbacDecoder->parseTerminatingBit( binVal );
-      assert( binVal );
+      // assert( binVal );
+      if (binVal==0){
+        throw BitstreamInputException(BS_BINVAL_ERROR);
+      }
 #if DECODER_CHECK_SUBSTREAM_AND_SLICE_TRAILING_BYTES
       pcSbacDecoder->parseRemainingBytes(true);
 #endif

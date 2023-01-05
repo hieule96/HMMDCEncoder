@@ -105,7 +105,7 @@ class TComTU
     UInt GetTransformDepthTotal()                              const { return mCuDepth+GetTransformDepthRel(); }
     UInt GetTransformDepthTotalAdj(const ComponentID compID)   const { return mCuDepth+GetTransformDepthRelAdj(compID); }
 
-    UInt GetTransformDepthRel()                                const { return mTrDepthRelCU[COMPONENT_Y]; }
+    UInt GetTransformDepthRel()                                const { return mTrDepthRelCU ? mTrDepthRelCU[COMPONENT_Y]:MAX_UINT; }
     UInt GetTransformDepthRelAdj(const ComponentID compID)     const { return mTrDepthRelCU[compID]; }
     UInt GetTransformDepthRelAdj(const ChannelType chType)     const
     {

@@ -85,6 +85,9 @@ TDecBinCABAC::finish()
 
   m_pcTComBitstream->peekPreviousByte( lastByte );
   // Check for proper stop/alignment pattern
+  if (((lastByte << (8 + m_bitsNeeded)) & 0xff) != 0x80){
+    throw BitstreamInputException(BS_LASTBITS_ERROR);
+  }
   assert( ((lastByte << (8 + m_bitsNeeded)) & 0xff) == 0x80 );
 }
 

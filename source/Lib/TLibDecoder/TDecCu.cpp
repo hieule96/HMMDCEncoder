@@ -725,12 +725,16 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
                     TComYuv*    pcPredYuv,
                     TComYuv*    pcResiYuv,
                     const ChannelType chType,
-                    TComTU     &rTu)
+                    TComTU     &rTu,
+                    Int depth)
 {
+  // prevent too deep recursion
+  if (depth>8){return;}
   UInt uiTrDepth    = rTu.GetTransformDepthRel();
   TComDataCU *pcCU  = rTu.getCU();
   UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
   UInt uiTrMode     = pcCU->getTransformIdx( uiAbsPartIdx );
+  assert(uiTrDepth<255);
   if( uiTrMode == uiTrDepth )
   {
     if (isLuma(chType))
@@ -751,7 +755,7 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
     TComTURecurse tuRecurseChild(rTu, false);
     do
     {
-      xIntraRecQT( pcRecoYuv, pcPredYuv, pcResiYuv, chType, tuRecurseChild );
+      xIntraRecQT( pcRecoYuv, pcPredYuv, pcResiYuv, chType, tuRecurseChild,depth+1);
     } while (tuRecurseChild.nextSection(rTu));
   }
 }

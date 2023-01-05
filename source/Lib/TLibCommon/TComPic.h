@@ -196,6 +196,7 @@ public:
   Bool          getOutputMark () const      { return m_bNeededForOutput;  }
 
   Void          compressMotion();
+  Void          compressMotionMDC();
   UInt          getCurrSliceIdx() const           { return m_uiCurrSliceIdx;                }
   Void          setCurrSliceIdx(UInt i)      { m_uiCurrSliceIdx = i;                   }
   UInt          getNumAllocatedSlice() const      {return m_pcpicSym->getNumAllocatedSlice();}

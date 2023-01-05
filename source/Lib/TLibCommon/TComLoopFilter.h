@@ -69,7 +69,7 @@ protected:
   // set / get functions
   Void xSetLoopfilterParam        ( TComDataCU* pcCU, UInt uiAbsZorderIdx );
   // filtering functions
-  Void xSetEdgefilterTU           ( TComTU &rTu );
+  Void xSetEdgefilterTU           ( TComTU &rTu, Int depth=0);
   Void xSetEdgefilterPU           ( TComDataCU* pcCU, UInt uiAbsZorderIdx );
   Void xGetBoundaryStrengthSingle ( TComDataCU* pCtu, DeblockEdgeDir edgeDir, UInt uiPartIdx );
   UInt xCalcBsIdx                 ( TComDataCU* pcCU, UInt absZIdxInCtu, DeblockEdgeDir edgeDir, Int iEdgeIdx, Int iBaseUnitIdx, const struct TComRectangle *rect=NULL )

@@ -238,9 +238,18 @@ Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB,
     // we don't have any choice left but to replace theses CU with preceding ones
     return;
   }
-  const TComSPS &sps = *(pcSlice->getSPS());
-  const TComPPS &pps = *(pcSlice->getPPS());
-
+  // check which sps of which is null or not ?
+  const TComSPS &sps =(pcSlice!=NULL&&pcSlice->getSPS()!=NULL)? *(pcSlice->getSPS()):*(pcSliceB->getSPS());
+  // if pcSlice->getSPS() is null, then set pcSlice->getSPS() to sps for furthur use
+  // if (pcSlice->getSPS() == NULL)
+  // {
+  //   pcSlice->setSPS(&sps);
+  // }
+  const TComPPS &pps = (pcSlice!=NULL&&pcSlice->getPPS()!=NULL)? *(pcSlice->getPPS()):*(pcSliceB->getPPS());
+  // if (pcSlice->getPPS() == NULL)
+  // {
+  //   pcSlice->setPPS(&pps);
+  // }
   const UInt maxCUWidth = sps.getMaxCUWidth();
   const UInt maxCUHeight = sps.getMaxCUHeight();
 
@@ -335,7 +344,10 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2)
   UInt POCD1 = pcPic1->getPOC();
   UInt POCD2 = pcPic2->getPOC();
   // prepare with previous frame in case of lost
-  m_cListPic.back()->getPicYUVRecC()->copyToPic(pcPic1->getPicYUVRecC());
+  if (m_cListPic.size() > 0)
+  {
+    m_cListPic.back()->getPicYUVRecC()->copyToPic(pcPic1->getPicYUVRecC());
+  }
   // assert(POCD1==POCD2);
   Int index = 0;
   const UInt numberOfCtusInFrame = this->getPcPic()->getNumberOfCtusInFrame();
@@ -568,7 +580,7 @@ Void TDecTop::xActivateParameterSets()
   {
     // make the slice-pilot a real slice, and set up the slice-pilot for the next slice
     m_pcPic->allocateNewSlice();
-    assert(m_pcPic->getNumAllocatedSlice() == (m_uiSliceIdx + 1));
+    // assert(m_pcPic->getNumAllocatedSlice() == (m_uiSliceIdx + 1));
     m_apcSlicePilot = m_pcPic->getPicSym()->swapSliceObject(m_apcSlicePilot, m_uiSliceIdx);
 
     TComSlice *pSlice = m_pcPic->getSlice(m_uiSliceIdx); // we now have a real slice.
@@ -809,7 +821,6 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
       xCreateLostPicture(lostPoc - 1);
     }
   }
-
   if (!m_apcSlicePilot->getDependentSliceSegmentFlag())
   {
     m_prevPOC = m_apcSlicePilot->getPOC();
@@ -1046,7 +1057,11 @@ Bool TDecTop::decode(InputNALUnit &nalu, Int &iSkipFrame, Int &iPOCLastDisplay,T
   {
     AUDReader audReader;
     UInt picType;
-    audReader.parseAccessUnitDelimiter(&(nalu.getBitstream()), picType);
+    try {audReader.parseAccessUnitDelimiter(&(nalu.getBitstream()), picType);}
+    catch(...)
+    {
+      return true;
+    }
     printf("Note: found NAL_UNIT_ACCESS_UNIT_DELIMITER\n");
     return false;
   }

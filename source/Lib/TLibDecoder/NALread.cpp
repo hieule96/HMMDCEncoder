@@ -131,6 +131,12 @@ Void readNalUnitHeader(InputNALUnit& nalu)
   TComInputBitstream& bs = nalu.getBitstream();
 
   Bool forbidden_zero_bit = bs.read(1);           // forbidden_zero_bit
+  // the forbidden_zero_bit shall be equal to 0, otherwise the NAL unit shall be discarded
+  if (forbidden_zero_bit!=0)
+  {
+    bs=TComInputBitstream();
+    return;
+  }
   assert(forbidden_zero_bit == 0);
   nalu.m_nalUnitType = (NalUnitType) bs.read(6);  // nal_unit_type
   nalu.m_nuhLayerId = bs.read(6);                 // nuh_layer_id

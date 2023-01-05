@@ -11,6 +11,8 @@ typedef enum BitstreamException
     BS_BUFFER_UNDERFLOW,
     BS_READ_ERROR_OVER_32_BITS,
     BS_READ_BYTE_ALIGN_ERROR,
+    BS_BINVAL_ERROR,
+    BS_LASTBITS_ERROR,
     BS_OTHER
 } BitstreamException;
 
@@ -32,6 +34,9 @@ public:
         case BS_READ_BYTE_ALIGN_ERROR:
             m_msg = "[BitstreamInput] Read byte align error";
             break;
+        case BS_LASTBITS_ERROR:
+            m_msg = "[BitstreamInput] Last bits error";
+            break;
         default:
             m_msg = "[BitstreamInput] Unhandle exception";
             break;
@@ -47,6 +52,8 @@ private:
 typedef enum HeaderException
 {
     H_PPS_EXCEPTION = 0,
+    H_POC_EXCEPTION,
+    H_OTHER
 
 } HeaderException;
 
@@ -58,6 +65,9 @@ public:
         {
         case H_PPS_EXCEPTION:
             m_msg = "[HeaderSyntax] PPS exception";
+            break;
+        case H_POC_EXCEPTION:
+            m_msg = "[HeaderSyntax] POC exception";
             break;
         default:
             m_msg = "[HeaderSyntax] Unhandle exception";

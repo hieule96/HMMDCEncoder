@@ -60,6 +60,7 @@ TComSlice::TComSlice()
 , m_eSliceType                    ( I_SLICE )
 , m_iSliceQp                      ( 0 )
 , m_dependentSliceSegmentFlag     ( false )
+, m_bIsCorrupted                  ( false )
 #if ADAPTIVE_QP_SELECTION
 , m_iSliceQpBase                  ( 0 )
 #endif
