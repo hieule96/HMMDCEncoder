@@ -46,9 +46,6 @@
 using namespace std;
 
 
-static int index_QP_CU = 0;
-static int CTU_index = 0;
-
 //! \ingroup TLibEncoder
 //! \{
 

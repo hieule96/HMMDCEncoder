@@ -87,6 +87,9 @@ protected:
   std::string m_resiNoQuant;
   Int m_encodingMode;
   std::string m_lamdaForcing;
+  Int m_bppIF;
+  Int m_bppPF;
+  Int m_rN;
   // Lambda modifiers
   Double    m_adLambdaModifier[ MAX_TLAYER ];                 ///< Lambda modifier array for each temporal layer
   std::vector<Double> m_adIntraLambdaModifier;                ///< Lambda modifier for Intra pictures, one for each temporal layer. If size>temporalLayer, then use [temporalLayer], else if size>0, use [size()-1], else use m_adLambdaModifier.

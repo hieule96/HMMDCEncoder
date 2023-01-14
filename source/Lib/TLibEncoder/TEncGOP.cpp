@@ -157,23 +157,32 @@ Void TEncGOP::init ( TEncTop* pcTEncTop)
 }
 
 
-Void TEncGOP::ExecutePythonOptimizer(Double Rt, Double rN, Int POC, Int frametype){
-  std::cout << "Execute Optimizer in python" <<std::endl;
+Void TEncGOP::ExecutePythonOptimizer(Double Rt, Double rN, Int POC, Int frametype, TComSlice* const &pcSlice){
   const char filename[]="App/OptimizePic.py";
-  wchar_t *argv[5];
-  for (int i=0;i<5;i++) argv[i] = new wchar_t[128];
-  int argc = 5;
+  int argc = 12;
+
+  wchar_t *argv[argc];
+  for (int i=0;i<argc;i++) argv[i] = new wchar_t[128];
+
   swprintf(argv[0],128,L"App/OptimizePic.py");
-  swprintf(argv[1],128,L"%.3f",Rt);
-  swprintf(argv[2],128,L"%.3f",rN);
-  swprintf(argv[3],128,L"%d",POC);
-  swprintf(argv[4],128,L"%d",frametype);
+  swprintf(argv[1],128,L"%d",m_pcCfg->getSourceWidth());
+  swprintf(argv[2],128,L"%d",m_pcCfg->getSourceHeight());
+  swprintf(argv[3],128,L"%.3f",Rt);
+  swprintf(argv[4],128,L"%d",pcSlice->getSliceQp());
+  swprintf(argv[5],128,L"%.3f",m_pcCfg->getrN());
+  swprintf(argv[6],128,L"%d",POC);
+  swprintf(argv[7],128,L"%d",frametype);
+  swprintf(argv[8],128,L"%s",m_pcCfg->getQPFile1());
+  swprintf(argv[9],128,L"%s",m_pcCfg->getQPFile2());
+  swprintf(argv[10],128,L"%s",m_pcCfg->getResiNoQuant());
+  swprintf(argv[11],128,L"%s",m_pcCfg->getQtreeFile());
   FILE* fp;
+  fprintf(stdout,"Executing Python optimizer with arguments: %ls %ls %ls %ls %ls %ls %ls %ls %ls\n",argv[0],argv[1],argv[2],argv[3],argv[4],argv[5],argv[6],argv[7],argv[8]);
   PySys_SetArgv(argc, argv);
   fp = fopen(filename, "r");
 	PyRun_SimpleFile(fp, filename);
   fclose(fp);
-  for (int i=0;i<5;i++) delete[] argv[i];
+  for (int i=0;i<argc;i++) delete[] argv[i];
 }
 
 #if MCTS_EXTRACTION
@@ -1867,17 +1876,17 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       xCompressPicDescription(pcSlice1,pcPic,iGOPid,iPOCLast,pocCurr,isField,control1,rcListPic,m_pcArrSliceEncoder[0]);
       TMDCQPTable::getInstance()->closeFile(QTREE);
       pcSlice1 = pcPic->getSlice(0);
-      pcPic->getPicYuvResi()->dumpResiTo8bit("resi.yuv",false);
+      pcPic->getPicYuvResi()->dumpResiTo8bit(m_pcCfg->getResiNoQuant(),false);
       // pcPic->getPicYuvPred() ->dump("predRef.yuv",pcSlice1->getSPS()->getBitDepths(),false,true);        
 
       
       // launch the Python optimizer
       if (pcSlice1->isIntra()){
-        ExecutePythonOptimizer(0.8,0.01,pocCurr,0);
+        ExecutePythonOptimizer(m_pcCfg->getIBpp(),0.05,pocCurr,0,pcSlice1);
       }
       else
       {
-        ExecutePythonOptimizer(0.2,0.01,pocCurr,1);
+        ExecutePythonOptimizer(m_pcCfg->getPBpp(),0.05,pocCurr,1,pcSlice1);
       }
       pcSlice1 = NULL;
       pcSlice2 = NULL;
@@ -2087,7 +2096,6 @@ Void TEncGOP::centralConstruction(TComPic &rPic){
         memcpy(QPTable1,pqptable->getQPArray(),countQP1*sizeof(Int));
         Int countQP2 = pqptable->readALine(DESCRIPTION2);
         memcpy(QPTable2,pqptable->getQPArray(),countQP2*sizeof(Int));
-
         xSelectCu(pCtuD1,pCtuD2,0,0,QPTable1,QPTable2,index);
     }
     pqptable->closeFile(DESCRIPTION1);
@@ -2820,7 +2828,7 @@ Void TEncGOP::centralConstruction(TComPic &rPic){
 //           numNalus ++;
 //         }
 //         duData.push_back(DUData());
-//         duData.back().accumBitsDU = ( numRBSPBytes << 3 );
+//         duData.back().accumBitsDU = ( numRBSPBytes << 3 );POC    0 TId: 0 ( I-SLICE, QP 0 )     521160 bits [Y 36.6724 dB    U 36.1504 dB    V 36.2670 dB] [ET    85 ] [L0 ] [L1 ]
 //         duData.back().accumNalsDU = numNalus;
 //       }
 //     } // end iteration over slices

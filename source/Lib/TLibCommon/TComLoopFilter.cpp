@@ -446,7 +446,7 @@ Void TComLoopFilter::xGetBoundaryStrengthSingle ( TComDataCU* pCtu, DeblockEdgeD
   {
     uiBs = 2;
   }
-
+  if (pcCUP->getSlice()==NULL) return;
   //-- Set BS for not Intra MB : BS = 2 or 1 or 0
   if ( !pcCUP->isIntra(uiPartP) && !pcCUQ->isIntra(uiPartQ) )
   {

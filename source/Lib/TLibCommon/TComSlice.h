@@ -1429,6 +1429,7 @@ public:
   Void                        setLambdas( const Double lambdas[MAX_NUM_COMPONENT] )  { for (Int component = 0; component < MAX_NUM_COMPONENT; component++) m_lambdas[component] = lambdas[component]; }
   const Double*               getLambdas() const                                     { return m_lambdas;                                             }
   Void                        setIsCorrupted( Bool b )                               { m_bIsCorrupted = b;                                           }
+  Bool                        getIsCorrupted(){return m_bIsCorrupted;};
   Void                        initEqualRef();
   Bool                        isEqualRef( RefPicList e, Int iRefIdx1, Int iRefIdx2 )
   {

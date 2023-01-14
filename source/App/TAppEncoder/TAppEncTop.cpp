@@ -543,6 +543,9 @@ Void TAppEncTop::xInitLibCfg()
   m_cTEncTop.setLambdaForcing                                     (std::stod(m_lamdaForcing));
   m_cTEncTop.setResiNoQuant                                     (m_resiNoQuant);
   // Test new function
+  m_cTEncTop.setIBpp((Double)m_bppIF/100.0);
+  m_cTEncTop.setPBpp((Double)m_bppPF/100.0);
+  m_cTEncTop.setrN((Double)m_rN/100.0);
 }
 
 Void TAppEncTop::xCreateLib()

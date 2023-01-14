@@ -282,12 +282,23 @@ Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB,
   if (pcPicA==NULL && pcPicB==NULL){
     return;
   }
-  else if(pcCUA==NULL||pcPicA==NULL){
+  else if(pcCUA==NULL||pcPicA==NULL||pcSliceA!=NULL&&pcSliceB!=NULL&&pcSliceA->getIsCorrupted()&&!pcSliceB->getIsCorrupted()){
     pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
     return;
   }
-  else if(pcCUB==NULL||pcPicB==NULL){
+  else if(pcCUB==NULL||pcPicB==NULL||pcSliceA!=NULL&&pcSliceB!=NULL&&!pcSliceA->getIsCorrupted()&&pcSliceB->getIsCorrupted()){
     pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    return;
+  }
+  if (pcCUA->getIsCorrupted()&&pcCUB->getIsCorrupted()){
+    return;
+  }
+  else if (pcCUA->getIsCorrupted()){
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCUB->getCtuRsAddr(), uiAbsPartIdx, pcCUB->getHeight(uiAbsPartIdx), pcCUB->getWidth(uiAbsPartIdx));
+    return;
+  }
+  else if (pcCUB->getIsCorrupted()){
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, pcCUA->getHeight(uiAbsPartIdx), pcCUA->getWidth(uiAbsPartIdx));
     return;
   }
   if (pcCUA->getCbf(uiAbsPartIdx, COMPONENT_Y) && !pcCUB->getCbf(uiAbsPartIdx, COMPONENT_Y))
@@ -336,7 +347,7 @@ Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB,
   // }
 }
 
-Void TDecTop::mergingMDC(TDecTop &rTdec2)
+Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
 {
   TComPic *pcPic1 = this->getPcPic();
   TComPic *pcPic2 = rTdec2.getPcPic();
@@ -348,7 +359,48 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2)
   {
     m_cListPic.back()->getPicYUVRecC()->copyToPic(pcPic1->getPicYUVRecC());
   }
-  // assert(POCD1==POCD2);
+  // the list m_cListPic contains the previous frame for references, it can happened that the 
+  if (POCD1<POCD2){
+    // check if there is a lost in ctx 2
+    if (ctx2.LostPOC.back()==POCD1){
+      auto l_front = rTdec2.m_cListPic.begin();
+      std::advance(l_front, rTdec2.m_cListPic.size()-1);
+      ctx2.LostPOC.pop_back();
+      pcPic1->getPicYUVRec1()->copyToPic((*l_front)->getPicYUVRecC());
+      pcPic1->getPicYUVRec1()->copyToPic((*l_front)->getPicYUVRec2());
+      pcPic1->getPicYUVRec1()->copyToPic(pcPic1->getPicYUVRecC());
+      // if (POCD1!=0) {
+      //   (*l_front)->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+      // }
+      // else {
+      //   (*l_front)->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+      // }
+      return;
+    }
+  }
+  else if(POCD1>POCD2)
+  {
+    if (ctx1.LostPOC.back()==POCD2){
+      // correct the frame in the past
+      auto l_front = m_cListPic.begin();
+      std::advance(l_front, m_cListPic.size()-1);
+      ctx1.LostPOC.pop_back();
+      pcPic2->getPicYUVRec2()->copyToPic((*l_front)->getPicYUVRecC());
+      pcPic2->getPicYUVRec2()->copyToPic((*l_front)->getPicYUVRec1());
+      pcPic2->getPicYUVRec2()->copyToPic(pcPic2->getPicYUVRecC());
+      // if (POCD2!=0) {
+      //   (*l_front)->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+      // }
+      // else {
+      //   (*l_front)->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+      // }
+      return;
+    }
+  }
+  if (POCD1!=POCD2)
+  {
+    throw std::logic_error("Two POC are not equal\n");
+  }
   Int index = 0;
   const UInt numberOfCtusInFrame = this->getPcPic()->getNumberOfCtusInFrame();
   TMDCQPTable *pqptable = TMDCQPTable::getInstance();
@@ -788,7 +840,6 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
 
   // clear previous slice skipped flag
   m_prevSliceSkipped = false;
-  pDecCtx->PocofSlice = m_apcSlicePilot->getPOC();
   // we should only get a different poc for a new picture (with CTU address==0)
   if (!m_apcSlicePilot->getDependentSliceSegmentFlag() && m_apcSlicePilot->getPOC() != m_prevPOC && !m_bFirstSliceInSequence && (m_apcSlicePilot->getSliceCurStartCtuTsAddr() != 0))
   {
@@ -814,11 +865,14 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
   }
 
   // detect lost reference picture and insert copy of earlier frame.
+  // In this case the entire frame is lost definitively.
   {
-    Int lostPoc;
+    Int count=0;
+    Int lostPoc=0;
     while ((lostPoc = m_apcSlicePilot->checkThatAllRefPicsAreAvailable(m_cListPic, m_apcSlicePilot->getRPS(), true, m_pocRandomAccess)) > 0)
     {
       xCreateLostPicture(lostPoc - 1);
+      pDecCtx->LostPOC.push_back(lostPoc-1);
     }
   }
   if (!m_apcSlicePilot->getDependentSliceSegmentFlag())

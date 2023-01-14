@@ -149,7 +149,7 @@ public:
   Void  deletePicBuffer();
   TComPic* getPcPic() const { return m_pcPic; }
 
-  Void  mergingMDC(TDecTop &rTdec);
+  Void  mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2);
   Void  executeLoopFilters(Int& poc, TComList<TComPic*>*& rpcListPic);
   Void  checkNoOutputPriorPics (TComList<TComPic*>* rpcListPic);
 

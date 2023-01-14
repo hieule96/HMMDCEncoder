@@ -1113,7 +1113,7 @@ Void TDecCavlc::parseSliceHeader (TComSlice* pcSlice, ParameterSetManager *param
         iPOCmsb = 0;
       }
       pcSlice->setPOC              (iPOCmsb+iPOClsb);
-      std::cout << "[ParseHeader]POC: " << pcSlice->getPOC() <<"/"<<prevTid0POC<< std::endl;
+      // std::cout << "[ParseHeader]POC: " << pcSlice->getPOC() <<"/"<<prevTid0POC<< std::endl;
       TComReferencePictureSet* rps;
       rps = pcSlice->getLocalRPS();
       (*rps)=TComReferencePictureSet();

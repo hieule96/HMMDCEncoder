@@ -100,6 +100,7 @@ TComDataCU::TComDataCU()
   }
 
   m_bDecSubCu          = false;
+  m_isCorrupted        = false;
 }
 
 TComDataCU::~TComDataCU()
@@ -704,7 +705,7 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
   m_pcSlice            = pcCU->getSlice();
   m_ctuRsAddr          = pcCU->getCtuRsAddr();
   m_absZIdxInCtu       = uiAbsPartIdx;
-
+  m_isCorrupted        = pcCU->getIsCorrupted();
   m_uiCUPelX           = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
   m_uiCUPelY           = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
 

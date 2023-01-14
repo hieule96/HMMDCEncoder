@@ -5,5 +5,5 @@
 // 4. After that the merging process is launched. 
 #include "TLibCommon/CommonDef.h"
 struct TDecCtx{
-    Int PocofSlice;        
+    std::vector <Int> LostPOC;
 };

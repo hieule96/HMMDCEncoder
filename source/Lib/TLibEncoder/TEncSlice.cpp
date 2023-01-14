@@ -816,10 +816,7 @@ Void TEncSlice::compressSlice(TComPic* pcPic, const Bool bCompressEntireSlice, c
         }
         // run CTU the compression process to create the structure of images
         // Only apply the algorithm of only on I Slice
-        // if (pcSlice->getSliceType()==I_SLICE)
         m_pcCuEncoder->compressCtu(pCtu,pcPic->getRunMode());
-        // else m_pcCuEncoder->compressCtu(pCtu,0);
-        // m_pcCuEncoder->compressCtu(pCtu);
 
 
         // All CTU decisions have now been made. Restore entropy coder to an initial stage, ready to make a true encode,

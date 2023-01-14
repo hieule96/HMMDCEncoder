@@ -109,7 +109,7 @@ private:
 #endif
 
   Pel*          m_pcIPCMSample[MAX_NUM_COMPONENT];      ///< PCM sample buffer (0->Y, 1->Cb, 2->Cr)
-
+  Bool          m_isCorrupted;
   // -------------------------------------------------------------------------------------------------------------------
   // neighbour access variables
   // -------------------------------------------------------------------------------------------------------------------
@@ -191,7 +191,8 @@ public:
   Void          copyPartFrom                  ( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth );
 
   Void          copyToPic                     ( UChar uiDepth );
-
+  Bool          getIsCorrupted                (){return m_isCorrupted;};
+  Void          setIsCorrupted                (Bool isCorrupted){m_isCorrupted = isCorrupted;};
   // -------------------------------------------------------------------------------------------------------------------
   // member functions for CU description
   // -------------------------------------------------------------------------------------------------------------------

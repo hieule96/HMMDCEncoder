@@ -230,8 +230,6 @@ Void TAppDecTop::decode()
   streampos location2;
   TDecCtx ctx1, ctx2;
   InputNALUnit nalu1,nalu2;
-  ctx1.PocofSlice = 0;
-  ctx2.PocofSlice = 0;
   while (!!bitstreamFile1&&!!bitstreamFile2)
   {
     /* location serves to work around a design fault in the decoder, whereby
@@ -249,11 +247,11 @@ Void TAppDecTop::decode()
 #endif
     AnnexBStats stats = AnnexBStats();
     // blocking the stream on the other side until the either of the two decoder reach a new picture
-    if (!bNewPicture1){
+    if (!bNewPicture1&&ctx1.LostPOC.empty()){
       nalu1.getBitstream().getFifo().clear();
       byteStreamNALUnit(bytestream1, nalu1.getBitstream().getFifo(), stats);
     }
-    if (!bNewPicture2){
+    if (!bNewPicture2&&ctx2.LostPOC.empty()){
       nalu2.getBitstream().getFifo().clear();
       byteStreamNALUnit(bytestream2, nalu2.getBitstream().getFifo(), stats);
     }
@@ -279,7 +277,7 @@ Void TAppDecTop::decode()
 
     if( bNewPicture1&&bNewPicture2)
     {
-      m_cTDecTop1.mergingMDC(m_cTDecTop2);
+      m_cTDecTop1.mergingMDC(m_cTDecTop2,ctx1,ctx2);
     }
     // this part will do the check and add image to the list
     if ( (bNewPicture1&&bNewPicture2 || !bitstreamFile1 || nalu1.m_nalUnitType == NAL_UNIT_EOS) &&
@@ -396,7 +394,7 @@ Void TAppDecTop::decode()
       }
     }
   }
-  m_cTDecTop1.mergingMDC(m_cTDecTop2);
+  m_cTDecTop1.mergingMDC(m_cTDecTop2,ctx1,ctx2);
   xFlushOutput( pcListPic1,m_iPOCLastDisplay1, m_reconFileName1,m_cTVideoIOYuvReconFile1);
   xFlushOutput( pcListPic2,m_iPOCLastDisplay2, m_reconFileName2,m_cTVideoIOYuvReconFile2);
 

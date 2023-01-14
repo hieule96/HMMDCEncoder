@@ -428,7 +428,7 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
     ss <<"###: " << (predMode==MODE_INTRA?"Intra   ":"Inter   ") << partSizeToString[eSize] << " CU at " << m_ppcCU[uiDepth]->getCUPelX() << ", " << m_ppcCU[uiDepth]->getCUPelY() << " width=" << UInt(m_ppcCU[uiDepth]->getWidth(0)) << std::endl;
   }
 #endif
-
+  pCtu->setIsCorrupted(m_ppcCU[uiDepth]->getIsCorrupted());
   if ( m_ppcCU[uiDepth]->isLosslessCoded(0) && (m_ppcCU[uiDepth]->getIPCMFlag(0) == false))
   {
     xFillPCMBuffer(m_ppcCU[uiDepth], uiDepth);
@@ -729,7 +729,11 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
                     Int depth)
 {
   // prevent too deep recursion
-  if (depth>8){return;}
+  if (depth>8){
+    TComDataCU *pcCU  = rTu.getCU();
+    pcCU->setIsCorrupted(true);
+    return;
+  }
   UInt uiTrDepth    = rTu.GetTransformDepthRel();
   TComDataCU *pcCU  = rTu.getCU();
   UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();

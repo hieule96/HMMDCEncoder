@@ -154,6 +154,9 @@ protected:
   Int m_encodingMode;           /// < 0: Produce residual 1: MDC encoding from 2 inputs files and bypass the process of HEVC
   Double m_lamdaForcing;           /// Lamba forcing
   std::string m_resiNoQuant;
+  Double m_IBpp;
+  Double m_PBpp;
+  Double m_rN;
   /* profile & level */
   Profile::Name m_profile;
   Level::Tier   m_levelTier;
@@ -1341,6 +1344,12 @@ public:
   const char* getResiNoQuant(){return m_resiNoQuant.c_str();}
   Void setEncodingMode(int mode) { m_encodingMode = mode; }
   Int getEncodingMode() const { return m_encodingMode; }
+  Double getIBpp() const { return m_IBpp; }
+  Double getPBpp() const { return m_PBpp; }
+  Double getrN() const { return m_rN; }
+  Void setIBpp(Double i) { m_IBpp = i; }
+  Void setPBpp(Double i) { m_PBpp = i; }
+  Void setrN(Double rN) { m_rN = rN; }
   Void setLambdaForcing(Double lambda){
     m_lamdaForcing = lambda;
   }
