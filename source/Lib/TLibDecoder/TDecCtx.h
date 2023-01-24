@@ -6,4 +6,5 @@
 #include "TLibCommon/CommonDef.h"
 struct TDecCtx{
     std::vector <Int> LostPOC;
+    Bool getMore;
 };

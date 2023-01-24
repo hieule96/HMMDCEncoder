@@ -135,8 +135,10 @@ ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,strea
           rbitstreamFile.seekg(rlocation);
           rbytestream.reset();
 #else
-          rbitstreamFile.seekg(rlocation-streamoff(3));
-          rbytestream.reset();
+          if (pDecCtx->getMore){
+            rbitstreamFile.seekg(rlocation-streamoff(3));
+            rbytestream.reset();
+          }
 #endif
         }
       }
@@ -229,6 +231,8 @@ Void TAppDecTop::decode()
   streampos location1;
   streampos location2;
   TDecCtx ctx1, ctx2;
+  ctx1.getMore = true;
+  ctx2.getMore = true;
   InputNALUnit nalu1,nalu2;
   while (!!bitstreamFile1&&!!bitstreamFile2)
   {
@@ -242,16 +246,17 @@ Void TAppDecTop::decode()
     location2 = bitstreamFile2.tellg() - streampos(bytestream2.GetNumBufferedBytes());
 
 #else
-    location1 = bitstreamFile1.tellg();
-    location2 = bitstreamFile2.tellg();
 #endif
     AnnexBStats stats = AnnexBStats();
+    location1 = bitstreamFile1.tellg();
+    location2 = bitstreamFile2.tellg();
+
     // blocking the stream on the other side until the either of the two decoder reach a new picture
-    if (!bNewPicture1&&ctx1.LostPOC.empty()){
+    if (!bNewPicture1&&ctx1.LostPOC.empty()&&ctx1.getMore){
       nalu1.getBitstream().getFifo().clear();
       byteStreamNALUnit(bytestream1, nalu1.getBitstream().getFifo(), stats);
     }
-    if (!bNewPicture2&&ctx2.LostPOC.empty()){
+    if (!bNewPicture2&&ctx2.LostPOC.empty()&&ctx2.getMore){
       nalu2.getBitstream().getFifo().clear();
       byteStreamNALUnit(bytestream2, nalu2.getBitstream().getFifo(), stats);
     }

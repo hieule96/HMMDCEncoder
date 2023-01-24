@@ -358,44 +358,62 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
   if (m_cListPic.size() > 0)
   {
     m_cListPic.back()->getPicYUVRecC()->copyToPic(pcPic1->getPicYUVRecC());
+    
   }
   // the list m_cListPic contains the previous frame for references, it can happened that the 
-  if (POCD1<POCD2){
+  if (POCD1<POCD2&&ctx2.LostPOC.size()>0){
     // check if there is a lost in ctx 2
     if (ctx2.LostPOC.back()==POCD1){
-      auto l_front = rTdec2.m_cListPic.begin();
-      std::advance(l_front, rTdec2.m_cListPic.size()-1);
+      rTdec2.m_cListPic.pop_back();
+      auto l_front = rTdec2.m_cListPic.back();
+
       ctx2.LostPOC.pop_back();
-      pcPic1->getPicYUVRec1()->copyToPic((*l_front)->getPicYUVRecC());
-      pcPic1->getPicYUVRec1()->copyToPic((*l_front)->getPicYUVRec2());
+      pcPic1->getPicYUVRec1()->copyToPic(l_front->getPicYUVRecC());
+      pcPic1->getPicYUVRec1()->copyToPic(l_front->getPicYUVRec2());
       pcPic1->getPicYUVRec1()->copyToPic(pcPic1->getPicYUVRecC());
-      // if (POCD1!=0) {
-      //   (*l_front)->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
-      // }
-      // else {
-      //   (*l_front)->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
-      // }
-      return;
+      if (POCD1!=0) {
+        l_front->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+      }
+      else {
+        l_front->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+      }
     }
+    return;
   }
-  else if(POCD1>POCD2)
+  else if(POCD1>POCD2&&ctx1.LostPOC.size()>0)
   {
     if (ctx1.LostPOC.back()==POCD2){
       // correct the frame in the past
-      auto l_front = m_cListPic.begin();
-      std::advance(l_front, m_cListPic.size()-1);
+      m_cListPic.pop_back();
+      auto l_front = m_cListPic.back();
       ctx1.LostPOC.pop_back();
-      pcPic2->getPicYUVRec2()->copyToPic((*l_front)->getPicYUVRecC());
-      pcPic2->getPicYUVRec2()->copyToPic((*l_front)->getPicYUVRec1());
+      pcPic2->getPicYUVRec2()->copyToPic(l_front->getPicYUVRecC());
+      pcPic2->getPicYUVRec2()->copyToPic(l_front->getPicYUVRec1());
       pcPic2->getPicYUVRec2()->copyToPic(pcPic2->getPicYUVRecC());
-      // if (POCD2!=0) {
-      //   (*l_front)->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
-      // }
-      // else {
-      //   (*l_front)->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
-      // }
-      return;
+      if (POCD2!=0) {
+        l_front->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+      }
+      else {
+        l_front->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+      }
     }
+    return;
+  }
+  if (POCD1>POCD2)
+  {
+    ctx1.getMore = false;
+    ctx2.getMore = true;
+    return;
+  }
+  else if (POCD1<POCD2){
+    ctx1.getMore = true;
+    ctx2.getMore = false;
+    return;
+  }
+  else if (POCD1==POCD2)
+  {
+    ctx1.getMore = true;
+    ctx2.getMore = true;
   }
   if (POCD1!=POCD2)
   {
