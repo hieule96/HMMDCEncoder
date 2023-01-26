@@ -1,0 +1,1 @@
+./TAppEncoderStaticd -c ../sequence/ParkScene.cfg -c ../MdcCfgns/encoder_intra_main-D1.cfg -q 22 -b str_D1.hevc -qf ../QP/QP1_24_50.csv
