@@ -135,10 +135,8 @@ ifstream &rbitstreamFile,Int &iPOCLastDisplay,InputByteStream &rbytestream,strea
           rbitstreamFile.seekg(rlocation);
           rbytestream.reset();
 #else
-          if (pDecCtx->getMore){
-            rbitstreamFile.seekg(rlocation-streamoff(3));
-            rbytestream.reset();
-          }
+          rbitstreamFile.seekg(rlocation-streamoff(3));
+          rbytestream.reset();
 #endif
         }
       }
@@ -233,6 +231,10 @@ Void TAppDecTop::decode()
   TDecCtx ctx1, ctx2;
   ctx1.getMore = true;
   ctx2.getMore = true;
+  ctx1.reRecodedMisMatchSlice = false;
+  ctx2.reRecodedMisMatchSlice = false;
+  ctx1.POC = 0;
+  ctx2.POC = 0;
   InputNALUnit nalu1,nalu2;
   while (!!bitstreamFile1&&!!bitstreamFile2)
   {
@@ -252,11 +254,11 @@ Void TAppDecTop::decode()
     location2 = bitstreamFile2.tellg();
 
     // blocking the stream on the other side until the either of the two decoder reach a new picture
-    if (!bNewPicture1&&ctx1.LostPOC.empty()&&ctx1.getMore){
+    if (!bNewPicture1&&ctx1.LostPOC.empty()){
       nalu1.getBitstream().getFifo().clear();
       byteStreamNALUnit(bytestream1, nalu1.getBitstream().getFifo(), stats);
     }
-    if (!bNewPicture2&&ctx2.LostPOC.empty()&&ctx2.getMore){
+    if (!bNewPicture2&&ctx2.LostPOC.empty()){
       nalu2.getBitstream().getFifo().clear();
       byteStreamNALUnit(bytestream2, nalu2.getBitstream().getFifo(), stats);
     }
@@ -274,15 +276,78 @@ Void TAppDecTop::decode()
     else if(!bNewPicture2&&bNewPicture1){
       decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2,&ctx2);
     }
-
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
     TComCodingStatistics::SetStatistics(backupStats);
 #endif
     // write reconstruction to file either one of the two decoder reach a new picture and the other one is in error state.
 
-    if( bNewPicture1&&bNewPicture2)
+    if( bNewPicture1&&bNewPicture2||
+    ctx1.reRecodedMisMatchSlice&&bNewPicture2||
+    ctx2.reRecodedMisMatchSlice&&bNewPicture1||
+    !ctx1.LostPOC.empty()&&!ctx2.LostPOC.empty())
     {
+      // check POC first
       m_cTDecTop1.mergingMDC(m_cTDecTop2,ctx1,ctx2);
+      if (ctx1.reRecodedMisMatchSlice){
+        ctx1.reRecodedMisMatchSlice = false;
+        decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1,&ctx1);
+      }
+      if (ctx2.reRecodedMisMatchSlice){
+        ctx2.reRecodedMisMatchSlice = false;
+        decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2,&ctx2);
+      }
+      UInt POC1 = m_cTDecTop1.getPcPic()->getPOC();
+      UInt POC2 = m_cTDecTop2.getPcPic()->getPOC();
+      Int countMismatch = 0;
+      while (POC1!=POC2){
+        POC1 = m_cTDecTop1.getPcPic()->getPOC();
+        POC2 = m_cTDecTop2.getPcPic()->getPOC();
+        location1 = bitstreamFile1.tellg();
+        location2 = bitstreamFile2.tellg();
+        countMismatch++;
+        if (POC1<POC2){
+          nalu1.getBitstream().getFifo().clear();
+          byteStreamNALUnit(bytestream1, nalu1.getBitstream().getFifo(), stats);
+          decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1,&ctx1);
+          // this part will do the check and add image to the list
+          if ( (bNewPicture1 || !bitstreamFile1 || nalu1.m_nalUnitType == NAL_UNIT_EOS) &&
+              !m_cTDecTop1.getFirstSliceInSequence ()  )
+          {
+            m_cTDecTop1.sortMoveToTheNext(poc1, pcListPic1);
+            if (nalu1.m_nalUnitType == NAL_UNIT_EOS)
+            {
+              m_cTDecTop1.setFirstSliceInSequence(true);
+            }
+          }
+          else if ( (bNewPicture1 || !bitstreamFile1 || nalu1.m_nalUnitType == NAL_UNIT_EOS ) &&
+                    m_cTDecTop1.getFirstSliceInSequence () ) 
+          {
+            m_cTDecTop1.setFirstSliceInPicture (true);
+          }
+        }
+        else if(POC1>POC2){
+          nalu2.getBitstream().getFifo().clear();
+          byteStreamNALUnit(bytestream2, nalu2.getBitstream().getFifo(), stats);
+          decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2,&ctx2);
+          if ( (bNewPicture2  || !bitstreamFile2 || nalu2.m_nalUnitType == NAL_UNIT_EOS) &&!m_cTDecTop2.getFirstSliceInSequence () )
+          {
+            m_cTDecTop2.sortMoveToTheNext(poc2, pcListPic2);
+            if (nalu2.m_nalUnitType == NAL_UNIT_EOS)
+            {
+              m_cTDecTop2.setFirstSliceInSequence(true);
+            }
+          }
+          else if ( (bNewPicture2  || !bitstreamFile2 || nalu2.m_nalUnitType == NAL_UNIT_EOS ) &&
+                    m_cTDecTop2.getFirstSliceInSequence () ) 
+          {
+            m_cTDecTop2.setFirstSliceInPicture (true);
+          }
+        }
+      }
+      // second pass if there is any mismatch correction
+      if (countMismatch>0) {
+        continue;
+      }
     }
     // this part will do the check and add image to the list
     if ( (bNewPicture1&&bNewPicture2 || !bitstreamFile1 || nalu1.m_nalUnitType == NAL_UNIT_EOS) &&
@@ -291,6 +356,7 @@ Void TAppDecTop::decode()
       if (!loopFiltered1 || bitstreamFile1)
       {
         m_cTDecTop1.executeLoopFilters(poc1, pcListPic1);
+        m_cTDecTop1.sortMoveToTheNext(poc1, pcListPic1);
 
       }
       loopFiltered1 = (nalu1.m_nalUnitType == NAL_UNIT_EOS);
@@ -308,12 +374,14 @@ Void TAppDecTop::decode()
     }
 
 
-    if ( (bNewPicture1&&bNewPicture2 || !bitstreamFile2 || nalu2.m_nalUnitType == NAL_UNIT_EOS) &&
+    if ( (bNewPicture1&&bNewPicture2  || !bitstreamFile2 || nalu2.m_nalUnitType == NAL_UNIT_EOS) &&
         !m_cTDecTop2.getFirstSliceInSequence () )
     {
       if (!loopFiltered2 || bitstreamFile2)
       {
         m_cTDecTop2.executeLoopFilters(poc2, pcListPic2);
+        m_cTDecTop2.sortMoveToTheNext(poc2, pcListPic2);
+
       }
       loopFiltered2 = (nalu2.m_nalUnitType == NAL_UNIT_EOS);
       if (nalu2.m_nalUnitType == NAL_UNIT_EOS)
@@ -321,7 +389,7 @@ Void TAppDecTop::decode()
         m_cTDecTop2.setFirstSliceInSequence(true);
       }
     }
-    else if ( (bNewPicture1&&bNewPicture2 || !bitstreamFile2 || nalu2.m_nalUnitType == NAL_UNIT_EOS ) &&
+    else if ( (bNewPicture1&&bNewPicture2  || !bitstreamFile2 || nalu2.m_nalUnitType == NAL_UNIT_EOS ) &&
               m_cTDecTop2.getFirstSliceInSequence () ) 
     {
       m_cTDecTop2.setFirstSliceInPicture (true);

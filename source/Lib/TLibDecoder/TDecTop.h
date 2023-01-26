@@ -132,7 +132,7 @@ public:
 
   Void  create  (Int DescriptionId);
   Void  destroy ();
-
+  Void sortMoveToTheNext(Int &poc, TComList<TComPic *> *&rpcListPic);
   Void setDecodedPictureHashSEIEnabled(Int enabled) { m_cGopDecoder.setDecodedPictureHashSEIEnabled(enabled); }
 #if MCTS_ENC_CHECK
   Void setTMctsCheckEnabled(Bool enabled) { m_tmctsCheckEnabled = enabled; }

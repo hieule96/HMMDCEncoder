@@ -311,66 +311,79 @@ Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB,
     pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
     return;
   }
-  if (QPTable1[index]<QPTable2[index]){
-    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
-  }else
+  // if (QPTable1[index]<QPTable2[index]){
+  //   pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+  // }else
+  // {
+  //   pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+  // }
+  if (pcCUA->getQP(uiAbsPartIdx) < pcCUB->getQP(uiAbsPartIdx) && pcCUA->getQP(uiAbsPartIdx) != pcCUA->getRefQP(uiAbsPartIdx))
   {
-    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, pcCUA->getHeight(uiAbsPartIdx), pcCUA->getWidth(uiAbsPartIdx));
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicB->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, pcCUA->getHeight(uiAbsPartIdx), pcCUA->getWidth(uiAbsPartIdx));
   }
-  // if (pcCU1->getQP(uiAbsPartIdx) < pcCU2->getQP(uiAbsPartIdx) && pcCU1->getQP(uiAbsPartIdx) != pcCU1->getRefQP(uiAbsPartIdx))
-  // {
-  //   pcPic1->getPicYUVRec1()->copyCUToPic(pcPic1->getPicYUVRecC(), pcCU1->getCtuRsAddr(), uiAbsPartIdx, pcCU1->getHeight(uiAbsPartIdx), pcCU1->getWidth(uiAbsPartIdx));
-  //   pcPic1->getPicYUVRec1()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU1->getCtuRsAddr(), uiAbsPartIdx, pcCU1->getHeight(uiAbsPartIdx), pcCU1->getWidth(uiAbsPartIdx));
-  // }
-  // else if (pcCU1->getQP(uiAbsPartIdx) > pcCU2->getQP(uiAbsPartIdx) && pcCU2->getQP(uiAbsPartIdx) != pcCU2->getRefQP(uiAbsPartIdx))
-  // {
-  //   pcPic2->getPicYUVRec2()->copyCUToPic(pcPic1->getPicYUVRecC(), pcCU2->getCtuRsAddr(), uiAbsPartIdx, pcCU2->getHeight(uiAbsPartIdx), pcCU2->getWidth(uiAbsPartIdx));
-  //   pcPic2->getPicYUVRec2()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU2->getCtuRsAddr(), uiAbsPartIdx, pcCU2->getHeight(uiAbsPartIdx), pcCU2->getWidth(uiAbsPartIdx));  
-  // }
-  // else
-  // {
-  //   if (pcCU1->getRefQP(uiAbsPartIdx) < pcCU2->getRefQP(uiAbsPartIdx))
-  //   {
-  //   pcPic1->getPicYUVRec1()->copyCUToPic(pcPic1->getPicYUVRecC(), pcCU1->getCtuRsAddr(), uiAbsPartIdx, pcCU1->getHeight(uiAbsPartIdx), pcCU1->getWidth(uiAbsPartIdx));
-  //   pcPic1->getPicYUVRec1()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU1->getCtuRsAddr(), uiAbsPartIdx, pcCU1->getHeight(uiAbsPartIdx), pcCU1->getWidth(uiAbsPartIdx));
-  //   }
-  //   else if (pcCU1->getRefQP(uiAbsPartIdx) > pcCU2->getRefQP(uiAbsPartIdx))
-  //   {
-  //   pcPic2->getPicYUVRec2()->copyCUToPic(pcPic1->getPicYUVRecC(), pcCU2->getCtuRsAddr(), uiAbsPartIdx, pcCU2->getHeight(uiAbsPartIdx), pcCU2->getWidth(uiAbsPartIdx));
-  //   pcPic2->getPicYUVRec2()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU2->getCtuRsAddr(), uiAbsPartIdx, pcCU2->getHeight(uiAbsPartIdx), pcCU2->getWidth(uiAbsPartIdx));  
-  //   }
-  //   else
-  //   {
-  //     // all information which serve to decide is over, select any between two
-  //   pcPic1->getPicYUVRec1()->copyCUToPic(pcPic1->getPicYUVRecC(), pcCU1->getCtuRsAddr(), uiAbsPartIdx, pcCU1->getHeight(uiAbsPartIdx), pcCU1->getWidth(uiAbsPartIdx));
-  //   pcPic1->getPicYUVRec1()->copyCUToPic(pcPic2->getPicYUVRecC(), pcCU1->getCtuRsAddr(), uiAbsPartIdx, pcCU1->getHeight(uiAbsPartIdx), pcCU1->getWidth(uiAbsPartIdx));    }
-  // }
+  else if (pcCUA->getQP(uiAbsPartIdx) > pcCUB->getQP(uiAbsPartIdx) && pcCUB->getQP(uiAbsPartIdx) != pcCUB->getRefQP(uiAbsPartIdx))
+  {
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCUB->getCtuRsAddr(), uiAbsPartIdx, pcCUB->getHeight(uiAbsPartIdx), pcCUB->getWidth(uiAbsPartIdx));
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicB->getPicYUVRecC(), pcCUB->getCtuRsAddr(), uiAbsPartIdx, pcCUB->getHeight(uiAbsPartIdx), pcCUB->getWidth(uiAbsPartIdx));  
+  }
+  else
+  {
+    if (pcCUA->getRefQP(uiAbsPartIdx) < pcCUB->getRefQP(uiAbsPartIdx))
+    {
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, pcCUA->getHeight(uiAbsPartIdx), pcCUA->getWidth(uiAbsPartIdx));
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicB->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, pcCUA->getHeight(uiAbsPartIdx), pcCUA->getWidth(uiAbsPartIdx));
+    }
+    else if (pcCUA->getRefQP(uiAbsPartIdx) > pcCUB->getRefQP(uiAbsPartIdx))
+    {
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCUB->getCtuRsAddr(), uiAbsPartIdx, pcCUB->getHeight(uiAbsPartIdx), pcCUB->getWidth(uiAbsPartIdx));
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicB->getPicYUVRecC(), pcCUB->getCtuRsAddr(), uiAbsPartIdx, pcCUB->getHeight(uiAbsPartIdx), pcCUB->getWidth(uiAbsPartIdx));  
+    }
+    else
+    {
+      // all information which serve to decide is over, select any between two
+      pcPicA->getPicYUVRec1()->copyCUToPic(pcPicA->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, pcCUA->getHeight(uiAbsPartIdx), pcCUA->getWidth(uiAbsPartIdx));
+      pcPicA->getPicYUVRec1()->copyCUToPic(pcPicB->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, pcCUA->getHeight(uiAbsPartIdx), pcCUA->getWidth(uiAbsPartIdx));    
+    }
+  }
 }
 
 Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
 {
-  TComPic *pcPic1 = this->getPcPic();
-  TComPic *pcPic2 = rTdec2.getPcPic();
-  TComSlice *pcSlice = pcPic1->getSlice(0);
-  UInt POCD1 = pcPic1->getPOC();
-  UInt POCD2 = pcPic2->getPOC();
+  TComPic *pcPicA = this->getPcPic();
+  TComPic *pcPicB = rTdec2.getPcPic();
+  TComSlice *pcSlice = pcPicA->getSlice(0);
+  UInt POCD1 = pcPicA->getPOC();
+  UInt POCD2 = pcPicB->getPOC();
+  ctx1.POC = POCD1;
+  ctx2.POC = POCD2;
   // prepare with previous frame in case of lost
-  if (m_cListPic.size() > 0)
-  {
-    m_cListPic.back()->getPicYUVRecC()->copyToPic(pcPic1->getPicYUVRecC());
+  // if (m_cListPic.size() > 0)
+  // {
+  //   m_cListPic.back()->getPicYUVRecC()->copyToPic(pcPicA->getPicYUVRecC());
     
-  }
+  // }
   // the list m_cListPic contains the previous frame for references, it can happened that the 
-  if (POCD1<POCD2&&ctx2.LostPOC.size()>0){
+  pcPicA->setOutputMark(pcPicA->getSlice(0)->getPicOutputFlag() ? true : false);
+  pcPicA->setReconMark(true);
+  pcPicB->setOutputMark(pcPicB->getSlice(0)->getPicOutputFlag() ? true : false);
+  pcPicB->setReconMark(true);
+  if (ctx1.LostPOC.size()>0&&ctx2.LostPOC.size()>0){
+    ctx1.getMore = true;
+    ctx2.getMore = true;
+    ctx1.LostPOC.pop_back();
+    ctx2.LostPOC.pop_back();
+    pcPicA->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+    return;
+  }
+  else if (ctx2.LostPOC.size()>0){
     // check if there is a lost in ctx 2
     if (ctx2.LostPOC.back()==POCD1){
-      rTdec2.m_cListPic.pop_back();
       auto l_front = rTdec2.m_cListPic.back();
-
       ctx2.LostPOC.pop_back();
-      pcPic1->getPicYUVRec1()->copyToPic(l_front->getPicYUVRecC());
-      pcPic1->getPicYUVRec1()->copyToPic(l_front->getPicYUVRec2());
-      pcPic1->getPicYUVRec1()->copyToPic(pcPic1->getPicYUVRecC());
+      pcPicA->getPicYUVRec1()->copyToPic(l_front->getPicYUVRecC());
+      pcPicA->getPicYUVRec1()->copyToPic(l_front->getPicYUVRec2());
+      pcPicA->getPicYUVRec1()->copyToPic(pcPicA->getPicYUVRecC());
       if (POCD1!=0) {
         l_front->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
       }
@@ -380,16 +393,15 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
     }
     return;
   }
-  else if(POCD1>POCD2&&ctx1.LostPOC.size()>0)
+  else if(ctx1.LostPOC.size()>0)
   {
     if (ctx1.LostPOC.back()==POCD2){
       // correct the frame in the past
-      m_cListPic.pop_back();
       auto l_front = m_cListPic.back();
       ctx1.LostPOC.pop_back();
-      pcPic2->getPicYUVRec2()->copyToPic(l_front->getPicYUVRecC());
-      pcPic2->getPicYUVRec2()->copyToPic(l_front->getPicYUVRec1());
-      pcPic2->getPicYUVRec2()->copyToPic(pcPic2->getPicYUVRecC());
+      pcPicB->getPicYUVRec2()->copyToPic(l_front->getPicYUVRecC());
+      pcPicB->getPicYUVRec2()->copyToPic(l_front->getPicYUVRec1());
+      pcPicB->getPicYUVRec2()->copyToPic(pcPicB->getPicYUVRecC());
       if (POCD2!=0) {
         l_front->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
       }
@@ -399,25 +411,19 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
     }
     return;
   }
-  if (POCD1>POCD2)
-  {
-    ctx1.getMore = false;
-    ctx2.getMore = true;
-    return;
-  }
-  else if (POCD1<POCD2){
-    ctx1.getMore = true;
-    ctx2.getMore = false;
-    return;
-  }
-  else if (POCD1==POCD2)
-  {
-    ctx1.getMore = true;
-    ctx2.getMore = true;
-  }
-  if (POCD1!=POCD2)
-  {
-    throw std::logic_error("Two POC are not equal\n");
+  // if (POCD1>POCD2)
+  // {
+  //   ctx1.getMore = false;
+  //   ctx2.getMore = true;
+  //   return;
+  // }
+  // else if (POCD1<POCD2){
+  //   ctx1.getMore = true;
+  //   ctx2.getMore = false;
+  //   return;
+  // }
+  if (POCD1!=POCD2){
+    throw std::logic_error("POC not equal");
   }
   Int index = 0;
   const UInt numberOfCtusInFrame = this->getPcPic()->getNumberOfCtusInFrame();
@@ -431,9 +437,9 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
     memcpy(QPTable1,pqptable->getQPArray(),countQP1*sizeof(Int));
     Int countQP2 = pqptable->readALine(DESCRIPTION2);
     memcpy(QPTable2,pqptable->getQPArray(),countQP2*sizeof(Int));
-    TComDataCU *pCtuD1 = pcPic1->getPicSym()->getCtu(i);
-    TComDataCU *pCtuD2 = pcPic2->getPicSym()->getCtu(i);
-    xSelectCu(pcPic1,pCtuD1, pCtuD2, 0, 0, QPTable1,QPTable2,index);
+    TComDataCU *pCtuD1 = pcPicA->getPicSym()->getCtu(i);
+    TComDataCU *pCtuD2 = pcPicB->getPicSym()->getCtu(i);
+    xSelectCu(pcPicA,pCtuD1, pCtuD2, 0, 0, QPTable1,QPTable2,index);
     // printf("QP array1[%d,%d]:",pCtuD1->getCtuRsAddr(),countQP1);
     // for (int i =0;i<countQP1;i++){
     //   printf("%d ",QPTable1[i]);
@@ -446,15 +452,32 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
     // std::cout << std::endl;
   }
   if (POCD1!=0) {
-    pcPic1->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
+    pcPicA->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),true,true);
   }
   else {
-    pcPic1->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
+    pcPicA->getPicYUVRecC()->dump("debugQPCentral.yuv",pcSlice->getSPS()->getBitDepths(),false,true);
   }
   // unifying the best picture
-  pcPic1->getPicYUVRecC()->copyToPic(pcPic2->getPicYUVRecC());
+  pcPicA->getPicYUVRecC()->copyToPic(pcPicB->getPicYUVRecC());
+  ctx1.getMore = true;
+  ctx2.getMore = true;
 }
-
+// this function sort the pic list and update the poc and rpcListPic
+Void TDecTop::sortMoveToTheNext(Int &poc, TComList<TComPic *> *&rpcListPic){
+  if (!m_pcPic)
+  {
+    /* nothing to deblock */
+    return;
+  }
+  TComPic *pcPic = m_pcPic;
+  // pcPic->setOutputMark(pcPic->getSlice(0)->getPicOutputFlag() ? true : false);
+  // pcPic->setReconMark(true);
+  TComSlice::sortPicList(m_cListPic); // sorting for application output
+  poc = pcPic->getSlice((m_uiSliceIdx - 1) > 0 ? m_uiSliceIdx - 1:0)->getPOC();
+  rpcListPic = &m_cListPic;
+  m_cCuDecoder.destroy();
+  m_bFirstSliceInPicture = true;
+}
 Void TDecTop::executeLoopFilters(Int &poc, TComList<TComPic *> *&rpcListPic)
 {
   if (!m_pcPic)
@@ -462,20 +485,9 @@ Void TDecTop::executeLoopFilters(Int &poc, TComList<TComPic *> *&rpcListPic)
     /* nothing to deblock */
     return;
   }
-
   TComPic *pcPic = m_pcPic;
-
   // Execute Deblock + Cleanup
-
   m_cGopDecoder.filterPicture(pcPic);
-
-  TComSlice::sortPicList(m_cListPic); // sorting for application output
-  poc = pcPic->getSlice((m_uiSliceIdx - 1) > 0 ? m_uiSliceIdx - 1:0)->getPOC();
-  rpcListPic = &m_cListPic;
-  m_cCuDecoder.destroy();
-  m_bFirstSliceInPicture = true;
-
-  return;
 }
 
 Void TDecTop::checkNoOutputPriorPics(TComList<TComPic *> *pcListPic)
@@ -499,11 +511,11 @@ Void TDecTop::checkNoOutputPriorPics(TComList<TComPic *> *pcListPic)
 
 Void TDecTop::xCreateLostPicture(Int iLostPoc)
 {
-  printf("\ninserting lost poc : %d\n", iLostPoc);
+  printf("\ninserting lost poc : %d of D%d\n", iLostPoc,m_DecoderDescriptionId);
   TComPic *cFillPic;
   xGetNewPicBuffer(*(m_parameterSetManager.getFirstSPS()), *(m_parameterSetManager.getFirstPPS()), cFillPic, 0);
   cFillPic->getSlice(0)->initSlice();
-
+  cFillPic->setDescriptionId(m_DecoderDescriptionId);
   TComList<TComPic *>::iterator iterPic = m_cListPic.begin();
   Int closestPoc = 1000000;
   while (iterPic != m_cListPic.end())
@@ -521,6 +533,7 @@ Void TDecTop::xCreateLostPicture(Int iLostPoc)
     if (abs(rpcPic->getPicSym()->getSlice(0)->getPOC() - iLostPoc) == closestPoc && rpcPic->getPicSym()->getSlice(0)->getPOC() != m_apcSlicePilot->getPOC())
     {
       printf("copying picture %d to %d (%d)\n", rpcPic->getPicSym()->getSlice(0)->getPOC(), iLostPoc, m_apcSlicePilot->getPOC());
+      rpcPic->getPicYUVRecC()->copyToPic(cFillPic->getPicYuvRec());
       rpcPic->getPicYUVRecC()->copyToPic(cFillPic->getPicYUVRecC());
       break;
     }
@@ -534,11 +547,12 @@ Void TDecTop::xCreateLostPicture(Int iLostPoc)
   cFillPic->getSlice(0)->setPOC(iLostPoc);
   xUpdatePreviousTid0POC(cFillPic->getSlice(0));
   cFillPic->setReconMark(true);
-  cFillPic->setOutputMark(true);
+  cFillPic->setOutputMark(false);
   if (m_pocRandomAccess == MAX_INT)
   {
     m_pocRandomAccess = iLostPoc;
   }
+  m_pcPic = cFillPic;
 }
 
 #if MCTS_EXTRACTION
@@ -897,12 +911,17 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
   {
     m_prevPOC = m_apcSlicePilot->getPOC();
   }
+  m_apcSlicePilot->applyReferencePictureSet(m_cListPic, m_apcSlicePilot->getRPS());
+  if (!pDecCtx->LostPOC.empty()){
+    pDecCtx->reRecodedMisMatchSlice=true;
+    return false;
+  }
+  xActivateParameterSets();
 
   // actual decoding starts here
 #if MCTS_EXTRACTION
   xActivateParameterSets(bSkipCabacAndReconstruction);
 #else
-  xActivateParameterSets();
 #endif
 
   TComSlice *pcSlice = m_pcPic->getPicSym()->getSlice(m_uiSliceIdx);
