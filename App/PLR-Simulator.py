@@ -23,14 +23,16 @@ class PLRProcess():
     
 def GenerateTXRXFile(tracefile:str,txfile:str,rxfile:str,randomprocess:PLRProcess):
     print ("[PLR-Noise] Generating %s %s"%(txfile,rxfile))
+    previous_time = 0
     with open(tracefile,"r") as tracefile:
         with open(txfile,"w") as txfile:
             with open(rxfile,"w") as rxfile:
                 for lines in tracefile:
                     token = lines.split(sep="\t")
                     txfile.write("%d,udp,%d,%d\n" %(convertToInt(token[0])-1,convertToInt(token[3]),convertToInt(token[2])))
-                    if randomprocess.getActualState() == MarkovChain.ChannelState.GOOD:
+                    if (randomprocess.getActualState() == MarkovChain.ChannelState.GOOD):
                         rxfile.write("%d,udp,%d,%d\n" %(convertToInt (token[0])-1,convertToInt (token[3]),convertToInt (token[2])))
+                    previous_time = convertToInt(token[2])
                     randomprocess.getnextState()
 if __name__ == "__main__":
     if len(sys.argv) > 1:

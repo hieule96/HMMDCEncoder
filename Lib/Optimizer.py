@@ -276,7 +276,7 @@ class Optimizer_curvefitting(Optimizer):
                 img_rec_2D[y:y+8,x:x+8] = tf.IintegerDctTransform8x8(img_dct_cu_Reconstruct)
                 img_rec_2D [img_rec_2D <-128] = -128
                 img_rec_2D [img_rec_2D >127] = 127
-            entropy = entropy/(img_cu.shape[0]//8*img_cu.shape[1]//8)
+            entropy = entropy/((img_cu.shape[0]//8)*(img_cu.shape[1]//8))
             mse = ComputeStatistic.get_mse(img_rec_2D , img_cu)
             entropy_list.append (entropy)
             # Calculate MSE
@@ -340,10 +340,18 @@ class Optimizer_curvefitting(Optimizer):
     def curve_fitting(self,LCU,node):
         #Make an array from 0 to 51 with the beginning point is zeros and the end is 51 with a step of 8, 
         # with 0 and 51 included
-        interval = (self.QPMax-self.QPMin)//4
+        interval = (self.QPMax-self.QPMin)//8
+        # check if interval is 0, if yes, set it to 1
+        if interval == 0:
+            interval = 1
         QPs = range(self.QPMin, self.QPMax+1, interval)
-        QPs = np.concatenate((QPs, [51]))
-        QPs = np.concatenate(([10],QPs))
+        if self.QPMax != 51 and self.QPMax not in QPs:
+            QPs = np.concatenate((QPs, [self.QPMax,51]))
+        else:
+            QPs = np.concatenate((QPs, [51]))
+        if 10 not in QPs:
+            QPs = np.concatenate(([10],QPs))
+        QPs = np.unique(QPs)
         mseQP,entropyQP = Optimizer_curvefitting.compute_mse_entropy_QP(LCU,node,QPs)
         MAX_E = MIN_E = 0
         DRcoeff = [0,0]
@@ -351,15 +359,15 @@ class Optimizer_curvefitting(Optimizer):
             try:
                 #Check in mseQP array if there is a zero in the array, 
                 # if yes, remove it from this list and the element at the same position in entropyQP
-                mseQP = np.array(mseQP)
-                entropyQP = np.array(entropyQP)
-                entropyQP = entropyQP[mseQP != 0]
-                mseQP = mseQP[mseQP != 0]
+                mseQPForReg = np.array(mseQP)
+                entropyQPForReg = np.array(entropyQP)
+                entropyQPForReg = entropyQPForReg[mseQPForReg != 0]
+                mseQPForReg = mseQPForReg[mseQPForReg != 0]
                 #First fit the linear function then fit last the function exp
-                log_mse_QP = np.log(mseQP)
-                a,b,_,_,_ = scipy.stats.linregress(entropyQP,log_mse_QP)
+                log_mse_QP = np.log(mseQPForReg)
+                a,b,_,_,_ = scipy.stats.linregress(entropyQPForReg,log_mse_QP)
                 DRcoeff=[np.exp(b),a]
-                DRcoeff, pcovDR = curve_fit(self.curve_fitting_function, entropyQP, mseQP,p0=DRcoeff,ftol=0.05, xtol=0.05)
+                DRcoeff, pcovDR = curve_fit(self.curve_fitting_function, entropyQPForReg, mseQPForReg,p0=DRcoeff,ftol=0.05, xtol=0.05)
                 # DR_fit = self.curve_fitting_function(entropyQP, *DRcoeff)
                 # err = ComputeStatistic.get_rsquare(DR_fit,mseQP)
                 # if (True):
@@ -371,8 +379,14 @@ class Optimizer_curvefitting(Optimizer):
                 # print ("Curve fitting of DR at node: %s,%s,%s,%s failed" %(node.x0,node.y0,node.x0+node.width,node.y0+node.height))
                 node.isSkip = True
         if (not node.isSkip):
-            MAX_E = entropyQP[1]
-            MIN_E = entropyQP[-2]
+            if 10 in QPs:
+                MAX_E = entropyQP[1]
+            else:
+                MAX_E = entropyQP[0]
+            if self.QPMax == 51:
+                MIN_E = entropyQP[-1]
+            else:
+                MIN_E = entropyQP[-2]
         return node.isSkip,DRcoeff,MAX_E,MIN_E
     def cost_func(self,r,lam,aki,DR_coeff,Ci,mu,Dm,Rt,rN):
         Di = aki*self.curve_fitting_function(r,*DR_coeff)

@@ -102,13 +102,13 @@ protected:
   Void xDecodeCU                ( TComDataCU* const pcCU, const UInt uiAbsPartIdx, const UInt uiDepth, Bool &isLastCtuOfSliceSegment);
   Void xFinishDecodeCU          ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth, Bool &isLastCtuOfSliceSegment);
   Bool xDecodeSliceEnd          ( TComDataCU* pcCU, UInt uiAbsPartIdx );
-  Void xDecompressCU            ( TComDataCU* pCtu, UInt uiAbsPartIdx, UInt uiDepth );
+  Void xDecompressCU            ( TComDataCU* pCtu, UInt uiAbsPartIdx, UInt uiDepth, Bool &isCorrupted );
 
   Void xReconInter              ( TComDataCU* pcCU, UInt uiDepth );
 
-  Void xReconIntraQT            ( TComDataCU* pcCU, UInt uiDepth );
+  Void xReconIntraQT            ( TComDataCU* pcCU, UInt uiDepth, Bool &isCorrupted);
   Void xIntraRecBlk             ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ComponentID component, TComTU &rTu );
-  Void xIntraRecQT              ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ChannelType chType, TComTU &rTu,Int depth = 0 );
+  Void xIntraRecQT              ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ChannelType chType, TComTU &rTu,Int depth, Bool &isCorrupted);
 
   Void xReconPCM                ( TComDataCU* pcCU, UInt uiDepth );
 

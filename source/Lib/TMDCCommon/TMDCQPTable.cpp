@@ -74,7 +74,17 @@ Int TMDCQPTable::convertStringtoIntArrayQtree(Int *bufferDest, char *str,int nbE
     }
     return j;
 }
-
+Int TMDCQPTable::seekLine(FileType description, Int line){
+    if (m_ios[description].is_open()){
+        m_ios[description].seekg(0, std::ios::beg);
+        for (int i = 0; i < line; i++)
+        {
+            m_ios[description].ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+    }
+    else throw std::runtime_error("seekLine: Unexpected closed file");
+    return 0;
+}
 Int TMDCQPTable::readALine(FileType description){
     char* buffer = new char[BUFFER_READ_SIZE];
     Int count = 0;

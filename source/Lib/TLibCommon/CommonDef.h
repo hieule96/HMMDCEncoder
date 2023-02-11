@@ -34,13 +34,11 @@
 /** \file     CommonDef.h
     \brief    Defines version information, constants and small in-line functions
 */
-#define NDEBUG
 #ifndef __COMMONDEF__
 #define __COMMONDEF__
 
 #include <algorithm>
 #include <iostream>
-#undef NDEBUG
 #include <assert.h>
 #include <limits>
 

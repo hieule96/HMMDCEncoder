@@ -284,7 +284,7 @@ Void TAppDecTop::decode()
     if( bNewPicture1&&bNewPicture2||
     ctx1.reRecodedMisMatchSlice&&bNewPicture2||
     ctx2.reRecodedMisMatchSlice&&bNewPicture1||
-    !ctx1.LostPOC.empty()&&!ctx2.LostPOC.empty())
+    ctx1.reRecodedMisMatchSlice&&ctx2.reRecodedMisMatchSlice)
     {
       // check POC first
       m_cTDecTop1.mergingMDC(m_cTDecTop2,ctx1,ctx2);
@@ -306,6 +306,7 @@ Void TAppDecTop::decode()
         location2 = bitstreamFile2.tellg();
         countMismatch++;
         if (POC1<POC2){
+          bNewPicture1 = false;
           nalu1.getBitstream().getFifo().clear();
           byteStreamNALUnit(bytestream1, nalu1.getBitstream().getFifo(), stats);
           decodeAPic(nalu1,bNewPicture1,m_cTDecTop1,bitstreamFile1,m_iPOCLastDisplay1,bytestream1,location1,&ctx1);
@@ -326,6 +327,7 @@ Void TAppDecTop::decode()
           }
         }
         else if(POC1>POC2){
+          bNewPicture2 = false;
           nalu2.getBitstream().getFifo().clear();
           byteStreamNALUnit(bytestream2, nalu2.getBitstream().getFifo(), stats);
           decodeAPic(nalu2,bNewPicture2,m_cTDecTop2,bitstreamFile2,m_iPOCLastDisplay2,bytestream2,location2,&ctx2);
@@ -345,7 +347,8 @@ Void TAppDecTop::decode()
         }
       }
       // second pass if there is any mismatch correction
-      if (countMismatch>0) {
+      if (countMismatch>0&&bNewPicture1&&bNewPicture2){
+        std::cout << "Mismatch correction: " << countMismatch << std::endl;
         continue;
       }
     }
@@ -355,7 +358,7 @@ Void TAppDecTop::decode()
     {
       if (!loopFiltered1 || bitstreamFile1)
       {
-        m_cTDecTop1.executeLoopFilters(poc1, pcListPic1);
+        // m_cTDecTop1.executeLoopFilters();
         m_cTDecTop1.sortMoveToTheNext(poc1, pcListPic1);
 
       }
@@ -379,7 +382,7 @@ Void TAppDecTop::decode()
     {
       if (!loopFiltered2 || bitstreamFile2)
       {
-        m_cTDecTop2.executeLoopFilters(poc2, pcListPic2);
+        // m_cTDecTop2.executeLoopFilters();
         m_cTDecTop2.sortMoveToTheNext(poc2, pcListPic2);
 
       }
@@ -473,9 +476,10 @@ Void TAppDecTop::decode()
 
   // delete buffers
   m_cTDecTop1.deletePicBuffer();
-  // m_cTDecTop2.deletePicBuffer();
+  m_cTDecTop2.deletePicBuffer();
   TMDCQPTable::getInstance()->closeFile(DESCRIPTION1);
   TMDCQPTable::getInstance()->closeFile(DESCRIPTION2);
+  destroyROM();
 
   // destroy internal classes
   xDestroyDecLib();

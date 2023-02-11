@@ -117,7 +117,6 @@ Void TComPicSym::create  ( const TComSPS &sps, const TComPPS &pps, UInt uiMaxDep
   m_pictureCtuArray    = new TComDataCU*[m_numCtusInFrame];
 #endif
 
-  clearSliceBuffer();
   allocateNewSlice();
 
 #if ADAPTIVE_QP_SELECTION

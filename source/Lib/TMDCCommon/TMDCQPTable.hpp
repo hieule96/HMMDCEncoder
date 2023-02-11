@@ -41,6 +41,7 @@ class TMDCQPTable{
         Void incrementCounterRs(){m_counter_rs++;};
         Void openFile(FileType description, std::ios::openmode openmode);
         Void writeOutCUInfo   ( TComDataCU* pcCU );
+        Int  seekLine(FileType description, Int line);
     private:
         Void xWriteOutCUInfo  ( TComDataCU* pcCU, Int iLength, Int iOffset, UInt iDepth );
         Int* qpArray;

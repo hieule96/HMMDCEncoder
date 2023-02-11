@@ -230,8 +230,9 @@ Void TDecSlice::decompressSlice(TComInputBitstream** ppcSubstreams, TComPic* pcP
     try {m_pcCuDecoder->decodeCtu     ( pCtu, isLastCtuOfSliceSegment );}
     catch (BitstreamInputException e){
       // when the exception occur tries to decode at least this CTU and move to the next slice
-      std::cout << "[decodeCTU] Exception: Try to decompress this ctu and move on next slice:" << e.what() << std::endl;
       m_pcCuDecoder->decompressCtu ( pCtu );
+      std::cout << "[decodeCTU] Exception: Try to decompress this ctu and move on next slice:" << pCtu->getCtuRsAddr() <<e.what() << std::endl;
+      pCtu->setIsCorrupted(true);
       pcSlice->setIsCorrupted(true);
       return;
     }

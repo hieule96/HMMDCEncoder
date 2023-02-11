@@ -11,7 +11,6 @@ file( GLOB INC_FILES "*.h" )
 if( MSVC )
   file( GLOB NATVIS_FILES "../../VisualStudio/*.natvis" )
 endif()
-find_package(PythonLibs REQUIRED)
 
 # library
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )

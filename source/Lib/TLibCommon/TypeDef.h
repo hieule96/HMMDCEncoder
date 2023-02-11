@@ -120,7 +120,7 @@
 #error
 #endif
 
-#define MATRIX_MULT                                       1 ///< Brute force matrix multiplication instead of partial butterfly
+#define MATRIX_MULT                                       0 ///< Brute force matrix multiplication instead of partial butterfly
 
 #define O0043_BEST_EFFORT_DECODING                        1 ///< 0 (default) = disable code related to best effort decoding, 1 = enable code relating to best effort decoding [ decode-side only ].
 

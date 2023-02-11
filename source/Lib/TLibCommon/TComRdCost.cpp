@@ -57,7 +57,15 @@ TComRdCost::TComRdCost()
 TComRdCost::~TComRdCost()
 {
 }
-
+Double TComRdCost::calcRdCostMDC( Double numBits,Distortion distortion,Bool isRedundance,Double salience){
+  Double lambda = m_dLambda;
+  if (isRedundance){
+    return m_redundancy*salience*distortion + m_dLambda*numBits;
+  }
+  else{
+    return (1-m_redundancy)*salience*distortion + m_dLambda*numBits;
+  }
+}
 // Calculate RD functions
 Double TComRdCost::calcRdCost( Double numBits, Distortion distortion, DFunc eDFunc )
 {

@@ -86,7 +86,8 @@ private:
   Int                   m_iRunMode;
   Double*                   m_lamdaForcing;
   std::vector<std::vector<TComDataCU*> > m_vSliceCUDataLink;
-
+  std::vector<UInt*>                 m_QPArray1;
+  std::vector<UInt*>                 m_QPArray2;
   SEIMessages  m_SEIs; ///< Any SEI messages that have been received.  If !NULL we own the object.
   Int         m_descriptionId;
 public:

@@ -150,7 +150,7 @@ public:
   TComPic* getPcPic() const { return m_pcPic; }
 
   Void  mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2);
-  Void  executeLoopFilters(Int& poc, TComList<TComPic*>*& rpcListPic);
+  Void  executeLoopFilters();
   Void  checkNoOutputPriorPics (TComList<TComPic*>* rpcListPic);
 
   Bool  getNoOutputPriorPicsFlag () { return m_isNoOutputPriorPics; }
@@ -180,7 +180,8 @@ protected:
 #endif
   Void xSelectCu(TComPic *pcPicRef, TComDataCU* &pcCUA,TComDataCU *&pcCUB, 
   UInt uiAbsPartIdx, UInt uiDepth, const Int *QPTable1, const Int *QPTable2, Int &index);
-  Void      xDecodeVPS(const std::vector<UChar> &naluData);
+  Void outputBuffer(TComPic *pcPicA, TComPic *pcPicB, BitDepths const &bitDepths, Int POC);
+  Void xDecodeVPS(const std::vector<UChar> &naluData);
   Void      xDecodeSPS(const std::vector<UChar> &naluData);
   Void      xDecodePPS(const std::vector<UChar> &naluData);
   Void      xUpdatePreviousTid0POC( TComSlice *pSlice ) { if ((pSlice->getTLayer()==0) && (pSlice->isReferenceNalu() && (pSlice->getNalUnitType()!=NAL_UNIT_CODED_SLICE_RASL_R)&& (pSlice->getNalUnitType()!=NAL_UNIT_CODED_SLICE_RADL_R))) { m_prevTid0POC=pSlice->getPOC(); } }

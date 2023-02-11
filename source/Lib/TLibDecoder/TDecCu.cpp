@@ -128,12 +128,14 @@ Void TDecCu::destroy()
     if (m_ppcYuvReco) {m_ppcYuvReco[ui]->destroy(); delete m_ppcYuvReco[ui]; m_ppcYuvReco[ui] = NULL;}
     if (m_ppcCU) {m_ppcCU     [ui]->destroy(); delete m_ppcCU     [ui]; m_ppcCU     [ui] = NULL;}
   }
-
-  delete [] m_ppcYuvResi; m_ppcYuvResi = NULL;
-  delete [] m_ppcYuvReco; m_ppcYuvReco = NULL;
-  delete [] m_ppcYuvPred; m_ppcYuvPred = NULL;
-
-  delete [] m_ppcCU     ; m_ppcCU      = NULL;
+  if (m_ppcYuvResi)
+    delete [] m_ppcYuvResi;m_ppcYuvResi = NULL;
+  if (m_ppcYuvReco)
+    delete [] m_ppcYuvReco;m_ppcYuvReco=NULL;
+  if (m_ppcYuvPred)
+    delete [] m_ppcYuvPred;m_ppcYuvPred=NULL;
+  if (m_ppcCU)
+    delete [] m_ppcCU; m_ppcCU = NULL;
 }
 
 // ====================================================================================================================
@@ -167,7 +169,9 @@ Void TDecCu::decodeCtu( TComDataCU* pCtu, Bool& isLastCtuOfSliceSegment )
  */
 Void TDecCu::decompressCtu( TComDataCU* pCtu )
 {
-  xDecompressCU( pCtu, 0,  0 );
+  Bool isCorrupted = false;
+  xDecompressCU( pCtu, 0,  0, isCorrupted );
+  pCtu->setIsCorrupted( isCorrupted );
 }
 
 // ====================================================================================================================
@@ -362,7 +366,7 @@ Void TDecCu::xFinishDecodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth,
   isLastCtuOfSliceSegment = xDecodeSliceEnd( pcCU, uiAbsPartIdx );
 }
 
-Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
+Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth, Bool &isCorrupted )
 {
   TComPic* pcPic = pCtu->getPic();
   TComSlice * pcSlice = pCtu->getSlice();
@@ -391,7 +395,7 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
 
       if( ( uiLPelX < sps.getPicWidthInLumaSamples() ) && ( uiTPelY < sps.getPicHeightInLumaSamples() ) )
       {
-        xDecompressCU(pCtu, uiIdx, uiNextDepth );
+        xDecompressCU(pCtu, uiIdx, uiNextDepth,isCorrupted );
       }
 
       uiIdx += uiQNumParts;
@@ -411,10 +415,10 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
       xReconInter( m_ppcCU[uiDepth], uiDepth );
       break;
     case MODE_INTRA:
-      xReconIntraQT( m_ppcCU[uiDepth], uiDepth );
+      xReconIntraQT( m_ppcCU[uiDepth], uiDepth, isCorrupted );
       break;
     default:
-      assert(0);
+      // assert(0);
       break;
   }
 
@@ -428,7 +432,6 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth )
     ss <<"###: " << (predMode==MODE_INTRA?"Intra   ":"Inter   ") << partSizeToString[eSize] << " CU at " << m_ppcCU[uiDepth]->getCUPelX() << ", " << m_ppcCU[uiDepth]->getCUPelY() << " width=" << UInt(m_ppcCU[uiDepth]->getWidth(0)) << std::endl;
   }
 #endif
-  pCtu->setIsCorrupted(m_ppcCU[uiDepth]->getIsCorrupted());
   if ( m_ppcCU[uiDepth]->isLosslessCoded(0) && (m_ppcCU[uiDepth]->getIPCMFlag(0) == false))
   {
     xFillPCMBuffer(m_ppcCU[uiDepth], uiDepth);
@@ -684,7 +687,7 @@ TDecCu::xIntraRecBlk(       TComYuv*    pcRecoYuv,
 
 
 Void
-TDecCu::xReconIntraQT( TComDataCU* pcCU, UInt uiDepth )
+TDecCu::xReconIntraQT( TComDataCU* pcCU, UInt uiDepth, Bool &isCorrupted )
 {
   if (pcCU->getIPCMFlag(0))
   {
@@ -703,7 +706,7 @@ TDecCu::xReconIntraQT( TComDataCU* pcCU, UInt uiDepth )
 
     do
     {
-      xIntraRecQT( m_ppcYuvReco[uiDepth], m_ppcYuvReco[uiDepth], m_ppcYuvResi[uiDepth], chanType, tuRecurseWithPU );
+      xIntraRecQT( m_ppcYuvReco[uiDepth], m_ppcYuvReco[uiDepth], m_ppcYuvResi[uiDepth], chanType, tuRecurseWithPU,0,isCorrupted );
     } while (tuRecurseWithPU.nextSection(tuRecurseCU));
   }
 }
@@ -726,19 +729,25 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
                     TComYuv*    pcResiYuv,
                     const ChannelType chType,
                     TComTU     &rTu,
-                    Int depth)
+                    Int depth, Bool &isCorrupted)
 {
   // prevent too deep recursion
   if (depth>8){
     TComDataCU *pcCU  = rTu.getCU();
     pcCU->setIsCorrupted(true);
+    isCorrupted=true;
     return;
   }
   UInt uiTrDepth    = rTu.GetTransformDepthRel();
   TComDataCU *pcCU  = rTu.getCU();
   UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+  if (uiAbsPartIdx >= pcCU->getTotalNumPart())
+  {
+    pcCU->setIsCorrupted(true);
+    isCorrupted=true;
+    return;
+  }
   UInt uiTrMode     = pcCU->getTransformIdx( uiAbsPartIdx );
-  assert(uiTrDepth<255);
   if( uiTrMode == uiTrDepth )
   {
     if (isLuma(chType))
@@ -759,7 +768,7 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
     TComTURecurse tuRecurseChild(rTu, false);
     do
     {
-      xIntraRecQT( pcRecoYuv, pcPredYuv, pcResiYuv, chType, tuRecurseChild,depth+1);
+      xIntraRecQT( pcRecoYuv, pcPredYuv, pcResiYuv, chType, tuRecurseChild,depth+1,isCorrupted);
     } while (tuRecurseChild.nextSection(rTu));
   }
 }
@@ -770,7 +779,8 @@ Void TDecCu::xCopyToPic( TComDataCU* pcCU, TComPic* pcPic, UInt uiZorderIdx, UIn
 
   m_ppcYuvReco[uiDepth]->copyToPicYuv  ( pcPic->getPicYuvRec (), uiCtuRsAddr, uiZorderIdx );
   m_ppcYuvPred[uiDepth]->copyToPicYuv  ( pcPic->getPicYuvPred (), uiCtuRsAddr, uiZorderIdx );
-  m_ppcYuvResi[uiDepth]->copyToPicYuv  ( pcPic->getPicYuvResi (), uiCtuRsAddr, uiZorderIdx );
+  // copy QP value to buffer of the picture
+  // m_ppcYuvResi[uiDepth]->copyToPicYuv  ( pcPic->getPicYuvResi (), uiCtuRsAddr, uiZorderIdx );
 
   return;
 }

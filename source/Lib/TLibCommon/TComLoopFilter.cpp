@@ -257,6 +257,11 @@ Void TComLoopFilter::xSetEdgefilterMultiple( TComDataCU*    pcCU,
     uiHeightInBaseUnits = pcCU->getPic()->getNumPartInCtuHeight() >> uiDepth;
   }
   const UInt uiNumElem = edgeDir == EDGE_VER ? uiHeightInBaseUnits : uiWidthInBaseUnits;
+  if ( uiNumElem == 0 )
+  {
+    return;
+  }
+
   assert( uiNumElem > 0 );
   assert( uiWidthInBaseUnits > 0 );
   assert( uiHeightInBaseUnits > 0 );

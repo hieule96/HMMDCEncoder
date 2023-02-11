@@ -1486,12 +1486,7 @@ Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempC
         // speedup for inter frames
         Double intraCost = 0.0;
 
-        if((rpcBestCU->getSlice()->getSliceType() == I_SLICE)                                        ||
-            ((!m_pcEncCfg->getDisableIntraPUsInInterSlices()) && (
-              (rpcBestCU->getCbf( 0, COMPONENT_Y  ) != 0)                                            ||
-             ((rpcBestCU->getCbf( 0, COMPONENT_Cb ) != 0) && (numberValidComponents > COMPONENT_Cb)) ||
-             ((rpcBestCU->getCbf( 0, COMPONENT_Cr ) != 0) && (numberValidComponents > COMPONENT_Cr))  // avoid very complex intra if it is unlikely
-            )))
+        if(bCheckCurrent)
         {
           xCheckRDCostIntra( rpcBestCU, rpcTempCU, SIZE_2Nx2N DEBUG_STRING_PASS_INTO(sDebug) );
           rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
@@ -1503,6 +1498,12 @@ Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempC
               rpcTempCU->initEstData( uiDepth, iQP, bIsLosslessMode );
             }
           }
+        }else{
+          rpcBestCU->getTotalCost() = MAX_DOUBLE / 16;
+          rpcBestCU->getTotalDistortion() = MAX_UINT >> 3;
+          rpcBestCU->getTotalBits() = MAX_UINT >> 3;
+          rpcBestCU->setPartitionSize(0, SIZE_2Nx2N);
+          rpcBestCU->setPredictionMode(0, MODE_INTRA);
         }
 
         // test PCM
@@ -1586,8 +1587,8 @@ Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempC
 
 #if AMP_ENC_SPEEDUP
 			DEBUG_STRING_NEW(sChild)
-			if (bCheckSub) // 20171204 modified
-			{
+        if (bCheckSub) // 20171204 modified
+        {
 					if (!rpcBestCU->isInter(0))
 					{
 						xCompressCUFromQtree(pcSubBestPartCU, pcSubTempPartCU, uhNextDepth DEBUG_STRING_PASS_INTO(sChild),QtreeTable,QP_array,dArray,CU_index,QP_index,NUMBER_OF_PART_SIZES);
@@ -1598,6 +1599,13 @@ Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempC
 						xCompressCUFromQtree(pcSubBestPartCU, pcSubTempPartCU, uhNextDepth DEBUG_STRING_PASS_INTO(sChild),QtreeTable,QP_array,dArray,CU_index,QP_index,rpcBestCU->getPartitionSize(0));
 					}
 		    }
+        else{
+          pcSubBestPartCU->getTotalCost() = MAX_DOUBLE / 16;
+          pcSubBestPartCU->getTotalDistortion() = MAX_UINT >> 3;
+          pcSubBestPartCU->getTotalBits() = MAX_UINT >> 3;
+          pcSubBestPartCU->setPartitionSize(0, SIZE_2Nx2N);
+          pcSubBestPartCU->setPredictionMode(0, MODE_INTRA);
+        }
           DEBUG_STRING_APPEND(sTempDebug, sChild)
 #else
           xCompressCUFromQtree( pcSubBestPartCU, pcSubTempPartCU, uhNextDepth,QtreeTable,QP_array,dArray,CU_index,QP_index );
@@ -1705,6 +1713,7 @@ Void TEncCu::xCompressCUFromQtree( TComDataCU*& rpcBestCU, TComDataCU*& rpcTempC
   assert( rpcBestCU->getPredictionMode( 0 ) != NUMBER_OF_PREDICTION_MODES );
   assert( rpcBestCU->getTotalCost     (   ) != MAX_DOUBLE                 );
 }
+
 
 
 

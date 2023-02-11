@@ -1882,7 +1882,7 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       
       // launch the Python optimizer
       if (pcSlice1->isIntra()){
-        ExecutePythonOptimizer(m_pcCfg->getIBpp(),0.05,pocCurr,0,pcSlice1);
+        ExecutePythonOptimizer(m_pcCfg->getIBpp(),0.05,pocCurr,1,pcSlice1);
       }
       else
       {
@@ -1892,8 +1892,6 @@ const InputColourSpaceConversion snr_conversion, const TEncAnalyze::OutputLogCon
       pcSlice2 = NULL;
 
       pcPic->releaseAllReconstructionData();
-      pcPic->releaseReconstructionIntermediateData();
-
 
       pcPic->setRunMode(m_pcCfg->getEncodingMode());
       pcPic->setDescriptionId(1);

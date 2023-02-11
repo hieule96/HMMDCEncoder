@@ -126,10 +126,11 @@ private:
   TComMv                  m_mvPredictor;
   Double                  m_motionLambda;
   Int                     m_iCostScale;
-
+  Double                  m_redundancy;
 public:
   TComRdCost();
   virtual ~TComRdCost();
+  Double calcRdCostMDC( Double numBits,Distortion distortion,Bool isRedundance,Double salience);
 
   Double calcRdCost( Double numBits, Distortion distortion, DFunc eDFunc = DF_DEFAULT );
 
