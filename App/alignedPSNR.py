@@ -18,13 +18,13 @@ def find_best_match(iDecoded,seq,ref_seq, range_limit=10):
     """
     best_match_idx = None
     min_mse = float("inf")
-    for i in range(iDecoded , min(iDecoded+range_limit, len(seq))):
+    for i in range(max (iDecoded-10,0) , min(iDecoded+range_limit, min(len(ref_seq),len(seq)))):
         mse = np.mean((seq[iDecoded] - ref_seq[i]) ** 2)
         if mse < min_mse:
             min_mse = mse
             best_match_idx = i
     return best_match_idx
-def compare_frames(seq,ref_seq,limit=321):
+def compare_frames(seq,ref_seq,limit=501):
     psnr_list = []
     for i in range(min (len(seq),limit)):
         best_match_idx = find_best_match(i,seq,ref_seq, range_limit=10)
@@ -52,13 +52,13 @@ def read_yuv420(file_path, width, height):
             V = np.fromfile(f, np.uint8, (width * height) // 4)
             frames.append(Y)
     return np.array(frames)
-w = 416
-h = 240
+w = 1920
+h = 1080
 if __name__ == "__main__":
-    frame_refs = read_yuv420("../RawVideo/BlowingBubbles_416x240_50.yuv", w, h)
+    frame_refs = read_yuv420("../RawVideo/Kimono1_1920x1080_24.yuv", w, h)
     frame_decs_noise = read_yuv420("../debugoutputCentralA.yuv", w, h)
     psnr_frame_noise = compare_frames(frame_decs_noise,frame_refs)
-    frame_decs = read_yuv420("../VideoRef/BlowingBubbles/recCentral_BlowingBubbles_8_10.yuv", w, h)
+    frame_decs = read_yuv420("../VideoRef/Kimono16/recCentral_Kimono_8_1.yuv", w, h)
     psnr_frame = compare_frames(frame_decs,frame_refs)
 
     print ("Org %.3f" %np.mean(psnr_frame))

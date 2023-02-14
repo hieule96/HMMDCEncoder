@@ -154,8 +154,17 @@ public:
   TComPicSym  ();
   ~TComPicSym();
 
-  TComSlice*         getSlice(UInt i)                                      { return m_apSlices[i];             }
-  const TComSlice*   getSlice(UInt i) const                                { return m_apSlices[i];             }
+  TComSlice*         getSlice(UInt i)                                      { 
+    if (i >= m_apSlices.size()){
+      return NULL;
+    }
+    return m_apSlices[i];             
+  }
+  const TComSlice*   getSlice(UInt i) const                                { 
+    if (i >= m_apSlices.size()){
+      return NULL;
+    }
+    return m_apSlices[i];             }
   UInt               getFrameWidthInCtus() const                           { return m_frameWidthInCtus;            }
   UInt               getFrameHeightInCtus() const                          { return m_frameHeightInCtus;           }
   UInt               getMinCUWidth() const                                 { return m_uiMinCUWidth;                }

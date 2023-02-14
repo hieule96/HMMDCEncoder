@@ -120,7 +120,14 @@ public:
   const TComPicSym* getPicSym() const              { return  m_pcpicSym;    }
   TComSlice*    getSlice(Int i)                    { return  m_pcpicSym->getSlice(i);  }
   const TComSlice* getSlice(Int i) const           { return  m_pcpicSym->getSlice(i);  }
-  Int           getPOC() const                     { return  m_pcpicSym->getSlice(m_uiCurrSliceIdx)->getPOC();  }
+  Int           getPOC() const                     { 
+      if (m_pcpicSym->getSlice(m_uiCurrSliceIdx)){
+        return  m_pcpicSym->getSlice(m_uiCurrSliceIdx)->getPOC();
+      }
+      else{
+        return MAX_INT;
+      }  
+    }
   TComDataCU*   getCtu( UInt ctuRsAddr )           { return  m_pcpicSym->getCtu( ctuRsAddr ); }
   const TComDataCU* getCtu( UInt ctuRsAddr ) const { return  m_pcpicSym->getCtu( ctuRsAddr ); }
 

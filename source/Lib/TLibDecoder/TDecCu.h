@@ -104,7 +104,7 @@ protected:
   Bool xDecodeSliceEnd          ( TComDataCU* pcCU, UInt uiAbsPartIdx );
   Void xDecompressCU            ( TComDataCU* pCtu, UInt uiAbsPartIdx, UInt uiDepth, Bool &isCorrupted );
 
-  Void xReconInter              ( TComDataCU* pcCU, UInt uiDepth );
+  Void xReconInter              ( TComDataCU* pcCU, UInt uiDepth, Bool &isCorrupted);
 
   Void xReconIntraQT            ( TComDataCU* pcCU, UInt uiDepth, Bool &isCorrupted);
   Void xIntraRecBlk             ( TComYuv* pcRecoYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, const ComponentID component, TComTU &rTu );

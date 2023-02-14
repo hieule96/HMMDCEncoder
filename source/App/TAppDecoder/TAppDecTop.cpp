@@ -346,11 +346,11 @@ Void TAppDecTop::decode()
           }
         }
       }
-      // second pass if there is any mismatch correction
-      if (countMismatch>0&&bNewPicture1&&bNewPicture2){
-        std::cout << "Mismatch correction: " << countMismatch << std::endl;
-        continue;
-      }
+      // // second pass if there is any mismatch correction
+      // if (countMismatch>0&&bNewPicture1&&bNewPicture2){
+      //   std::cout << "Mismatch correction: " << countMismatch << std::endl;
+      //   continue;
+      // }
     }
     // this part will do the check and add image to the list
     if ( (bNewPicture1&&bNewPicture2 || !bitstreamFile1 || nalu1.m_nalUnitType == NAL_UNIT_EOS) &&

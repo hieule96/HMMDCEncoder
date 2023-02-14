@@ -170,7 +170,7 @@ public:
   Int   getDescriptionId() const { return m_DecoderDescriptionId; }
 protected:
   Void  xGetNewPicBuffer  (const TComSPS &sps, const TComPPS &pps, TComPic*& rpcPic, const UInt temporalLayer);
-  Void  xCreateLostPicture (Int iLostPOC);
+  Void  xCreateLostPicture(Int iLostPoc, Int descriptionId, TComList<TComPic *> &rpcListPic);
 #if MCTS_EXTRACTION
   Bool      xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisplay, Bool bSkipCabacAndReconstruction);
   Void      xActivateParameterSets(Bool bSkipCabacAndReconstruction);

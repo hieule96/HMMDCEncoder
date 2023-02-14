@@ -1296,7 +1296,6 @@ Void TComSlice::createExplicitReferencePictureSetFromReference( TComList<TComPic
   (*pLocalRPS)=TComReferencePictureSet();
 
   Bool irapIsInRPS = false; // Used when bEfficientFieldIRAPEnabled==true
-  if (this->getPic()->getDescriptionId() == 2){
     // loop through all pictures in the Reference Picture Set
     for(i=0;i<pReferencePictureSet->getNumberOfPictures();i++)
     {
@@ -1401,7 +1400,6 @@ Void TComSlice::createExplicitReferencePictureSetFromReference( TComList<TComPic
 
     this->setRPS(pLocalRPS);
     this->setRPSidx(-1);
-  }
 }
 
 //! get AC and DC values for weighted pred

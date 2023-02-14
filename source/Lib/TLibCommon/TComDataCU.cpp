@@ -1848,7 +1848,7 @@ UChar TComDataCU::getNumPartitions(const UInt uiAbsPartIdx) const
     case SIZE_2NxnD:    iNumPart = 2; break;
     case SIZE_nLx2N:    iNumPart = 2; break;
     case SIZE_nRx2N:    iNumPart = 2; break;
-    default:            assert (0);   break;
+    // default:            assert (0);   break;
   }
 
   return  iNumPart;

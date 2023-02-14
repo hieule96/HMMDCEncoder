@@ -412,7 +412,7 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth, 
   switch( m_ppcCU[uiDepth]->getPredictionMode(0) )
   {
     case MODE_INTER:
-      xReconInter( m_ppcCU[uiDepth], uiDepth );
+      xReconInter( m_ppcCU[uiDepth], uiDepth, isCorrupted );
       break;
     case MODE_INTRA:
       xReconIntraQT( m_ppcCU[uiDepth], uiDepth, isCorrupted );
@@ -440,7 +440,7 @@ Void TDecCu::xDecompressCU( TComDataCU* pCtu, UInt uiAbsPartIdx,  UInt uiDepth, 
   xCopyToPic( m_ppcCU[uiDepth], pcPic, uiAbsPartIdx, uiDepth );
 }
 
-Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
+Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth, Bool &isCorrupted )
 {
 
   // inter prediction
@@ -450,6 +450,10 @@ Void TDecCu::xReconInter( TComDataCU* pcCU, UInt uiDepth )
     m_pConformanceCheck->flagTMctsError("motion vector across tile boundaries");
   }
 #endif
+  if (pcCU->getNumPartitions()==0){
+    isCorrupted=true;
+    return;
+  }
   m_pcPrediction->motionCompensation( pcCU, m_ppcYuvReco[uiDepth] );
   m_pcPrediction->motionCompensation( pcCU, m_ppcYuvPred[uiDepth] );
 
@@ -745,6 +749,9 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
   {
     pcCU->setIsCorrupted(true);
     isCorrupted=true;
+    return;
+  }
+  if (pcCU->getIsCorrupted()){
     return;
   }
   UInt uiTrMode     = pcCU->getTransformIdx( uiAbsPartIdx );

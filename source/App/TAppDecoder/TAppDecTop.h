@@ -62,7 +62,7 @@ class TAppDecTop : public TAppDecCfg
 private:
   // class interface
   TDecTop                         m_cTDecTop1,m_cTDecTop2;                     ///< decoder class
-  TVideoIOYuv       m_cTVideoIOYuvReconFileC,m_cTVideoIOYuvReconFile1,m_cTVideoIOYuvReconFile2;
+  TVideoIOYuv                     m_cTVideoIOYuvReconFileC,m_cTVideoIOYuvReconFile1,m_cTVideoIOYuvReconFile2,m_cTVideoIOOrg;
   // for output control
   Int                             m_iPOCLastDisplay1,m_iPOCLastDisplay2;              ///< last POC in display order
   std::ofstream                   m_seiMessageFileStream;         ///< Used for outputing SEI messages.

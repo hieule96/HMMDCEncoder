@@ -69,7 +69,7 @@ protected:
   // set / get functions
   Void xSetLoopfilterParam        ( TComDataCU* pcCU, UInt uiAbsZorderIdx );
   // filtering functions
-  Void xSetEdgefilterTU           ( TComTU &rTu, Int depth=0);
+  Void xSetEdgefilterTU           ( TComTU &rTu, Int depth=0, Bool ErrorFlag=false );
   Void xSetEdgefilterPU           ( TComDataCU* pcCU, UInt uiAbsZorderIdx );
   Void xGetBoundaryStrengthSingle ( TComDataCU* pCtu, DeblockEdgeDir edgeDir, UInt uiPartIdx );
   UInt xCalcBsIdx                 ( TComDataCU* pcCU, UInt absZIdxInCtu, DeblockEdgeDir edgeDir, Int iEdgeIdx, Int iBaseUnitIdx, const struct TComRectangle *rect=NULL )
@@ -77,11 +77,16 @@ protected:
     TComPic* const pcPic = pcCU->getPic();
     const UInt ctuWidthInBaseUnits = pcPic->getNumPartInCtuWidth();
     Int rasterOffsetTU=0;
+    // overflow check if yes return last index
+
     if (rect != NULL)
     {
       const UInt minCuWidth =pcPic->getMinCUWidth();
       const UInt minCuHeight=pcPic->getMinCUHeight();
       rasterOffsetTU = rect->x0/minCuWidth + (rect->y0/minCuHeight)*ctuWidthInBaseUnits;
+    }
+    if (g_auiZscanToRaster[absZIdxInCtu] + iBaseUnitIdx * ctuWidthInBaseUnits + iEdgeIdx + rasterOffsetTU>=MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH){
+      return g_auiRasterToZscan[MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH-1];
     }
     if( edgeDir == EDGE_VER )
     {

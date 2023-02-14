@@ -231,6 +231,12 @@ Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB,
   // if both are null, then pcSlice will be null and exit the function
   TComSlice *const pcSlice = pcSliceA ? pcSliceA : pcSliceB;
   const TComDataCU *pcCU = pcSliceA ? pcCUA : pcCUB;
+  if (pcCUA->getIsCorrupted()){
+    pcCU = pcCUB;
+  }
+  else if (pcCUB->getIsCorrupted()){
+    pcCU = pcCUA;
+  }
   if (pcSlice == NULL)
   {
     // in this case, pcCUA and pcCUB are both null, so pcCU is null
@@ -274,12 +280,19 @@ Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB,
   }
   else if(pcCUA==NULL||pcPicA==NULL)//pcSliceA!=NULL&pcSliceB!=NULL&&pcSliceA->getIsCorrupted()&&!pcSliceB->getIsCorrupted())
   {
-    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    UChar width = Clip3 ((UChar)0,(UChar)(64 >> uiDepth),pcCUB->getWidth(uiAbsPartIdx));
+    UChar height = Clip3 ((UChar)0,(UChar)(64 >> uiDepth),pcCUB->getHeight(uiAbsPartIdx));
+    // std::cout << "B:"<< (Int)width <<"/"<<(Int)height<<std::endl;
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCUB->getCtuRsAddr(), uiAbsPartIdx, height, width);
     return;
   }
   else if(pcCUB==NULL||pcPicB==NULL)//pcSliceB!=NULL&pcSliceA!=NULL&&pcSliceB->getIsCorrupted()&&!pcSliceA->getIsCorrupted())
   {
-    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    UChar width = Clip3 ((UChar)0,(UChar)(64 >> uiDepth),pcCUA->getWidth(uiAbsPartIdx));
+    UChar height = Clip3 ((UChar)0,(UChar)(64 >> uiDepth),pcCUA->getHeight(uiAbsPartIdx));
+    // std::cout << "A:"<< (Int)width <<"/"<<(Int)height<<std::endl;
+
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, height, width);
     return;
   }
 
@@ -298,22 +311,22 @@ Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB,
 
   if (pcCUA->getCbf(uiAbsPartIdx, COMPONENT_Y) && !pcCUB->getCbf(uiAbsPartIdx, COMPONENT_Y))
   {
-    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, pcCUA->getHeight(uiAbsPartIdx), pcCUA->getWidth(uiAbsPartIdx));
     return;
   }
   else if (!pcCUA->getCbf(uiAbsPartIdx, COMPONENT_Y) && pcCUB->getCbf(uiAbsPartIdx, COMPONENT_Y))
   {
-    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCUB->getCtuRsAddr(), uiAbsPartIdx, pcCUB->getHeight(uiAbsPartIdx), pcCUB->getWidth(uiAbsPartIdx));
     return;
   }
 
 
 
   if (QPTable1[index]<QPTable2[index]){
-    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    pcPicA->getPicYUVRec1()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCUA->getCtuRsAddr(), uiAbsPartIdx, pcCUA->getHeight(uiAbsPartIdx), pcCUA->getWidth(uiAbsPartIdx));
   }else
   {
-    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCU->getCtuRsAddr(), uiAbsPartIdx, pcCU->getHeight(uiAbsPartIdx), pcCU->getWidth(uiAbsPartIdx));
+    pcPicB->getPicYUVRec2()->copyCUToPic(pcPicRef->getPicYUVRecC(), pcCUB->getCtuRsAddr(), uiAbsPartIdx, pcCUB->getHeight(uiAbsPartIdx), pcCUB->getWidth(uiAbsPartIdx));
   }
   // if (pcCUA->getCodedQP() < pcCUB->getCodedQP())
   // {
@@ -343,15 +356,15 @@ Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB,
 
 Void TDecTop::outputBuffer(TComPic *pcPicA, TComPic *pcPicB, BitDepths const &bitDepths, Int POC){
   if (POC > 0){
-    pcPicA->getPicYUVRec1()->dump("debugoutputA.yuv",bitDepths,true,true);
-    pcPicB->getPicYUVRec2()->dump("debugoutputB.yuv",bitDepths,true, true);
+    // pcPicA->getPicYUVRec1()->dump("debugoutputA.yuv",bitDepths,true,true);
+    // pcPicB->getPicYUVRec2()->dump("debugoutputB.yuv",bitDepths,true, true);
     pcPicA->getPicYUVRecC()->dump("debugoutputCentralA.yuv",bitDepths,true, true);
     // pcPicB->getPicYUVRecC()->dump("debugoutputCentralB.yuv",bitDepths,true, true);
   }
   else
   {
-    pcPicA->getPicYUVRec1()->dump("debugoutputA.yuv",bitDepths,false,true);
-    pcPicB->getPicYUVRec2()->dump("debugoutputB.yuv",bitDepths,false, true);
+    // pcPicA->getPicYUVRec1()->dump("debugoutputA.yuv",bitDepths,false,true);
+    // pcPicB->getPicYUVRec2()->dump("debugoutputB.yuv",bitDepths,false, true);
     pcPicA->getPicYUVRecC()->dump("debugoutputCentralA.yuv",bitDepths,false, true);
     // pcPicB->getPicYUVRecC()->dump("debugoutputCentralB.yuv",bitDepths,false, true);
   }
@@ -366,18 +379,32 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
   Int POCD2 = pcPicB->getPOC();
   ctx1.POC = POCD1;
   ctx2.POC = POCD2;
-
+  auto iterPic = m_cListPic.begin();
   // // prepare with previous frame in case of lost
-  // if (m_cListPic.size() > 0)
-  // {
-  //   m_cListPic.back()->getPicYUVRecC()->copyToPic(pcPicA->getPicYUVRecC());
-  //   m_cListPic.back()->getPicYUVRecC()->copyToPic(pcPicB->getPicYUVRecC());
-  // }
+  while (iterPic != m_cListPic.end())
+  {
+    TComPic *rpcPic = *(iterPic++);
+    if (rpcPic->getPicSym()->getSlice(0)->getPOC() == POCD1-1)
+    {
+      rpcPic->getPicYUVRecC()->copyToPic(pcPicA->getPicYUVRecC());
+      break;
+    }
+  }
+  auto iterPic2 = rTdec2.m_cListPic.begin();
+  while (iterPic2 != rTdec2.m_cListPic.end())
+  {
+    TComPic *rpcPic = *(iterPic2++);
+    if (rpcPic->getPicSym()->getSlice(0)->getPOC() == POCD2-1)
+    {
+      rpcPic->getPicYUVRecC()->copyToPic(pcPicB->getPicYUVRecC());
+      break;
+    }
+  }
+  if (m_cListPic.size() > 0)
+  {
+    m_cListPic.back()->getPicYUVRecC()->copyToPic(pcPicA->getPicYUVRecC());
+  }
   // the list m_cListPic contains the previous frame for references, it can happened that the 
-  // pcPicA->setOutputMark(pcPicA->getSlice(0)->getPicOutputFlag() ? true : false);
-  // pcPicA->setReconMark(true);
-  // pcPicB->setOutputMark(pcPicB->getSlice(0)->getPicOutputFlag() ? true : false);
-  // pcPicB->setReconMark(true);
   if (ctx1.LostPOC.size()>0&&ctx2.LostPOC.size()>0){
     ctx1.getMore = true;
     ctx2.getMore = true;
@@ -389,28 +416,69 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
   else if (ctx2.LostPOC.size()>0){
     // check if there is a lost in ctx 2
     if (ctx2.LostPOC.back()==POCD1){
-      auto l_front = rTdec2.m_cListPic.front();
       ctx2.LostPOC.pop_back();
+      executeLoopFilters();
       pcPicA->getPicYUVRec1()->copyToPic(pcPicB->getPicYUVRecC());
       pcPicA->getPicYUVRec1()->copyToPic(pcPicB->getPicYUVRec2());
       pcPicA->getPicYUVRec1()->copyToPic(pcPicA->getPicYUVRecC());
-    }
-    executeLoopFilters();
-    outputBuffer(pcPicA,pcPicB,pcSlice->getSPS()->getBitDepths(),POCD1);
+      outputBuffer(pcPicA,pcPicB,pcSlice->getSPS()->getBitDepths(),POCD1);
+    }else
+    {
+      if (POCD1>ctx2.LostPOC.back())
+        // create lost pic by using the in description 1
+      {
+          Int count=0;
+          Int lostPoc=0;
+          while ((lostPoc = m_apcSlicePilot->checkThatAllRefPicsAreAvailable(m_cListPic, m_apcSlicePilot->getRPS(), true, m_pocRandomAccess)) > 0)
+          {
+            rTdec2.xCreateLostPicture(lostPoc - 1,pcPicB->getDescriptionId(),rTdec2.m_cListPic);
+          }
+          if (ctx2.LostPOC.back()==pcPicB->getPOC()){
+            ctx2.LostPOC.pop_back();
+            executeLoopFilters();
+            pcPicA->getPicYUVRec1()->copyToPic(pcPicB->getPicYUVRecC());
+            pcPicA->getPicYUVRec1()->copyToPic(pcPicB->getPicYUVRec2());
+            pcPicA->getPicYUVRec1()->copyToPic(pcPicA->getPicYUVRecC());
+            outputBuffer(pcPicA,pcPicB,pcSlice->getSPS()->getBitDepths(),POCD1);
 
-    return;
+          }
+      }
+    }
+  return;
   }
   else if(ctx1.LostPOC.size()>0)
   {
     if (ctx1.LostPOC.back()==POCD2){
       // correct the frame in the past
       ctx1.LostPOC.pop_back();
+      rTdec2.executeLoopFilters();
       pcPicB->getPicYUVRec2()->copyToPic(pcPicA->getPicYUVRecC());
       pcPicB->getPicYUVRec2()->copyToPic(pcPicA->getPicYUVRec1());
       pcPicB->getPicYUVRec2()->copyToPic(pcPicB->getPicYUVRecC());
+      outputBuffer(pcPicA,pcPicB,pcSlice->getSPS()->getBitDepths(),POCD2);
+
     }
-    rTdec2.executeLoopFilters();
-    outputBuffer(pcPicA,pcPicB,pcSlice->getSPS()->getBitDepths(),POCD2);
+    else
+    {
+      if (POCD2>ctx1.LostPOC.back())
+      {
+        Int count=0;
+        Int lostPoc=0;
+        while ((lostPoc = m_apcSlicePilot->checkThatAllRefPicsAreAvailable(m_cListPic, m_apcSlicePilot->getRPS(), true, m_pocRandomAccess)) > 0)
+        {
+          xCreateLostPicture(lostPoc - 1,pcPicA->getDescriptionId(),m_cListPic);
+        }
+        if (ctx1.LostPOC.back()==pcPicA->getPOC()){
+          ctx1.LostPOC.pop_back();
+          rTdec2.executeLoopFilters();
+          pcPicB->getPicYUVRec2()->copyToPic(pcPicA->getPicYUVRecC());
+          pcPicB->getPicYUVRec2()->copyToPic(pcPicA->getPicYUVRec1());
+          pcPicB->getPicYUVRec2()->copyToPic(pcPicB->getPicYUVRecC());
+          outputBuffer(pcPicA,pcPicB,pcSlice->getSPS()->getBitDepths(),POCD2);
+
+        }
+      }
+    }
     return;
   }
   if (POCD1!=POCD2){
@@ -446,7 +514,6 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
     // }
     // std::cout << std::endl;
   }
-  
   pcPicA->getPicYUVRecC()->copyToPic(pcPicB->getPicYUVRecC());
   executeLoopFilters();
   rTdec2.executeLoopFilters();
@@ -503,16 +570,16 @@ Void TDecTop::checkNoOutputPriorPics(TComList<TComPic *> *pcListPic)
   }
 }
 
-Void TDecTop::xCreateLostPicture(Int iLostPoc)
+Void TDecTop::xCreateLostPicture(Int iLostPoc, Int descriptionId, TComList<TComPic *> &rpcListPic)
 {
   printf("\ninserting lost poc : %d of D%d\n", iLostPoc,m_DecoderDescriptionId);
   TComPic *cFillPic;
   xGetNewPicBuffer(*(m_parameterSetManager.getFirstSPS()), *(m_parameterSetManager.getFirstPPS()), cFillPic, 0);
   cFillPic->getSlice(0)->initSlice();
-  cFillPic->setDescriptionId(m_DecoderDescriptionId);
-  TComList<TComPic *>::iterator iterPic = m_cListPic.begin();
+  cFillPic->setDescriptionId(descriptionId);
+  TComList<TComPic *>::iterator iterPic = rpcListPic.begin();
   Int closestPoc = 1000000;
-  while (iterPic != m_cListPic.end())
+  while (iterPic != rpcListPic.end())
   {
     TComPic *rpcPic = *(iterPic++);
     if (abs(rpcPic->getPicSym()->getSlice(0)->getPOC() - iLostPoc) < closestPoc && abs(rpcPic->getPicSym()->getSlice(0)->getPOC() - iLostPoc) != 0 && rpcPic->getPicSym()->getSlice(0)->getPOC() != m_apcSlicePilot->getPOC())
@@ -520,14 +587,14 @@ Void TDecTop::xCreateLostPicture(Int iLostPoc)
       closestPoc = abs(rpcPic->getPicSym()->getSlice(0)->getPOC() - iLostPoc);
     }
   }
-  iterPic = m_cListPic.begin();
-  while (iterPic != m_cListPic.end())
+  iterPic = rpcListPic.begin();
+  while (iterPic != rpcListPic.end())
   {
     TComPic *rpcPic = *(iterPic++);
     if (abs(rpcPic->getPicSym()->getSlice(0)->getPOC() - iLostPoc) == closestPoc && rpcPic->getPicSym()->getSlice(0)->getPOC() != m_apcSlicePilot->getPOC())
     {
       printf("copying picture %d to %d (%d)\n", rpcPic->getPicSym()->getSlice(0)->getPOC(), iLostPoc, m_apcSlicePilot->getPOC());
-      rpcPic->getPicYUVRecC()->copyToPic(cFillPic->getPicYuvRec());
+      rpcPic->getPicYuvRec()->copyToPic(cFillPic->getPicYuvRec());
       rpcPic->getPicYUVRecC()->copyToPic(cFillPic->getPicYUVRecC());
       break;
     }
@@ -897,7 +964,7 @@ Bool TDecTop::xDecodeSlice(InputNALUnit &nalu, Int &iSkipFrame, Int iPOCLastDisp
     Int lostPoc=0;
     while ((lostPoc = m_apcSlicePilot->checkThatAllRefPicsAreAvailable(m_cListPic, m_apcSlicePilot->getRPS(), true, m_pocRandomAccess)) > 0)
     {
-      xCreateLostPicture(lostPoc - 1);
+      xCreateLostPicture(lostPoc - 1,this->getDescriptionId(),this->m_cListPic);
       pDecCtx->LostPOC.push_back(lostPoc-1);
     }
   }

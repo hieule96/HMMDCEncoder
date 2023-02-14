@@ -276,7 +276,7 @@ Void TComLoopFilter::xSetEdgefilterMultiple( TComDataCU*    pcCU,
   }
 }
 
-Void TComLoopFilter::xSetEdgefilterTU(  TComTU &rTu, Int depth )
+Void TComLoopFilter::xSetEdgefilterTU(  TComTU &rTu, Int depth, Bool ErrorFlag )
 {
   // prevent infinite recursion
   if (depth > 8){ 
