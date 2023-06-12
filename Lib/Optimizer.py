@@ -4,6 +4,7 @@ Created on Wed Mar 31 09:43:38 2021
 
 @author: hieu1
 """
+import pdb
 from typing import List, Tuple
 
 import numpy as np
@@ -36,7 +37,6 @@ class StatisticCalculator:
 
     @staticmethod
     def entropy_node(img_dct_cu):
-        """Calculate entropy of the node."""
         _, counts = np.unique(img_dct_cu, return_counts=True)
         probabilities = counts / counts.sum()
         entropy = -np.sum(probabilities * np.log2(probabilities))
@@ -88,8 +88,8 @@ class FunctionCurveFitting:
         return a * b * np.exp(b * x) + c * d * np.exp(d * x)
 
     @staticmethod
-    def hyperbole(x, a, b, c):
-        return a * x ** b + c
+    def hyperbole(x, a, b):
+        return a * x ** b
 
     @staticmethod
     def derivatehyperbole(x, a, b):
@@ -105,13 +105,15 @@ class OptimizerParameter:
     rN: float = field(default=0.01, init=True, repr=True)
     Rt: float = field(default=0.5, init=True, repr=True)
     # Constant QP as the contraint
-    _QPMin: int = field(default=0, init=False, repr=False)
-    _QPMax: int = field(default=51, init=False, repr=False)
+    _QPMin: int = field(default=0, init=True, repr=False)
+    _QPMax: int = field(default=51, init=True, repr=False)
     image: Image = None
 
     def __post_init__(self):
         if not 0 <= self.rN <= 1:
             raise ValueError(f'rN must be between 0 and 1:{self.rN}')
+        self._QPMin = max(self._QPMin, 0)
+        self._QPMax = min(self._QPMax, 51)
 
     @property
     def QPMin(self) -> int:
@@ -173,11 +175,11 @@ class Optimizer:
         for turn, i in enumerate(self.globalparam.image.ctu_list):
             if not i.isSkip:
                 if turn % 2 == 0:
-                    i.Ci1 = (1.0 - self.globalparam.rN)
-                    i.Ci2 = self.globalparam.rN
-                else:
-                    i.Ci1 = self.globalparam.rN
+                    i.Ci1 = (1.0 - self.globalparam.rN) * self.globalparam.rN
                     i.Ci2 = (1.0 - self.globalparam.rN)
+                else:
+                    i.Ci1 = (1.0 - self.globalparam.rN)
+                    i.Ci2 = (1.0 - self.globalparam.rN) * self.globalparam.rN
 
 
 class Optimizer_curvefitting(Optimizer):
@@ -187,10 +189,10 @@ class Optimizer_curvefitting(Optimizer):
             "derivate_function": FunctionCurveFitting.derivateExp,
             "nbCoeff": 3
         },
-        "hyperbolic3": {
+        "hyperbolic2": {
             "curve_fitting_function": FunctionCurveFitting.hyperbole,
             "derivate_function": FunctionCurveFitting.derivatehyperbole,
-            "nbCoeff": 3
+            "nbCoeff": 2
         },
         "exp2": {
             "curve_fitting_function": FunctionCurveFitting.negExponential,
@@ -207,6 +209,7 @@ class Optimizer_curvefitting(Optimizer):
     def __init__(self, opt_param: OptimizerParameter = None, curve_fitting_function="exp"):
         super().__init__(opt_param)
         self.r_storage = None
+        self.function_name = curve_fitting_function
         function_set = self.FUNCTIONS.get(curve_fitting_function)
         if function_set is not None:
             self.curve_fitting_function = function_set['curve_fitting_function']
@@ -218,12 +221,14 @@ class Optimizer_curvefitting(Optimizer):
     def dj(self, xij: np.ndarray) -> Tuple[float, float]:
         dj = 0
         rj = 0
-        for i, cu in enumerate(self.globalparam.image.ctu_list):
+        i = 0
+        for cu in self.globalparam.image.ctu_list:
             # counting only not skip element
             if not cu.isSkip:
                 dij = self.curve_fitting_function(xij[i], *cu.DRcoeff)
                 dj += dij * cu.aki
                 rj += xij[i] * cu.aki
+                i += 1
         return dj, rj
 
     def compteCurveCoefficientMultithread(self):
@@ -237,9 +242,10 @@ class Optimizer_curvefitting(Optimizer):
 
     def computeCurveCoefficient(self):
         for ctu in self.globalparam.image.ctu_list:
-            DRcoeff, MAX_E, MIN_E = self.curve_fitting(ctu)
+            isSkip, DRcoeff, MAX_E, MIN_E = self.curve_fitting(ctu)
+            ctu.isSkip = isSkip
             ctu.DRcoeff = DRcoeff
-            ctu.bound = (MAX_E, MIN_E)
+            ctu.bound = (MIN_E, MAX_E)
 
     def compute_block_dct(self, img_cu) -> List[np.ndarray]:
         block8x8_dct = []
@@ -248,63 +254,68 @@ class Optimizer_curvefitting(Optimizer):
                 block8x8_dct.append([x, y, tf.integerDctTransform8x8(img_cu[y:y + 8, x:x + 8])])
         return block8x8_dct
 
-    def compute_mse_entropy_QP(self, node: Node, QPs):
+    def compute_mse_entropy_QP(self, node: Node, QPs) -> dict:
         img_cu = node.get_points(self.globalparam.image.img)
+        nbPixel = img_cu.shape[0] * img_cu.shape[1]
+        if nbPixel == 0:
+            pdb.set_trace()
         if img_cu.std() == 0:
             node.isSkip = True
-            return {}, {}
+            return {}
         block8x8_dct = self.compute_block_dct(img_cu)
         result = {QP: {} for QP in QPs}
         for QP in QPs:
-            entropy = 0
             img_rec_2D = np.zeros(img_cu.shape)
+            entropy = 0
 
             for x, y, tu in block8x8_dct:
                 tuQ = tf.quant(QP, tu)
                 img_dct_cu_Reconstruct = tf.dequant(QP, tuQ)
-
-                entropy += StatisticCalculator.entropy_node(tuQ)
+                entropy += StatisticCalculator.entropy_node(tuQ) * tu.shape[0] * tu.shape[1]
                 img_rec_2D[y:y + 8, x:x + 8] = tf.IintegerDctTransform8x8(img_dct_cu_Reconstruct)
                 img_rec_2D[img_rec_2D < -128] = -128
                 img_rec_2D[img_rec_2D > 127] = 127
-
-            entropy /= (img_cu.shape[0] // 8) * (img_cu.shape[1] // 8)
+            entropy = entropy / nbPixel
             mse = StatisticCalculator.get_mse(img_rec_2D, img_cu)
             result[QP]['entropy'] = entropy
             result[QP]['mse'] = mse
         return result
 
-    def quantCU(QP, block8x8_dct, nbTU):
+    def quantCU(QP: int, block8x8_dct: List, nbPixels: int):
         entropy = 0
         ## Trunc because quantificator accept only integer number
         QP = int(QP)
         for _, _, tu in block8x8_dct:
             tuQ = tf.quant(QP, tu)
-            entropy += StatisticCalculator.entropy_node(tuQ)
+            entropy += StatisticCalculator.entropy_node(tuQ) * tu.shape[0] * tu.shape[1]
+        entropy = entropy / nbPixels
+
         # Calculate entropy
-        entropy = entropy / nbTU
         return entropy
 
-    def searchQP(QP, block8x8_dct, nbTU, rtarget):
-        entropy = Optimizer_curvefitting.quantCU(QP, block8x8_dct, nbTU)
+    def searchQP(QP: int, block8x8_dct: List, rtarget: float, nbPixels: int):
+        entropy = Optimizer_curvefitting.quantCU(QP=QP, block8x8_dct=block8x8_dct, nbPixels=nbPixels)
         return entropy - rtarget
 
     def searchForQPbyRate(self, img: np.ndarray, node: Node, rtarget: float):
         # Take image in partition and dct
         img_cu = node.get_points(img)
+        nbPixels = img_cu.shape[0] * img_cu.shape[1]
         block8x8_dct = []
-        nbTU8x8 = img_cu.shape[0] // 8 * img_cu.shape[1] // 8
         for y in range(0, img_cu.shape[0], 8):
             for x in range(0, img_cu.shape[1], 8):
                 block8x8_dct.append([x, y, tf.integerDctTransform8x8(img_cu[y:y + 8, x:x + 8])])
         # bisect algorithm
-        QP = scipy.optimize.bisect(Optimizer_curvefitting.searchQP, self.globalparam.QPMax, self.globalparam.QPMin,
-                                   args=(block8x8_dct, nbTU8x8, rtarget))
-        entropy = Optimizer_curvefitting.quantCU(QP, block8x8_dct, nbTU8x8)
+        try:
+            QP = scipy.optimize.bisect(Optimizer_curvefitting.searchQP, self.globalparam.QPMax, self.globalparam.QPMin,
+                                       args=(block8x8_dct, rtarget, nbPixels))
+        except ValueError:
+            pdb.set_trace()
+        entropy = Optimizer_curvefitting.quantCU(QP, block8x8_dct, nbPixels)
         return round(QP), entropy
 
     def curve_fitting(self, ctu: Node):
-        interval = max(1, (self.globalparam.QPMax - self.globalparam.QPMin) // 8)
+        interval = max(1, (self.globalparam.QPMax - self.globalparam.QPMin) // 10)
         QPs = list(range(self.globalparam.QPMin, self.globalparam.QPMax + 1, interval))
         # Ensure QPMax and 51 are included in QPs
         if self.globalparam.QPMax != 51 and self.globalparam.QPMax not in QPs:
@@ -316,27 +327,36 @@ class Optimizer_curvefitting(Optimizer):
             QPs = [10] + QPs
         QPs = np.unique(QPs)
         results = self.compute_mse_entropy_QP(ctu, QPs)
-        # Remove entries where mse or entropy is 0
-        results = {QP: result for QP, result in results.items() if result['mse'] != 0 and result['entropy'] != 0}
-        entropyQP = [result['entropy'] for result in results.values()]
-        mseQP = [result['mse'] for result in results.values()]
         MAX_E = MIN_E = None
         DRcoeff = None
         if not ctu.isSkip:
             try:
+                # Remove entries where mse or entropy is 0
+                results = {QP: result for QP, result in results.items() if
+                           result['mse'] != 0}
+                entropyQP = [result['entropy'] for result in results.values()]
+                mseQP = [result['mse'] for result in results.values()]
                 # Linear regression, then exponential curve fitting
-                log_mse_QP = np.log(mseQP)
-                a, b, _, _, _ = scipy.stats.linregress(entropyQP, log_mse_QP)
-                DRcoeff = [np.exp(b), a]
-                # DRcoeff, _ = curve_fit(self.curve_fitting_function, entropyQP, mseQP,
-                #                        p0=DRcoeff, ftol=0.05, xtol=0.05)
-            except ValueError:
+                if self.function_name == "hyperbolic2":
+                    log_entropy = np.log(entropyQP)
+                    log_mse = np.log(mseQP)
+                    slope, intercept, _, _, _ = scipy.stats.linregress(log_entropy, log_mse)
+                    DRcoeff = [np.exp(intercept), slope]
+                else:
+                    log_mse_QP = np.log(mseQP)
+                    slope, intercept, _, _, _ = scipy.stats.linregress(entropyQP, log_mse_QP)
+                    DRcoeff = [np.exp(intercept), slope]
+                DRcoeff, _ = curve_fit(self.curve_fitting_function, entropyQP, mseQP,
+                                       p0=DRcoeff, ftol=0.05, xtol=0.05)
+                MAX_E = entropyQP[1] if 10 in QPs else entropyQP[0]
+                MIN_E = entropyQP[-1] if self.globalparam.QPMax == 51 else entropyQP[-2]
+            except:
+                pdb.set_trace()
                 ctu.isSkip = True
                 DRcoeff = None
                 MAX_E = MIN_E = None
-        if not ctu.isSkip:
-            MAX_E = entropyQP[1] if 10 in QPs else entropyQP[0]
-            MIN_E = entropyQP[-1] if self.globalparam.QPMax == 51 else entropyQP[-2]
+        else:
+            print("ctu skipped")
         return ctu.isSkip, DRcoeff, MAX_E, MIN_E
 
     def cost_func(self, r, lam, aki, DR_coeff, Ci) -> float:
@@ -348,7 +368,7 @@ class Optimizer_curvefitting(Optimizer):
 
     def grad_func(self, r, lam, aki, DR_coeff, Ci) -> np.ndarray:
         # pdb.set_trace()
-        Diprime = aki * self.derivate_function(r, DR_coeff[0], DR_coeff[1])
+        Diprime = aki * self.derivate_function(r, *DR_coeff)
         Riprime = aki
         grad = Ci * Diprime + lam * Riprime
         return grad
@@ -372,9 +392,6 @@ class Optimizer_curvefitting(Optimizer):
         self.initialize_cij()
         QP1 = []
         QP2 = []
-        entropy1 = []
-        entropy2 = []
-
         DR_coeff_cu = self.globalparam.image.get_DRcoeff()
         DR_coeff_cu = np.hsplit(DR_coeff_cu, self.nbCoeff)
         for i in range(self.nbCoeff):
@@ -387,6 +404,7 @@ class Optimizer_curvefitting(Optimizer):
             1: self.globalparam.image.get_r(1),
             2: self.globalparam.image.get_r(2)
         }
+
         def constraintRT_wrapper_1(lam):
             self.r_storage[1], value = self.contraintRT(lam, self.r_storage[1], C1, bounds, aki, DR_coeff_cu)
             return value
@@ -395,24 +413,35 @@ class Optimizer_curvefitting(Optimizer):
             self.r_storage[2], value = self.contraintRT(lam, self.r_storage[2], C2, bounds, aki, DR_coeff_cu)
             return value
 
-        self.globalparam.lam[1] = scipy.optimize.bisect(constraintRT_wrapper_1, 0, 10)
-        self.globalparam.lam[2] = scipy.optimize.bisect(constraintRt_wrapper_2, 0, 10)
+        try:
+            self.globalparam.lam[1] = scipy.optimize.bisect(constraintRT_wrapper_1, 0, 1000, rtol=0.01)
+        except ValueError:
+            # TODO: error handle must be something more sophisticated
+            # This is because the bound is not solvable therefore, r will get the minimum QP
+            print("Non solvable description 1")
+            self.r_storage[1] = [i[1] for i in bounds]
+        try:
+            self.globalparam.lam[2] = scipy.optimize.bisect(constraintRt_wrapper_2, 0, 1000, rtol=0.01)
+        except ValueError:
+            print("Non solvable description 2")
+            self.r_storage[2] = [i[1] for i in bounds]
+
         # Update the value
-        self.globalparam.image.set_r(self.r_storage[1],1)
-        self.globalparam.image.set_r(self.r_storage[2],2)
+        self.globalparam.image.set_r(self.r_storage[1], 1)
+        self.globalparam.image.set_r(self.r_storage[2], 2)
+        entropy1 = []
+        entropy2 = []
         for r_count, node in enumerate(self.globalparam.image.ctu_list):
             if node.isSkip:
-                QP1.append(self.QPMin)
-                QP2.append(self.QPMin)
-                entropy1.append(0)
-                entropy2.append(0)
+                QP1.append(self.globalparam.QPMin)
+                QP2.append(self.globalparam.QPMin)
             else:
                 a, b = self.searchForQPbyRate(self.globalparam.image.img, node, node.r1)
                 c, d = self.searchForQPbyRate(self.globalparam.image.img, node, node.r2)
                 QP1.append(a)
                 entropy1.append(b)
-                QP2.append(c)
                 entropy2.append(d)
+                QP2.append(c)
         Di1, ri1 = self.dj(entropy1)
         Di2, ri2 = self.dj(entropy2)
         out: OptimizerOutput = {

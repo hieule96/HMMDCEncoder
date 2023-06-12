@@ -15,6 +15,7 @@ import pathlib
 from skimage.metrics import mean_squared_error, peak_signal_noise_ratio
 from typing import TypedDict, Optional
 import math
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Lib.Quadtreelib import Node, Image, import_subdivide
 from Lib.Optimizer import Optimizer_curvefitting, OptimizerParameter, OptimizerOutput
@@ -73,7 +74,7 @@ def mseToPSNR(mse):
         return float('+inf')
 
 
-def buildModel(frame_enc, CTU_path, yuv_files, bord_h, bord_w):
+def buildModel(frame_enc: int, CTU_path: str, yuv_files: str, bord_h: int, bord_w: int) -> Image:
     with open(CTU_path, 'r') as file:
         for lines in file:
             parse_line = lines
@@ -85,7 +86,7 @@ def buildModel(frame_enc, CTU_path, yuv_files, bord_h, bord_w):
             # print (lines)
             if frame_enc == frame_file:
                 if pos == 0:
-                    imgY = read_YUV400_frame(open(yuv_files, "rb"), bord_w, bord_h, 0).get('Y')
+                    imgY = read_YUV420_frame(open(yuv_files, "rb"), bord_w, bord_h, 0).get('Y')
                     image = Image(imgY.astype(int) - 128, 64, 64, frame_enc)
                     # import_subdivide(image.get_ctu(pos), chunk[2:], 0, pos)
                 if pos == image.nbCTU - 1:
@@ -120,24 +121,36 @@ if __name__ == '__main__':
     tf.initROM()
     process_time_begin = time.time()
     image = buildModel(frame, CTU_path, resi, bord_H, bord_W)
-    opt_param = OptimizerParameter(lam={1: 20.5, 2: 20.5}, rN=rN, Rt=Rt, image=image)
+    opt_param = OptimizerParameter(lam={1: 20.5, 2: 20.5}, rN=rN, Rt=Rt, image=image,_QPMax=Qp+25,_QPMin=Qp-5)
     optimizer = Optimizer_curvefitting(opt_param=opt_param, curve_fitting_function="exp2")
-    optimizer.compteCurveCoefficientMultithread()
+    optimizer.computeCurveCoefficient()
     result: OptimizerOutput = optimizer.optimizeQuadtreeLambaCst()
     posCTUCount = 0
     QP1 = result.get("QP1")
     QP2 = result.get("QP2")
     mse1 = result.get('D1')
     mse2 = result.get('D2')
-    psnr1 = 10*math.log10(255**2/mse1)
-    psnr2 = 10*math.log10(255**2/mse2)
+    psnr1 = 10 * math.log10(255 ** 2 / mse1)
+    psnr2 = 10 * math.log10(255 ** 2 / mse2)
     bpp1 = result.get('r1')
     bpp2 = result.get('r2')
-    print(f"Estimated D1:{psnr1:2.4f}({mse1:2.4f}) D2:{psnr2:2.4f}({mse2:2.4f}) r1:{bpp1:2.4f} r2:{bpp2:2.4f}")
+    print(f"Estimated D1:{psnr1:2.4f}({mse1:2.4f}) D2:{psnr2:2.4f}({mse2:2.4f}) r1:{bpp1:2.4f}"
+          f"({bpp1 * bord_W * bord_H:4.0f} bits) r2:{bpp2:2.4f}({bpp2 * bord_H * bord_W:4.0f}) bits")
     with open(Q1FileName, 'w') as f:
         for i in QP1:
             f.write(",".join([str(i)] * 64) + ",\n")
     # open the file in the write mode
     with open(Q2FileName, 'w') as f:
+        for i in QP2:
+            f.write(",".join([str(i)] * 64) + ",\n")
+    # open the file in the write mode
+    writetype = 'w'
+    if frame > 0:
+        writetype = 'a'
+    with open(Q1FileName_DecAssist, writetype) as f:
+        for i in QP1:
+            f.write(",".join([str(i)] * 64) + ",\n")
+    # open the file in the write mode
+    with open(Q2FileName_DecAssist, writetype) as f:
         for i in QP2:
             f.write(",".join([str(i)] * 64) + ",\n")

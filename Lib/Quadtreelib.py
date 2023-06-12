@@ -1,29 +1,8 @@
 import numpy as np
-import cv2
 from matplotlib import pyplot as plt
 import math
-import re
-import Lib.Transform as tf
 import dataclasses
 from typing import List
-
-
-# utilities
-def printI(img, title):
-    fig = plt.figure(figsize=(20, 20))
-    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    plt.imshow(rgb)
-    plt.title(title)
-    plt.show()
-
-
-def printI2(i1, i2):
-    fig = plt.figure(figsize=(20, 10))
-    ax1 = fig.add_subplot(1, 2, 1)
-    ax1.imshow(cv2.cvtColor(i1, cv2.COLOR_BGR2RGB))
-    ax2 = fig.add_subplot(1, 2, 2)
-    ax2.imshow(cv2.cvtColor(i2, cv2.COLOR_BGR2RGB))
-    plt.show()
 
 
 @dataclasses.dataclass
@@ -32,6 +11,7 @@ class Node:
     y0: int
     width: int
     height: int
+    rsindex: int
     r1: float = dataclasses.field(default=0.0)
     r2: float = dataclasses.field(default=0.0)
     Ci1: int = dataclasses.field(default=0)
@@ -74,51 +54,56 @@ class Image:
         self.init_ctu()
 
     def init_ctu(self):
+        i = 0
         for y in range(0, self.heigh, self.block_size_h):
             for x in range(0, self.width, self.block_size_w):
                 # calculate the width and height for the CTU
                 # if it's the last one in the row/column, it should be smaller
                 width = min(self.block_size_w, self.width - x)
                 height = min(self.block_size_h, self.heigh - y)
-                qt = Node(x0=x, y0=y, width=width, height=height)
+                qt = Node(x0=x, y0=y, width=width, height=height, rsindex=i)
                 self.ctu_list.append(qt)  # Add Node to list
+                i += 1
 
     def get_ctu(self, rs_pos) -> Node:
         return self.ctu_list[rs_pos]
 
     def get_DRcoeff(self) -> np.ndarray:
-        return np.array([ctu.DRcoeff for ctu in self.ctu_list])
+        return np.array([ctu.DRcoeff for ctu in self.ctu_list if not ctu.isSkip])
 
     def get_aki(self) -> np.ndarray:
-        return np.array([ctu.aki for ctu in self.ctu_list])
+        return np.array([ctu.aki for ctu in self.ctu_list if not ctu.isSkip])
 
     def get_Ci(self, description: int) -> np.ndarray:
         if description == 1:
-            return np.array([ctu.Ci1 for ctu in self.ctu_list])
+            return np.array([ctu.Ci1 for ctu in self.ctu_list if not ctu.isSkip])
         elif description == 2:
-            return np.array([ctu.Ci2 for ctu in self.ctu_list])
+            return np.array([ctu.Ci2 for ctu in self.ctu_list if not ctu.isSkip])
         else:
             raise ValueError("description must be 1 or 2")
 
     def get_bound(self) -> np.ndarray:
-        return np.array([ctu.bound for ctu in self.ctu_list])
+        return np.array([ctu.bound for ctu in self.ctu_list if not ctu.isSkip])
 
     def get_r(self, description) -> np.ndarray:
         if description == 1:
-            return np.array([ctu.r1 for ctu in self.ctu_list])
+            return np.array([ctu.r1 for ctu in self.ctu_list if not ctu.isSkip])
         elif description == 2:
-            return np.array([ctu.r2 for ctu in self.ctu_list])
+            return np.array([ctu.r2 for ctu in self.ctu_list if not ctu.isSkip])
         else:
             raise ValueError("description must be 1 or 2")
 
     def set_r(self, r_new, description):
-        for ctu, r in zip(self.ctu_list, r_new):
-            if description==1:
-                ctu.r1 = r
-            elif description==2:
-                ctu.r2 = r
-            else:
-                raise ValueError("description must be 1 or 2")
+        i = 0
+        for ctu in self.ctu_list:
+            if not ctu.isSkip:
+                if description == 1:
+                    ctu.r1 = r_new[i]
+                elif description == 2:
+                    ctu.r2 = r_new[i]
+                else:
+                    raise ValueError("description must be 1 or 2")
+                i += 1
 
     def get_flat_nodes(self) -> List[Node]:
         flat_node = [i.DFS() for i in self.ctu_list]
