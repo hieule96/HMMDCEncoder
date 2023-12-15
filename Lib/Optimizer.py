@@ -419,13 +419,19 @@ class Optimizer_curvefitting(Optimizer):
             # TODO: error handle must be something more sophisticated
             # This is because the bound is not solvable therefore, r will get the minimum QP
             print("Non solvable description 1")
-            self.r_storage[1] = [i[1] for i in bounds]
+            if constraintRT_wrapper_1(0) < 0 and constraintRT_wrapper_1(1000) < 0:
+                self.r_storage[1] = [i[1] for i in bounds]
+            else:
+                self.r_storage[1] = [i[0] for i in bounds]
+
         try:
             self.globalparam.lam[2] = scipy.optimize.bisect(constraintRt_wrapper_2, 0, 1000, rtol=0.01)
         except ValueError:
             print("Non solvable description 2")
-            self.r_storage[2] = [i[1] for i in bounds]
-
+            if constraintRt_wrapper_2(0) < 0 and constraintRt_wrapper_2(1000) < 0:
+                self.r_storage[2] = [i[1] for i in bounds]
+            else:
+                self.r_storage[2] = [i[0] for i in bounds]
         # Update the value
         self.globalparam.image.set_r(self.r_storage[1], 1)
         self.globalparam.image.set_r(self.r_storage[2], 2)

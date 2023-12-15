@@ -244,10 +244,22 @@ Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB,
     return;
   }
   // check which sps of which is null or not ?
-  const TComSPS &sps =(pcSlice!=NULL&&pcSlice->getSPS()!=NULL)? *(pcSlice->getSPS()):*(pcSliceB->getSPS());
-  const TComPPS &pps = (pcSlice!=NULL&&pcSlice->getPPS()!=NULL)? *(pcSlice->getPPS()):*(pcSliceB->getPPS());
-  const UInt maxCUWidth = sps.getMaxCUWidth();
-  const UInt maxCUHeight = sps.getMaxCUHeight();
+  const TComSPS *sps = pcSlice->getSPS();
+  if (sps == NULL)
+  {
+    // in this case, pcSliceA and pcSliceB are both null, so sps is null
+    // we don't have any choice left but to replace theses CU with preceding ones
+    return;
+  }
+  const TComPPS *pps = pcSlice->getPPS();
+  if (pps == NULL)
+  {
+    // in this case, pcSliceA and pcSliceB are both null, so pps is null
+    // we don't have any choice left but to replace theses CU with preceding ones
+    return;
+  }
+  const UInt maxCUWidth = sps->getMaxCUWidth();
+  const UInt maxCUHeight = sps->getMaxCUHeight();
 
   Bool bBoundary = false;
   UInt uiLPelX = pcCU->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
@@ -256,14 +268,14 @@ Void TDecTop::xSelectCu(TComPic *pcPicRef,TComDataCU* &pcCUA,TComDataCU *&pcCUB,
   const UInt uiBPelY = uiTPelY + (maxCUHeight >> uiDepth) - 1;
 
   // quadtree
-  if (((uiDepth < pcCU->getDepth(uiAbsPartIdx)) && (uiDepth < sps.getLog2DiffMaxMinCodingBlockSize())) || bBoundary)
+  if (((uiDepth < pcCU->getDepth(uiAbsPartIdx)) && (uiDepth < sps->getLog2DiffMaxMinCodingBlockSize())) || bBoundary)
   {
     UInt uiQNumParts = (pcPic->getNumPartitionsInCtu() >> (uiDepth << 1)) >> 2;
     for (UInt uiPartUnitIdx = 0; uiPartUnitIdx < 4; uiPartUnitIdx++, uiAbsPartIdx += uiQNumParts)
     {
       uiLPelX = pcCU->getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]];
       uiTPelY = pcCU->getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]];
-      if ((uiLPelX < sps.getPicWidthInLumaSamples()) && (uiTPelY < sps.getPicHeightInLumaSamples()))
+      if ((uiLPelX < sps->getPicWidthInLumaSamples()) && (uiTPelY < sps->getPicHeightInLumaSamples()))
       {
         index++;
         xSelectCu(pcPicRef,pcCUA, pcCUB, uiAbsPartIdx, uiDepth + 1,QPTable1,QPTable2,index);
@@ -374,9 +386,28 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
 {
   TComPic *pcPicA = this->getPcPic();
   TComPic *pcPicB = rTdec2.getPcPic();
-  TComSlice *pcSlice = pcPicA->getSlice(0);
-  Int POCD1 = pcPicA->getPOC();
-  Int POCD2 = pcPicB->getPOC();
+  TComSlice *pcSlice;
+  Int POCD1 = 0;
+  Int POCD2 = 0;
+  if (pcPicA){
+    pcSlice =pcPicA->getSlice(0);
+  }
+  if (pcPicB)
+  {
+    pcSlice = pcPicB->getSlice(0);
+  }
+  if (pcPicA&&pcPicB){
+    POCD1 = pcPicA->getPOC();
+    POCD2 = pcPicB->getPOC();
+  }
+  else if (pcPicA)
+  {
+    POCD2 = pcPicA->getPOC();
+  }
+  else if (pcPicB)
+  {
+    POCD1 = pcPicB->getPOC();
+  }
   ctx1.POC = POCD1;
   ctx2.POC = POCD2;
   auto iterPic = m_cListPic.begin();
@@ -482,7 +513,7 @@ Void TDecTop::mergingMDC(TDecTop &rTdec2,TDecCtx &ctx1, TDecCtx &ctx2)
     return;
   }
   if (POCD1!=POCD2){
-    throw std::logic_error("POC not equal");
+    return;
   }
 
   Int index = 0;

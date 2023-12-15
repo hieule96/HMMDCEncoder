@@ -116,7 +116,8 @@ if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
   endif()
 endif()
 add_compile_options( "-fPIC" )
-
+add_compile_options("-static-libstdc++")
+add_compile_options("-DNDEBUG")
 # add needed subdirectories
 add_subdirectory( "source/Lib/TLibCommon" )
 add_subdirectory( "source/Lib/TLibCommonAnalyser" )

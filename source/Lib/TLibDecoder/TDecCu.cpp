@@ -736,7 +736,7 @@ TDecCu::xIntraRecQT(TComYuv*    pcRecoYuv,
                     Int depth, Bool &isCorrupted)
 {
   // prevent too deep recursion
-  if (depth>8){
+  if (depth>5){
     TComDataCU *pcCU  = rTu.getCU();
     pcCU->setIsCorrupted(true);
     isCorrupted=true;

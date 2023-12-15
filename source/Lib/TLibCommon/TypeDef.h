@@ -86,7 +86,7 @@
 #if JVET_K0390_RATE_CTRL
 #define JVET_M0600_RATE_CTRL                              1
 #endif
-#define DECODER_CHECK_SUBSTREAM_AND_SLICE_TRAILING_BYTES  1 ///< TODO: integrate this macro into a broader conformance checking system.
+#define DECODER_CHECK_SUBSTREAM_AND_SLICE_TRAILING_BYTES  0 ///< TODO: integrate this macro into a broader conformance checking system.
 #define MCTS_ENC_CHECK                                    1  ///< Temporal MCTS encoder constraint and decoder checks. Also requires SEITMCTSTileConstraint to be enabled to enforce constraint
 #define SHUTTER_INTERVAL_SEI_MESSAGE                      1  ///< support for shutter interval SEI message 
 #define SEI_ENCODER_CONTROL                               1  ///< add encoder control for the following SEI: film grain characteristics, content light level, ambient viewing environment

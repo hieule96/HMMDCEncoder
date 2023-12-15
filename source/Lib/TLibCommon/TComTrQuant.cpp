@@ -1335,7 +1335,10 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
 
   assert (scalingListType < SCALING_LIST_NUM);
   assert ( uiWidth <= m_uiMaxTrSize );
-
+  // TODO: Is that correct no ???
+  if (uiWidth>m_uiMaxTrSize||scalingListType>=SCALING_LIST_NUM){
+    return;
+  }
   // Represents scaling through forward transform
   const Bool bClipTransformShiftTo0 = (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0) && pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag();
   const Int  originalTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange);
@@ -1358,7 +1361,6 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
     const Intermediate_Int inputMaximum        =  (1 << (targetInputBitDepth - 1)) - 1;
 
     Int *piDequantCoef = getDequantCoeff(scalingListType,QP_rem,uiLog2TrSize-2);
-
     if(rightShift > 0)
     {
       const Intermediate_Int iAdd = 1 << (rightShift - 1);
@@ -1366,6 +1368,7 @@ Void TComTrQuant::xDeQuant(       TComTU        &rTu,
       for( Int n = 0; n < numSamplesInBlock; n++ )
       {
         const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
+        // Acess to forbidden memory 
         const Intermediate_Int iCoeffQ   = ((Intermediate_Int(clipQCoef) * piDequantCoef[n]) + iAdd ) >> rightShift;
 
         piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));

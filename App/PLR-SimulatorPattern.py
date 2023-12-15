@@ -27,7 +27,7 @@ if __name__ == "__main__":
         print("WARNING: No specific folder and PLR is set for the output file")
         sys.exit()
     signal=[]
-    with open(join("../q15i16/",str(pe)),"r") as lostpatternFile:
+    with open(join("q15i16/",str(pe)),"r") as lostpatternFile:
         for line in lostpatternFile:
             for c in line:
                 if (c!='/n'):

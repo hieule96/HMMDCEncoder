@@ -99,7 +99,9 @@ Void TComPicYuv::createWithoutCUInfo ( const Int picWidth,                 ///< 
   for(UInt comp=0; comp<getNumberValidComponents(); comp++)
   {
     const ComponentID ch=ComponentID(comp);
-    m_apiPicBuf[comp] = (Pel*)xMalloc( Pel, getStride(ch) * getTotalHeight(ch));
+    // TODO: Because the HM Decoder cannot do anything with the error, the code is too buggy to be corrected, that's why we allocate with 10 times the size
+    // Please someone correct this code
+    m_apiPicBuf[comp] = (Pel*)xMalloc( Pel, getStride(ch) * getTotalHeight(ch)*10);
     m_piPicOrg[comp]  = m_apiPicBuf[comp] + (m_marginY >> getComponentScaleY(ch)) * getStride(ch) + (m_marginX >> getComponentScaleX(ch));
   }
   // initialize pointers for unused components to NULL

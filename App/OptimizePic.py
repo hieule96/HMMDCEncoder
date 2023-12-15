@@ -121,7 +121,7 @@ if __name__ == '__main__':
     tf.initROM()
     process_time_begin = time.time()
     image = buildModel(frame, CTU_path, resi, bord_H, bord_W)
-    opt_param = OptimizerParameter(lam={1: 20.5, 2: 20.5}, rN=rN, Rt=Rt, image=image,_QPMax=Qp+25,_QPMin=Qp-5)
+    opt_param = OptimizerParameter(lam={1: 20.5, 2: 20.5}, rN=rN, Rt=Rt, image=image,_QPMax=Qp+25,_QPMin=Qp-10)
     optimizer = Optimizer_curvefitting(opt_param=opt_param, curve_fitting_function="exp2")
     optimizer.computeCurveCoefficient()
     result: OptimizerOutput = optimizer.optimizeQuadtreeLambaCst()
@@ -138,19 +138,19 @@ if __name__ == '__main__':
           f"({bpp1 * bord_W * bord_H:4.0f} bits) r2:{bpp2:2.4f}({bpp2 * bord_H * bord_W:4.0f}) bits")
     with open(Q1FileName, 'w') as f:
         for i in QP1:
-            f.write(",".join([str(i)] * 64) + ",\n")
+            f.write(",".join([str(i)] * 200) + ",\n")
     # open the file in the write mode
     with open(Q2FileName, 'w') as f:
         for i in QP2:
-            f.write(",".join([str(i)] * 64) + ",\n")
+            f.write(",".join([str(i)] * 200) + ",\n")
     # open the file in the write mode
     writetype = 'w'
     if frame > 0:
         writetype = 'a'
     with open(Q1FileName_DecAssist, writetype) as f:
         for i in QP1:
-            f.write(",".join([str(i)] * 64) + ",\n")
+            f.write(",".join([str(i)] * 200) + ",\n")
     # open the file in the write mode
     with open(Q2FileName_DecAssist, writetype) as f:
         for i in QP2:
-            f.write(",".join([str(i)] * 64) + ",\n")
+            f.write(",".join([str(i)] * 200) + ",\n")

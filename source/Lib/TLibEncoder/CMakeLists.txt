@@ -14,11 +14,11 @@ endif()
 
 # library
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
-  add_library( ${LIB_NAME} SHARED ${SRC_FILES} ${INC_FILES} ${NATVIS_FILES} ${PYTHON_INCLUDE_DIRS} ${PYTHON_LIBRARIES}/libpython3.8.so )
+  add_library( ${LIB_NAME} STATIC ${SRC_FILES} ${INC_FILES} ${NATVIS_FILES} ${PYTHON_INCLUDE_DIRS} ${PYTHON_LIBRARIES}/libpython3.9.so )
 else()
-  add_library( ${LIB_NAME} SHARED ${SRC_FILES} ${INC_FILES} ${NATVIS_FILES} ${PYTHON_INCLUDE_DIRS} ${PYTHON_LIBRARIES} )
+  add_library( ${LIB_NAME} STATIC ${SRC_FILES} ${INC_FILES} ${NATVIS_FILES} ${PYTHON_INCLUDE_DIRS} ${PYTHON_LIBRARIES} )
 endif()
-
+message(${PYTHON_LIBRARIES})
 
 target_compile_definitions( ${LIB_NAME} PUBLIC )
 
@@ -40,12 +40,11 @@ endif()
 
 target_include_directories( ${LIB_NAME} PUBLIC . ${PYTHON_INCLUDE_DIRS} )
 if( CMAKE_SYSTEM_NAME STREQUAL "Linux" )
-  target_link_libraries( ${LIB_NAME} TLibCommon TLibMDCCommon Utilities Threads::Threads ${PYTHON_LIBRARIES}/libpython3.8.so )
+  target_link_libraries( ${LIB_NAME} TLibCommon TLibMDCCommon Utilities Threads::Threads ${PYTHON_LIBRARIES}/libpython3.9.so )
 else()
   target_link_libraries( ${LIB_NAME} TLibCommon TLibMDCCommon Utilities Threads::Threads ${PYTHON_LIBRARIES} )
 endif()
 
-message(${PYTHON_LIBRARIES})
 if( CMAKE_COMPILER_IS_GNUCC )
   # this is quite certainly a compiler problem
   set_property( SOURCE "EncCu.cpp" APPEND PROPERTY COMPILE_FLAGS "-Wno-array-bounds" )
